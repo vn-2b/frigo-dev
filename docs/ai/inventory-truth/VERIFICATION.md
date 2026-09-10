@@ -1,4 +1,10 @@
-# T08 verification evidence
+# Inventory Truth verification
+
+## T09 current verification
+
+See `t09/VERIFICATION.md`. Exact T08 base was published to the authorized T09
+branch then fetched; local/remote equality PASS. No T09 application gates yet.
+Historical T08 evidence below is not a T09 rerun. evidence
 
 ## 2026-09-09 — initial checkpoint
 

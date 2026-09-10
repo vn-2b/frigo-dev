@@ -1,5 +1,9 @@
 # Inventory Truth session log (append-only)
 
+Current T09 sessions are recorded append-only in `t09/SESSION_LOG.md`, including
+user-confirmed vn-2b/frigo-dev identity, publication-first SHA evidence and
+production-track isolation. Historical T08 entries below are preserved.
+
 ## 2026-09-09 — session start
 
 Started from: hoplite/xanthos-7d942897@d1b06732f8a80db4e77986df31ff28d9f04641fa.

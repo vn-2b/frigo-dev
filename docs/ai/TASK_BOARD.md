@@ -1,5 +1,13 @@
 # Frigo task board
 
+## T09 — active isolated development (2026-09-10)
+
+IN_PROGRESS in vn-2b/frigo-dev on hoplite/euhesperides-d77023a5, exact T08 base
+8f8788c1a0c9e486657751ef3875a5baa5334dec. Publication-first verified; T09A audit
+and review packet ongoing. Fresh gates pending. Next: complete/publish T09A before
+T09B implementation. See inventory-truth/TASK_BOARD.md and t09/REVIEW_INDEX.md.
+No production reconciliation, legacy/main synchronization or T10 in this task.
+
 ## Completed release work
 
 - T01-T07: COMPLETE.

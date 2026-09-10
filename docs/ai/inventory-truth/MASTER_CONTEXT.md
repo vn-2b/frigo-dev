@@ -1,5 +1,16 @@
 # Inventory Truth Layer — repository authority
 
+## Current T09 authority (supersedes historical T08 branch/repository restrictions)
+
+User confirmed `vn-2b/frigo-dev` on 2026-09-10; the original T09 owner was outdated.
+Development T09 branch `hoplite/euhesperides-d77023a5` starts at exact fetched T08
+`8f8788c1a0c9e486657751ef3875a5baa5334dec` and was published/fetched before code.
+Active contract: `../tasks/T09-inventory-lot-engine.md`; review packet: `t09/`.
+T09 is authorized for live mutation authority only; reads stay legacy until T12.
+Never integrate or modify legacy Frigo, main, production/staging, remote D1 or
+PayOS. Mirror anchors and unavailable legacy observation are explicit in REVIEW_INDEX.
+Historical T08 sections below remain foundation evidence, not current task limits.
+
 ## Objective and roadmap
 
 Answer what Frigo believes is in a household and what evidence supports it.

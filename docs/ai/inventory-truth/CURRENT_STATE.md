@@ -1,5 +1,33 @@
 # Inventory Truth current state
 
+## T09 development authority — 2026-09-10
+
+Program: Inventory Truth Layer
+Current Task: T09 — Inventory Lot Engine & Event Authority
+Current Phase: T09A — audit and lifecycle
+Status: IN_PROGRESS
+Canonical Development Repository: vn-2b/frigo-dev (user-confirmed owner correction)
+Legacy Production Repository: Tungjpstore/Frigo (user packet; not accessed)
+T09 Remote Branch: hoplite/euhesperides-d77023a5
+T09 Base T08 SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
+frigo-dev/main SHA at T09 start: d1b06732f8a80db4e77986df31ff28d9f04641fa
+Last Verified Remote SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
+Do Not Merge To Main: YES
+Do Not Sync From Legacy Frigo: YES
+Production Deployment Allowed: NO
+Staging Deployment Allowed: NO
+Remote D1 Allowed: NO
+PayOS Allowed: NO
+
+Publication-first PASS; initial review packet in t09/. Application implementation
+not started. Exact next action: finish exhaustive writer/D1 atomicity audit and
+focused T08 baseline, commit/publish T09A, then implement T09B. No T09 PASS claim.
+Managed setup claim failed; existing setup executed successfully via shell.
+Pre-existing settings overlay preserved in local named stash; see t09/SESSION_LOG.
+Legacy SHA unavailable; production deltas intentionally pending reconciliation.
+
+## Historical T08 completion receipt (superseded current-task fields below)
+
 Updated: 2026-09-10 UTC, final verification and authorized publication
 Current Task: T08
 Current Phase: T08F Verification/Handoff — complete

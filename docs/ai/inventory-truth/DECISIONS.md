@@ -1,4 +1,27 @@
-# T08 architecture decisions
+# Inventory Truth architecture decisions
+
+## DEC-007 — Isolated development repository and publication-first T09
+
+User corrected the target to vn-2b/frigo-dev on 2026-09-10. Exact T08 remote HEAD
+8f8788c1a0c9e486657751ef3875a5baa5334dec is the immutable T09 base, not main.
+Use broker-authorized hoplite/euhesperides-d77023a5; publish/fetch before code and
+at each phase. Legacy production deltas are expected and must not be synchronized.
+No main merge, production/staging, remote D1, payments or T10 authorization.
+This supersedes historical repository/current-branch clauses only.
+
+## DEC-008 — Remaining usable quantity and explicit correction lifecycle
+
+T09 live quantityMilli is CURRENT REMAINING USABLE QUANTITY. ACTIVE requires
+positive quantity; CONSUMED and DISCARDED require zero. Partial USE/DISCARD stays
+ACTIVE; final decrement selects the corresponding terminal state. History belongs
+in new immutable inventory_events, never retained as terminal positive quantity.
+Normal operations cannot revive terminal lots. CORRECT revival must be explicit,
+reasoned, authorized and version-fenced with before/after/delta evidence. OPEN and
+MOVE require ACTIVE; repeated OPEN is deterministic no-op, not another event.
+New live CREATE requires known canonical identity or nonblank trimmed rawName;
+do not tighten historical T08 backfill identity assumptions retroactively.
+T09 will validate calendar/instant timestamps at the live boundary and preserve
+unknown expiry/money semantics. Database protection design follows the audit.
 
 ## DEC-001 — Isolated foundation authority
 

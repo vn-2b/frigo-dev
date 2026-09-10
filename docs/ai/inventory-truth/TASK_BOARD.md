@@ -1,4 +1,20 @@
-# T08 task board
+# Inventory Truth task board
+
+## T09 — IN_PROGRESS (vn-2b/frigo-dev)
+
+- [x] Publish authorized T09 branch at exact T08 HEAD; fetch/equality verified.
+- [ ] T09A — exhaustive writer audit, lifecycle decision, baseline tests.
+- [ ] T09B — deterministic command contracts.
+- [ ] T09C — persistence and CAS.
+- [ ] T09D — existing idempotency and event authority.
+- [ ] T09E — deterministic FEFO allocations.
+- [ ] T09F — all legacy mutation writers adapted/migrated or safely rejected.
+- [ ] T09G — controlled concurrency and tenancy matrix.
+- [ ] T09H — application freeze, full gates, review packet, remote-checkout proof.
+
+Exact next action: complete/publish T09A before code. No T10 or main integration.
+
+## Historical T08 board
 
 - [x] T08A Audit — dependency map/legacy semantics in MASTER_CONTEXT; SQL query-plan tests.
 - [x] T08B Domain Contracts — e6ba715; 76 focused unit tests PASS.
