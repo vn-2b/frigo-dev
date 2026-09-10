@@ -23,6 +23,41 @@ do not tighten historical T08 backfill identity assumptions retroactively.
 T09 will validate calendar/instant timestamps at the live boundary and preserve
 unknown expiry/money semantics. Database protection design follows the audit.
 
+## DEC-009 — Narrow command receipts, mapped projection and household revision
+
+T09 persistence will reuse the existing command-ID/fingerprint/result pattern and
+inventory_events, not add a second event framework. A synchronous inventory_commands
+receipt is inserted in the same D1 batch as effects; unique household/key collision
+replays the stored result only after actor/membership/fingerprint validation.
+No durable processing lease is needed for these synchronous native commands.
+
+One live lot maps to one legacy inventory row. Add a nullable unique legacy_item_id
+mapping rather than overloading provenance source_id or aggregating identity away.
+The mapping stays in persistence metadata, not the strict T08 domain object.
+Validate both sides' household and prohibit silently clearing/changing mappings.
+T08 snapshots remain explicitly unadopted; full source parity is required before
+adoption, and ongoing live parity must not reuse T08's version=1/ACTIVE-zero checker.
+Zero ACTIVE snapshots require explicit correction/evidence, not silent lifecycle
+inference. Backfill must not manufacture duplicate snapshots for native projections.
+
+A bounded positive household inventory_version, advanced by inventory_items,
+inventory_lots and storage_locations mutations, fences the snapshot once at the
+start of the command batch. Ownership updates advance both affected households.
+This intentionally coarse fence detects FEFO candidate phantoms and source edits;
+per-lot and per-projection CAS still remain mandatory. Revision equality does not
+excuse pre-existing drift. CAS misses must force a SQL constraint failure inside
+the batch, never be detected only after commit.
+
+New command-associated inventory_events are immutable during household lifetime;
+old events remain readable, and existing household deletion/cascade is retained.
+Guest transfer of adopted stock/history needs an atomic guarded transfer or explicit
+fail-closed policy propagated outside the legacy swallowed-error loop. Preflight
+alone cannot defeat a concurrent activation. No new engine HTTP exposure until
+the legacy-writer integration phase closes those paths.
+
+This requires additive schema after 0023; never rewrite T08 migrations. Local
+replay, populated upgrade and real local D1 guard checks are implementation gates.
+
 ## DEC-001 — Isolated foundation authority
 
 Context: T01–T07 release reconciliation proceeds independently on main.

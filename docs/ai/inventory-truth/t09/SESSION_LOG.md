@@ -33,3 +33,14 @@ D1 transaction design must force CAS misses to abort inside batch; full candidat
 snapshot must fence FEFO phantoms. See MIGRATION_NOTES for actual docs/mechanism.
 T09A complete after this docs checkpoint is published. Next: T09B pure command
 contracts/tests; no persistence implementation before that phase checkpoint.
+
+## T09B — verified command contracts
+
+T09A c212ded published/fetched before implementation. Added six pure command
+contracts/planners and 202 unit tests; combined T08/T09 332/332 PASS, targeted
+eslint and typecheck PASS. Parent reviewed domain source and reran combined tests.
+T08 schemas/backfill remain unchanged. DEC-009 records the audited additive
+persistence design before T09C. No routes or live writers changed yet.
+Next: publish/fetch T09B checkpoint, then implement T09C atomic repository/schema
+with narrow receipts/mapping/revision fence. T09 is IN_PROGRESS, not review-ready.
+LEGACY_FRIGO_MAIN_SHA_OBSERVED remains UNAVAILABLE; no legacy/main/production action.

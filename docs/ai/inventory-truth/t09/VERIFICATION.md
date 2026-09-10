@@ -29,3 +29,17 @@
   design evidence, not the final T09 runtime/test suite.
 - Exhaustive writer audit completed; findings and required mitigations in WRITER_MAP.
 - No T09 application code yet. Full/lint/typecheck/build/migration final gates pending.
+
+## T09B — command contracts
+
+- T09A c212deda67d832e4fde18941f06d6f38a99a2a96 published/fetched before code.
+- Added pure CREATE/USE/DISCARD/OPEN/MOVE/CORRECT planner and 202 unit tests.
+- `pnpm exec vitest run tests/unit/inventory-lot-commands.test.ts tests/unit/inventory-truth.test.ts tests/integration/inventory-truth.test.ts`:
+  PASS **332 tests / 3 files** (202 T09B + 130 T08), parent rerun 13:15:41 UTC.
+- `pnpm exec eslint packages/domain/src/inventory-lot-commands.ts tests/unit/inventory-lot-commands.test.ts`: PASS (implementation agent).
+- `pnpm typecheck`: PASS (implementation agent).
+- Initial test assumption that installed T08 Zod accepts February 30 was incorrect;
+  installed Zod 3.25.76 already rejects it. Corrected the assumption, retained strict
+  live timestamp tests. No T08 schema weakened or changed.
+- Domain boundary only: no HTTP exposure, persistence, migration, FEFO or writer
+  cutover yet. Full final gates and runtime atomicity remain pending.

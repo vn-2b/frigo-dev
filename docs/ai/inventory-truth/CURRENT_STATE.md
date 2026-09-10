@@ -4,14 +4,14 @@
 
 Program: Inventory Truth Layer
 Current Task: T09 — Inventory Lot Engine & Event Authority
-Current Phase: T09A complete; T09B command contracts next
+Current Phase: T09B complete; T09C persistence/CAS next
 Status: IN_PROGRESS
 Canonical Development Repository: vn-2b/frigo-dev (user-confirmed owner correction)
 Legacy Production Repository: Tungjpstore/Frigo (user packet; not accessed)
 T09 Remote Branch: hoplite/euhesperides-d77023a5
 T09 Base T08 SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
 frigo-dev/main SHA at T09 start: d1b06732f8a80db4e77986df31ff28d9f04641fa
-Last Verified Remote SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
+Last Verified Remote SHA: c212deda67d832e4fde18941f06d6f38a99a2a96
 Do Not Merge To Main: YES
 Do Not Sync From Legacy Frigo: YES
 Production Deployment Allowed: NO
@@ -19,9 +19,10 @@ Staging Deployment Allowed: NO
 Remote D1 Allowed: NO
 PayOS Allowed: NO
 
-Publication-first PASS; packet e56f163 published/fetched. T09A writer/D1 audit and
-DEC-008 lifecycle complete; fresh T08 focused baseline 130 tests / 2 files PASS.
-Application not started. Next: publish T09A, then T09B contracts. No T09 PASS claim.
+Publication-first PASS; T09A c212ded published/fetched. Audit/lifecycle complete.
+T09B six pure command planners and 202 tests implemented; combined T08/T09
+332 tests / 3 files, targeted eslint and typecheck PASS. Next: publish T09B,
+then T09C persistence/CAS. No live route/writer cutover or T09 completion claim.
 Managed setup claim failed; existing setup executed successfully via shell.
 Pre-existing settings overlay preserved in local named stash; see t09/SESSION_LOG.
 Legacy SHA unavailable; production deltas intentionally pending reconciliation.

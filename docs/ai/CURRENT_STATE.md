@@ -5,10 +5,11 @@
 Program: Inventory Truth Layer. Canonical repository: vn-2b/frigo-dev (user
 confirmed). Branch: hoplite/euhesperides-d77023a5. Exact T08 base:
 8f8788c1a0c9e486657751ef3875a5baa5334dec. Main anchor: d1b06732f8a80db4e77986df31ff28d9f04641fa.
-Publication-first completed and fetched SHA equality PASS. T09A audit/review packet
-in progress, application not started. Existing setup passed via shell after
-managed setup claim failed; fresh tests pending. See inventory-truth/t09/.
-Next: complete/publish writer/D1 atomicity audit and lifecycle decision, then T09B.
+Publication-first completed and fetched SHA equality PASS. T09A audit/lifecycle
+published at c212ded. T09B six pure command planners implemented: 202 new tests,
+332 combined T08/T09 tests, targeted eslint and typecheck PASS. Existing setup
+passed via shell after managed setup claim failed. See inventory-truth/t09/.
+Next: publish/fetch T09B, then T09C atomic persistence/CAS. No live cutover yet.
 No main, legacy Frigo, production/staging, remote D1 or PayOS changes; no T10.
 The release/T08 sections below are historical evidence, not current work authority.
 

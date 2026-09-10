@@ -4,7 +4,7 @@
 
 - [x] Publish authorized T09 branch at exact T08 HEAD; fetch/equality verified.
 - [x] T09A — exhaustive writer audit, lifecycle decision, 130 fresh baseline tests PASS.
-- [ ] T09B — deterministic command contracts.
+- [x] T09B — six deterministic command contracts; 202 new tests, 332 combined PASS.
 - [ ] T09C — persistence and CAS.
 - [ ] T09D — existing idempotency and event authority.
 - [ ] T09E — deterministic FEFO allocations.
@@ -12,7 +12,7 @@
 - [ ] T09G — controlled concurrency and tenancy matrix.
 - [ ] T09H — application freeze, full gates, review packet, remote-checkout proof.
 
-Exact next action: publish T09A then implement T09B contracts. No T10 or main integration.
+Exact next action: publish T09B then implement T09C persistence. No T10 or main integration.
 
 ## Historical T08 board
 
