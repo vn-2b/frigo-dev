@@ -43,3 +43,34 @@
   live timestamp tests. No T08 schema weakened or changed.
 - Domain boundary only: no HTTP exposure, persistence, migration, FEFO or writer
   cutover yet. Full final gates and runtime atomicity remain pending.
+
+## T09C — native command/schema implementation
+
+Base checkpoint 5d10bc5fd6d58922e33c18a737351d70864599c9 was published/fetched.
+Internal native executor, additive 0024, SQLite schema/core tests and actual local
+D1 Worker tests added. No HTTP or legacy writer changes.
+
+Executed during implementation:
+- Combined T08/T09 contracts/core/schema/runtime: **505 tests / 6 files PASS**
+  before final two adoption tests (13:43:16 UTC).
+- `pnpm test`: **1,986 / 93 files PASS**, then **1,992 / 93 files PASS** after
+  terminal freshness/runtime executor hardening (13:44:09 UTC, 72.07s).
+- `pnpm lint`, `pnpm typecheck`, `pnpm build`: PASS before final adoption gate.
+- `pnpm check:migrations`: PASS, 24-migration chain.
+- `pnpm wrangler d1 migrations apply frigo-db --local`: PASS, 24/24; repeated
+  into a fresh local store after preserving the initial proof store.
+- `pnpm schema:check:local`: PASS against final 0024 table/column/trigger list.
+- Populated 0023 -> 0024, full SQLite integrity/FKs, query plans: PASS in schema tests.
+
+Corrected failures/findings:
+1. D1 `PRAGMA integrity_check` returned SQLITE_AUTH, not a transaction defect.
+   Replaced only the runtime query with supported quick_check; full SQLite integrity
+   assertions remain. Runtime RETURNING/guard rollback/actual executor all PASS.
+2. Parent review found zero-stock projection freshness was not out_of_stock. Fixed
+   and added terminal/revival/nonterminal preservation assertions.
+3. Native activation in a mixed legacy-only household could block later backfill.
+   Added fail-closed household adoption gate and two no-effect regressions. Two
+   earlier target-specific error expectations intentionally became ADOPTION_REQUIRED.
+
+Final post-adoption checkpoint gates and remote-worktree proof are recorded below
+after execution. These are T09C checks, not completion of D–H or the full T09 gate.

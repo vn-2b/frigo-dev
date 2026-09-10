@@ -4,9 +4,9 @@ Repository: vn-2b/frigo-dev
 Remote T09 Branch: hoplite/euhesperides-d77023a5
 T08 Base Branch: hoplite/xanthos-7d942897
 T08 Base SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
-T09 Application Freeze SHA: NOT FROZEN — T09B contracts only, implementation ongoing
+T09 Application Freeze SHA: NOT FROZEN — T09C native core only; D–H pending
 Latest Docs HEAD: resolve `git rev-parse HEAD`; this document cannot contain its own commit SHA
-Last Verified Remote HEAD: c212deda67d832e4fde18941f06d6f38a99a2a96
+Last Verified Remote HEAD: 5d10bc5fd6d58922e33c18a737351d70864599c9
 Status: IN_PROGRESS, not ready for independent review
 
 ## Baseline evidence
@@ -24,9 +24,11 @@ PRODUCTION_DELTA_PENDING_RECONCILIATION: intentionally not inspected/integrated.
 
 ## Files and verification
 
-Changed Application Files: inventory-lot-commands.ts domain and unit tests; see CHANGE_MANIFEST.md.
-Migrations: none yet; see MIGRATION_NOTES.md.
-Tests: 202 new / 332 combined domain+T08 PASS; see TEST_MATRIX.md and VERIFICATION.md.
+Changed Application Files: domain/repository inventory-lot-commands.ts, additive
+schema and verification scripts/tests; exact files in CHANGE_MANIFEST.md.
+Migrations: 0024_inventory_lot_commands.sql; see MIGRATION_NOTES.md.
+Tests: native core/schema and actual local D1 verified; exact counts and corrected
+findings in VERIFICATION.md. FEFO/live writer and full concurrency acceptance pending.
 
 Reviewer hotspots: lifecycle; CAS; idempotency; event atomicity; deterministic
 FEFO; exhaustive writer migration; tenant isolation; legacy parity; multi-lot

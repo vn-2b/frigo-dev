@@ -1,6 +1,13 @@
 # T09 invariant matrix
 
-Status: design checklist; no T09 implementation PASS is claimed.
+Status: native C implementation verified, but no full T09 PASS is claimed. The
+initial checklist below remains pending full writer/FEFO/HTTP acceptance. Native
+proof lives in inventory-lot-commands unit/integration, inventory-lot-schema and
+inventory-lot-d1 tests: mapped lifecycle, membership/location, stale CAS/snapshot,
+receipt replay/conflicts, event immutability, atomic projection/event/result,
+exact quantity, identity, expiry/money and timestamp validation.
+Historical unmapped T08 ACTIVE-zero snapshots remain unchanged and unusable by
+the native executor until explicit adoption; T09F owns that transition.
 
 | Invariant | Implementation / DB / domain / test | Status |
 | --- | --- | --- |

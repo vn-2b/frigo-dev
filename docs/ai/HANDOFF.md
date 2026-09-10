@@ -4,25 +4,29 @@
 
 Program: Inventory Truth Layer
 Task: T09 — Inventory Lot Engine & Event Authority
-Phase: T09B complete; T09C next
+Phase: T09C native persistence/CAS checkpoint; D–H pending
 Status: IN_PROGRESS
 Canonical Repository: vn-2b/frigo-dev (user-confirmed correction)
 Canonical Branch: hoplite/euhesperides-d77023a5
 T08 Base SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
-Last Verified Remote SHA: c212deda67d832e4fde18941f06d6f38a99a2a96
+Last Verified Remote SHA: 5d10bc5fd6d58922e33c18a737351d70864599c9
 Development Main Anchor: d1b06732f8a80db4e77986df31ff28d9f04641fa
 Application Freeze: NOT FROZEN
 
-Completed: identity/baseline; publication-first; T09A audit/lifecycle; T09B six
-pure command planners. No live HTTP/persistence/writer cutover yet.
-Checks: 202 T09B / 332 combined tests PASS; targeted eslint, typecheck and Git
-equality PASS; existing frozen dependency setup PASS via shell.
+Completed: identity/baseline/publication-first; T09A audit/lifecycle; B contracts;
+C internal native executor, additive 0024, membership/revision/CAS, receipt/event/
+projection atomicity and actual local D1 proof. No HTTP or legacy-writer cutover;
+unadopted/mixed households fail ADOPTION_REQUIRED rather than silently diverge.
+Checks: native/combined/full regression gates, static/build, 24-migration replay,
+populated upgrade and local D1 proof run; exact current counts in
+inventory-truth/t09/VERIFICATION.md. C final post-review checkpoint gates follow.
 Failure: managed setup claim blocked; workaround succeeded, platform issue filed.
-Full/build/migration final gates pending. Historical counts below are not
+Full T09 D–H completion gates pending. Historical counts below are not
 T09 evidence. Preserved unrelated settings overlay in named local stash; details
 in inventory-truth/t09/SESSION_LOG.md. No tracked setup configuration changes.
-Exact Next Action: publish/fetch T09B then implement T09C atomic persistence/CAS
-under DEC-009. Read inventory-truth/t09/REVIEW_INDEX.md.
+Exact Next Action: verify/publish C checkpoint, then D receipt/event hardening,
+E FEFO and F explicit adoption/all-writer integration before exposing HTTP.
+Read inventory-truth/t09/REVIEW_INDEX.md. T09 is not independent-review-ready.
 Legacy Frigo/main/production/staging/remote D1/PayOS untouched; T10 not started.
 
 ## Historical handoff (not current task authority)

@@ -1,6 +1,10 @@
 # T09 controlled concurrency matrix
 
-All PENDING. Tests must pause after snapshots and before the atomic batch, then
+Full T09 matrix remains PENDING. C native tests already exercise controlled
+USE/USE, USE/DISCARD, USE/CORRECT, same/different-key CREATE/mutation, membership
+revocation, candidate phantom and location-change fences. Other pairs and multi-lot
+FEFO remain required in E/G; this is not a full concurrency PASS.
+Tests must pause after snapshots and before the atomic batch, then
 release a known winner before a stale contender. Assert rows, events, command
 results and legacy parity, not merely rejection or Promise.all completion.
 

@@ -4,14 +4,14 @@
 
 Program: Inventory Truth Layer
 Current Task: T09 — Inventory Lot Engine & Event Authority
-Current Phase: T09B complete; T09C persistence/CAS next
+Current Phase: T09C native persistence/CAS checkpoint; D–H pending
 Status: IN_PROGRESS
 Canonical Development Repository: vn-2b/frigo-dev (user-confirmed owner correction)
 Legacy Production Repository: Tungjpstore/Frigo (user packet; not accessed)
 T09 Remote Branch: hoplite/euhesperides-d77023a5
 T09 Base T08 SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
 frigo-dev/main SHA at T09 start: d1b06732f8a80db4e77986df31ff28d9f04641fa
-Last Verified Remote SHA: c212deda67d832e4fde18941f06d6f38a99a2a96
+Last Verified Remote SHA: 5d10bc5fd6d58922e33c18a737351d70864599c9
 Do Not Merge To Main: YES
 Do Not Sync From Legacy Frigo: YES
 Production Deployment Allowed: NO
@@ -19,10 +19,12 @@ Staging Deployment Allowed: NO
 Remote D1 Allowed: NO
 PayOS Allowed: NO
 
-Publication-first PASS; T09A c212ded published/fetched. Audit/lifecycle complete.
-T09B six pure command planners and 202 tests implemented; combined T08/T09
-332 tests / 3 files, targeted eslint and typecheck PASS. Next: publish T09B,
-then T09C persistence/CAS. No live route/writer cutover or T09 completion claim.
+Publication-first and A/B checkpoints published/fetched. C adds native atomic
+executor, additive 0024, receipt/event/projection coupling and local D1 proof.
+Unadopted/mixed legacy households fail ADOPTION_REQUIRED; no native HTTP route
+or legacy writer cutover. Latest exact verification: t09/VERIFICATION.md.
+Next: final C gates/publish/fetch, then D/E, followed by F adoption/writer migration.
+No T09 completion or application-freeze claim; G/H full acceptance remains pending.
 Managed setup claim failed; existing setup executed successfully via shell.
 Pre-existing settings overlay preserved in local named stash; see t09/SESSION_LOG.
 Legacy SHA unavailable; production deltas intentionally pending reconciliation.

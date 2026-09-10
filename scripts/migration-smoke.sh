@@ -63,6 +63,7 @@ VALUES ('migration_smoke_req_only', 'migration_smoke_plan', 'GINGER', 'Gừng', 
 .read migrations/0021_recipe_personalization.sql
 .read migrations/0022_generated_meal_plans.sql
 .read migrations/0023_inventory_truth_foundation.sql
+.read migrations/0024_inventory_lot_commands.sql
 
 CREATE TEMP TABLE assert_zero (value INTEGER NOT NULL CHECK (value = 0));
 INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_foreign_key_check;
@@ -70,6 +71,12 @@ INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_integrity_check WHERE integr
 
 CREATE TEMP TABLE assert_one (value INTEGER NOT NULL CHECK (value = 1));
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'inventory_lots';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'inventory_commands';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_lots') WHERE name = 'legacy_item_id';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_events') WHERE name = 'command_id';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('households') WHERE name = 'inventory_version';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_lots_live_update';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_events_command_update';
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'storage_locations';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('ingredient_aliases') WHERE name = 'normalized_alias';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_items') WHERE name = 'expiry_source';

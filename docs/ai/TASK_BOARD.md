@@ -3,9 +3,10 @@
 ## T09 — active isolated development (2026-09-10)
 
 IN_PROGRESS in vn-2b/frigo-dev on hoplite/euhesperides-d77023a5, exact T08 base
-8f8788c1a0c9e486657751ef3875a5baa5334dec. Publication-first and T09A verified;
-T09B pure contracts implemented, 202 new / 332 combined tests PASS, targeted eslint
-and typecheck PASS. Next: publish T09B then T09C persistence/CAS.
+8f8788c1a0c9e486657751ef3875a5baa5334dec. Publication-first and A/B published;
+C internal native persistence/schema and real local D1 proof implemented. No HTTP
+or legacy-writer cutover. Latest gates/failures are in t09/VERIFICATION.md.
+Next: verify/publish C checkpoint, then D/E/F integration; G/H acceptance pending.
 See inventory-truth/TASK_BOARD.md and t09/REVIEW_INDEX.md.
 No production reconciliation, legacy/main synchronization or T10 in this task.
 

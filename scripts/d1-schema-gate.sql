@@ -22,7 +22,8 @@ required_migrations(name) AS (
     ('0020_t01_foundation_hardening.sql'),
     ('0021_recipe_personalization.sql'),
     ('0022_generated_meal_plans.sql'),
-    ('0023_inventory_truth_foundation.sql')
+    ('0023_inventory_truth_foundation.sql'),
+    ('0024_inventory_lot_commands.sql')
 ),
 required_tables(name) AS (
   VALUES
@@ -30,6 +31,7 @@ required_tables(name) AS (
     ('households'),
     ('inventory_items'),
     ('inventory_events'),
+    ('inventory_commands'),
     ('inventory_lots'),
     ('storage_locations'),
     ('scans'),
@@ -62,6 +64,9 @@ required_tables(name) AS (
 required_columns(table_name, column_name) AS (
   VALUES
     ('inventory_items', 'version'),
+    ('households', 'inventory_version'),
+    ('inventory_events', 'command_id'),
+    ('inventory_lots', 'legacy_item_id'),
     ('inventory_lots', 'quantity_milli'),
     ('inventory_lots', 'canonical_unit'),
     ('inventory_lots', 'storage_location_id'),
@@ -123,6 +128,29 @@ required_columns(table_name, column_name) AS (
 required_triggers(name) AS (
   VALUES
     ('trg_meal_plans_household_immutable'),
+    ('trg_inventory_commands_immutable_update'),
+    ('trg_inventory_commands_immutable_insert'),
+    ('trg_inventory_commands_immutable_delete'),
+    ('trg_inventory_lots_live_insert'),
+    ('trg_inventory_lots_no_live_replace'),
+    ('trg_inventory_lots_backfill_after_live'),
+    ('trg_inventory_lots_live_update'),
+    ('trg_inventory_lots_live_delete'),
+    ('trg_inventory_items_projection_owner'),
+    ('trg_inventory_items_projection_replace'),
+    ('trg_inventory_events_command_insert'),
+    ('trg_inventory_events_command_update'),
+    ('trg_inventory_events_command_replace'),
+    ('trg_inventory_events_command_delete'),
+    ('trg_inventory_items_revision_insert'),
+    ('trg_inventory_items_revision_update'),
+    ('trg_inventory_items_revision_delete'),
+    ('trg_inventory_lots_revision_insert'),
+    ('trg_inventory_lots_revision_update'),
+    ('trg_inventory_lots_revision_delete'),
+    ('trg_storage_locations_revision_insert'),
+    ('trg_storage_locations_revision_update'),
+    ('trg_storage_locations_revision_delete'),
     ('trg_ingredients_canonical_id_insert'),
     ('trg_ingredients_canonical_id_update'),
     ('trg_recipe_nutrition_version_insert'),

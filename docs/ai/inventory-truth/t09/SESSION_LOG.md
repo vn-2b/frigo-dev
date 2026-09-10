@@ -44,3 +44,27 @@ persistence design before T09C. No routes or live writers changed yet.
 Next: publish/fetch T09B checkpoint, then implement T09C atomic repository/schema
 with narrow receipts/mapping/revision fence. T09 is IN_PROGRESS, not review-ready.
 LEGACY_FRIGO_MAIN_SHA_OBSERVED remains UNAVAILABLE; no legacy/main/production action.
+
+## T09C — native atomic repository and schema checkpoint
+
+Started from published/fetched 5d10bc5. Added internal native executor and additive
+0024 schema. Authenticated membership is checked before replay and inside mutation
+batch; whole-household revision fences stale snapshots, and lot/projection CAS
+guards abort the batch. Stored receipt/result, exact projection and immutable
+event commit together. Native CREATE/USE/DISCARD/OPEN/MOVE/CORRECT implemented;
+no HTTP exposure, FEFO, historical adoption or legacy-writer cutover.
+
+Parent review corrected terminal legacy freshness (zero -> out_of_stock; nonterminal
+unchanged-expiry commands preserve prior status). It also added a household-wide
+ADOPTION_REQUIRED gate so native activation cannot strand legacy-only stock behind
+the post-activation backfill guard. Tests retain no-effect assertions while updating
+error precedence to this deliberate gate. T08 historical backfill is unchanged.
+
+Runtime issue: D1 rejected full integrity_check with SQLITE_AUTH. Supported D1
+quick_check/FK checks now run alongside unchanged full SQLite integrity checks.
+Initial schema-proof D1 data was preserved under ignored .hoplite/artifacts/t09/
+before a fresh final-schema local replay. No remote DB operation occurred.
+
+Targeted/native/runtime and full-suite evidence is in VERIFICATION.md. Next essential
+milestone: commit/publish/fetch C, then T09D authority hardening and T09E FEFO before
+T09F adoption/writer integration. T09 remains IN_PROGRESS, not independent-review-ready.

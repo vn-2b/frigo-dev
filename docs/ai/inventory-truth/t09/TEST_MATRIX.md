@@ -1,6 +1,11 @@
 # T09 test matrix
 
-All T09 gates PENDING. Historical T08 counts are not fresh T09 evidence.
+T09C native scope verified; full T09 integration gates remain PENDING. Historical
+T08 counts are not fresh T09 evidence; executed commands are in VERIFICATION.md.
+
+Implemented tests: 202 domain contract tests, native repository tests, 25 additive
+schema tests and four actual local D1 tests. Full suite includes existing inventory,
+scan, shopping, cook, auth and Week regressions. No live writer changed yet.
 
 - Contracts: CREATE, USE, DISCARD, OPEN, MOVE, CORRECT; quantity/expiry/money,
   identity, transitions, explicit revive, strict timestamps and unknown evidence.

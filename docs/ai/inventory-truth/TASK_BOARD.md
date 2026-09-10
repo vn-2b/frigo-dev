@@ -5,14 +5,15 @@
 - [x] Publish authorized T09 branch at exact T08 HEAD; fetch/equality verified.
 - [x] T09A — exhaustive writer audit, lifecycle decision, 130 fresh baseline tests PASS.
 - [x] T09B — six deterministic command contracts; 202 new tests, 332 combined PASS.
-- [ ] T09C — persistence and CAS.
+- [x] T09C — internal native persistence/CAS, additive 0024, local D1 rollback proof.
 - [ ] T09D — existing idempotency and event authority.
 - [ ] T09E — deterministic FEFO allocations.
 - [ ] T09F — all legacy mutation writers adapted/migrated or safely rejected.
 - [ ] T09G — controlled concurrency and tenancy matrix.
 - [ ] T09H — application freeze, full gates, review packet, remote-checkout proof.
 
-Exact next action: publish T09B then implement T09C persistence. No T10 or main integration.
+Exact next action: verify/publish final C checkpoint, then T09D/E before legacy
+adoption/writer integration. T09 is not ready for independent review.
 
 ## Historical T08 board
 
