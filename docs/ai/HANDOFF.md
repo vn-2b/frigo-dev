@@ -4,12 +4,12 @@
 
 Program: Inventory Truth Layer
 Task: T09 — Inventory Lot Engine & Event Authority
-Phase: T09C native persistence/CAS checkpoint; D–H pending
+Phase: T09D verified locally; publication checkpoint pending; E–H pending
 Status: IN_PROGRESS
 Canonical Repository: vn-2b/frigo-dev (user-confirmed correction)
 Canonical Branch: hoplite/euhesperides-d77023a5
 T08 Base SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
-Last Verified Remote SHA: 13133b3aad214f2dbe7bdfb0c6ad9a70483d32de
+Last Verified Remote SHA: cc3121d9ec9a11f0b0ed0cbbe3ad8199083ce144
 Development Main Anchor: d1b06732f8a80db4e77986df31ff28d9f04641fa
 Application Freeze: NOT FROZEN
 
@@ -22,11 +22,16 @@ populated upgrade and local D1 proof run; exact current counts in
 inventory-truth/t09/VERIFICATION.md. Final C: 507 focused / 1,994 full (93 files),
 lint/typecheck/build, 24-migration/local schema PASS. Remote-source 507 PASS.
 Failure: managed setup claim blocked; workaround succeeded, platform issue filed.
-Full T09 D–H completion gates pending. Historical counts below are not
+D now rejects corrupt retained receipts, invalid command event binding and paired
+receipt/event evidence inconsistent with written stock. Additive 0025/0026 retain
+all earlier migrations and historical events. D final checks: 1,031 focused,
+2,518 full / 95 files, lint/typecheck/build, 26-migration replay and local schema
+PASS. Review findings and exact commands: inventory-truth/t09/VERIFICATION.md.
+Full T09 E–H completion gates pending. Historical counts below are not
 T09 evidence. Preserved unrelated settings overlay in named local stash; details
 in inventory-truth/t09/SESSION_LOG.md. No tracked setup configuration changes.
-Exact Next Action: continue from published C 13133b3 with D receipt/event hardening,
-E FEFO and F explicit adoption/all-writer integration before exposing HTTP.
+Exact Next Action: publish/fetch/verify the D checkpoint, then E FEFO and F explicit
+adoption/all-writer integration before exposing HTTP. No remaining D check failure.
 Read inventory-truth/t09/REVIEW_INDEX.md. T09 is not independent-review-ready.
 Legacy Frigo/main/production/staging/remote D1/PayOS untouched; T10 not started.
 

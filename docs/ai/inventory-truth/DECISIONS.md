@@ -1,5 +1,30 @@
 # Inventory Truth architecture decisions
 
+## DEC-010 — Validate retained receipts and bind event inserts to declared effects
+
+T09D review reproduced valid-JSON but malformed receipts returning successful
+replays, and command-associated events unrelated to the receipt's effects. These
+required corrupt/misbound persisted input; no normal caller authorization bypass
+was found. Validate retained result shape, identity, actor, household, version and
+effect/event evidence in one authorized read batch before replay, including
+collision/response-loss recovery. Corruption fails with CORRUPT_RECEIPT and no
+repair/write; payload differences still fail IDEMPOTENCY_CONFLICT. Historical
+results are checked against retained evidence, not newer live stock.
+
+Add 0025 insert guards tying new command events to the receipt's declared effect
+and metadata. A no-op receipt permits no event; an unrelated owned lot is not
+sufficient authority. Keep 0024 and all earlier migrations immutable, preserve
+command_id-NULL historical event behavior, and do not rewrite existing evidence.
+Follow-up review reproduced matching receipt/event corruption contradicting the
+stock just written (USE 2, stock 8, evidence 7). Add 0026 to bind the declared
+after snapshot to persisted lot fields and core projection parity at event insert.
+0025 had already been applied locally; retain it unchanged rather than rewriting
+an applied migration. Historical replay still uses retained evidence, not current
+stock. Add paired-surface corruption tests, not just one-field divergence tests.
+These are consistency guards, not cryptographic protection against a database
+administrator capable of dropping triggers or forging all mutually consistent
+records. T09E/F still own multi-lot allocation and legacy writer integration.
+
 ## DEC-007 — Isolated development repository and publication-first T09
 
 User corrected the target to vn-2b/frigo-dev on 2026-09-10. Exact T08 remote HEAD

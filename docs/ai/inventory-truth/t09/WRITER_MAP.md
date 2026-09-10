@@ -4,6 +4,10 @@ T09A exhaustive repository audit complete. Final migration statuses remain PENDI
 this is not a completion claim. Paths below are relative to `src/worker/` unless
 qualified otherwise. HTTP paths are under `/api/v1`.
 
+At the D checkpoint, native receipt/event authority is verified but no live writer
+below is cut over or exposed through a new route. Their final F classifications
+remain pending; D testing is not evidence of completed writer integration.
+
 | Writer | Entry point / files | Current tables mutated | Event | Current CAS | Current idempotency | T09 required? / final status |
 | --- | --- | --- | --- | --- | --- | --- |
 | Manual add | POST /inventory; routes/inventory.ts; packages/db/src/queries.ts | inventory_items, inventory_events | ADD | Insert-only ID, no version | Item ID/event ID + fingerprint, OR IGNORE | YES / PENDING |

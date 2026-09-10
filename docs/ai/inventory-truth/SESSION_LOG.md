@@ -4,6 +4,14 @@ Current T09 sessions are recorded append-only in `t09/SESSION_LOG.md`, including
 user-confirmed vn-2b/frigo-dev identity, publication-first SHA evidence and
 production-track isolation. Historical T08 entries below are preserved.
 
+## 2026-09-10 — T09D checkpoint
+
+C docs checkpoint cc3121d published/fetched before D. D receipt/event/poststate
+authority is verified: 1,031 focused, 2,518 full, static/build and 26-migration/local
+gates PASS. Three review findings corrected, including paired evidence versus
+actual stock. See t09/SESSION_LOG.md and t09/VERIFICATION.md for exact checks and
+publication proof. Next phase E FEFO, then F writer integration; no T10 or release.
+
 ## 2026-09-09 — session start
 
 Started from: hoplite/xanthos-7d942897@d1b06732f8a80db4e77986df31ff28d9f04641fa.

@@ -78,3 +78,23 @@ fetched-source detached worktree also passed 507 tests and was left clean after
 removing its dependency-only symlink. Main d1b0673 and T08 8f8788c unchanged.
 No remaining C verification failure. Full T09 still awaits D–H; do not confuse
 this native-core code checkpoint with final application freeze or readiness.
+
+## T09D implementation and final local gates
+
+Resumed at published C 13133b3, reviewed pending documentation, committed/published/
+fetched cc3121d9ec9a11f0b0ed0cbbe3ad8199083ce144 and proved local/remote equality
+before D edits. Canonical repository and all exclusion boundaries retained.
+
+D adds strict historical replay validation, additive 0025 event binding and 0026
+written-poststate coupling. Review reproduced three evidence-integrity gaps;
+all are fixed and covered by negative tests plus valid controls. 0025 was already
+locally applied when the paired-evidence gap was found, so 0026 is additive.
+No applied schema, historical event or retained receipt was rewritten by migration.
+
+Final parent-executed gates: 1,031 focused / 8 files; 2,518 full / 95 files;
+lint/typecheck/build; 26-migration replay, populated upgrade, local D1 apply/schema;
+diff/protected-path checks PASS. Exact commands, timestamps, intermediate gates and
+corrected findings are in VERIFICATION.md. Only docs changed after these final gates.
+Next: publish/fetch/verify this D checkpoint and run fetched-source focused/typecheck
+proof. E FEFO is the next implementation phase, followed by F writer integration;
+G/H and final T09 readiness remain pending. No T10 or protected-surface changes.

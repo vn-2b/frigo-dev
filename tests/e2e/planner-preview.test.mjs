@@ -73,7 +73,7 @@ describe('isolated planner preview using real registered Worker sessions and T02
     const before = previewFixtureState(db);
     seedPlannerPreview(db);
     expect(previewFixtureState(db)).toEqual(before);
-    expect(db.migrations.at(-1)).toBe('0024_inventory_lot_commands.sql');
+    expect(db.migrations.at(-1)).toBe('0026_inventory_event_poststate.sql');
     const token = cookie.split('=')[1];
     expect(db.query('SELECT token_hash FROM sessions_v2')[0].token_hash).not.toBe(token);
     expect(db.query('PRAGMA foreign_key_check')).toEqual([]);

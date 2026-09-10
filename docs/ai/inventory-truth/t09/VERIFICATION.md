@@ -106,3 +106,50 @@ and payment migration unchanged. No hosted-CI PASS is claimed; branch push filte
 do not select this feature branch, and no PR or workflow was dispatched.
 All remaining work is D–H: native authority review/hardening, FEFO, explicit
 adoption/all-writer integration, complete races/tenancy, final freeze and review.
+
+## T09D final local verification — 2026-09-10
+
+Scope: native receipt/idempotency/event authority, not FEFO or live writer cutover.
+Code checkpoint publication receipt follows; final T09 application is NOT FROZEN.
+
+| Exact executed gate | Result |
+| --- | --- |
+| `pnpm exec vitest run tests/unit/inventory-lot-commands.test.ts tests/unit/inventory-truth.test.ts tests/integration/inventory-lot-commands.test.ts tests/integration/inventory-lot-schema.test.ts tests/integration/inventory-lot-d1.test.mjs tests/integration/inventory-truth.test.ts tests/integration/inventory-lot-authority.test.ts tests/integration/inventory-event-authority.test.ts` | PASS, **1,031 / 8 files**, 14:37:38 UTC, 52.87s |
+| `pnpm test` | PASS, **2,518 / 95 files**, 14:37:02 UTC, 131.95s |
+| `pnpm lint` | PASS, final code |
+| `pnpm typecheck` | PASS, both projects, final code |
+| `pnpm build` | PASS, web + Worker, no deployment |
+| `pnpm check:migrations` | PASS, clean **26-migration** replay |
+| `pnpm wrangler d1 migrations apply frigo-db --local` | PASS twice: additive 0025, then additive 0026; earlier applied migrations unchanged |
+| `pnpm schema:check:local` | PASS, final 0026 event/poststate guards and FK checks |
+| Populated 0024 -> 0025 -> 0026 | PASS in schema suite: retained stock/receipts/events unchanged byte-for-byte at both steps; historical unassociated events remain writable |
+| `git diff --check`; protected-path comparison against T08 | PASS; routes/web/workflows/wrangler/payment migration/lockfile/settings unchanged |
+
+Focused breakdown: 202 command-domain + 130 T08 + 146 native persistence +
+26 schema + 25 actual local D1 + 306 receipt authority + 196 event authority.
+D adds **524 tests** relative to C. Existing inventory/scan/shopping/cook/Week and
+other regressions remain included in the full suite. Runtime D1 uses the actual
+repository, a test-only pre-write barrier, isolated local binding, and no remote DB.
+
+Corrected review findings (not deferred):
+
+1. Matching fingerprint with valid-JSON `null`/`{}` or misbound retained receipt
+   could return successful replay. Strict result/header/effect/event validation
+   now returns sanitized CORRUPT_RECEIPT, including collision/response-loss recovery.
+2. A no-op receipt or unrelated owned lot could acquire a command-associated event.
+   0025 binds new event evidence to the declared effect and original envelope.
+3. Matching forged receipt/event quantities could still disagree with written stock
+   (USE 2, real 8, evidence 7). 0026 binds poststate and core projection at insert;
+   replay also validates quantity intent. Paired corruption now rolls back on real
+   D1 and SQLite. Independent review reran the reproducer and verified clean retry
+   and replay return 8000/-2000. No remaining blocking finding in the reviewed D fixes.
+
+Early gates (1,003 focused and 2,490 full) passed before finding 3; they are not
+the final verification. Final results above supersede them. No failing check is
+left unresolved. Wrangler's installed-version update warning is nonfatal; no
+unrelated dependency upgrade was made. Logs retained privately under
+`.hoplite/artifacts/t09-d-final-{focused,full-tests,build}.log`.
+
+No HTTP exposure or UI change; no browser proof is claimed. No PR/CI workflow
+dispatch, main mutation, legacy access, staging/production, remote D1 or PayOS
+operation. E–H and final independent-review readiness remain pending.

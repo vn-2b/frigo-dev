@@ -5,6 +5,10 @@
 | DOMAIN | packages/domain/src/inventory-lot-commands.ts | Six validated pure command planners, exact quantities, lifecycle, CAS expectations and bounded correction |
 | PERSISTENCE | packages/db/src/inventory-lot-commands.ts | Internal native command executor; membership, snapshot/revision/CAS, receipt, event and exact legacy projection in one batch |
 | MIGRATION | migrations/0024_inventory_lot_commands.sql | Additive receipts, projection identity, revision fence and mapped-lot/event protection; no automatic adoption |
+| MIGRATION | migrations/0025_inventory_event_authority.sql | Bind new native event envelope, delta, reason and metadata to exactly one declared receipt effect; retain historical evidence |
+| MIGRATION | migrations/0026_inventory_event_poststate.sql | Bind declared after snapshot to actual lot and core legacy projection at event insert; preserve already locally applied 0025 |
+| TEST | tests/integration/inventory-lot-authority.test.ts | 306 exhaustive fingerprint/replay/no-op/tenancy/rollback and retained-corruption tests, including paired historical evidence |
+| TEST | tests/integration/inventory-event-authority.test.ts | 196 SQL event-injection and paired receipt/event/poststate rejection tests; valid reordered JSON controls |
 | TEST | tests/integration/inventory-lot-commands.test.ts | Native command parity, replay, failure rollback and controlled races |
 | TEST | tests/integration/inventory-lot-schema.test.ts | Populated T08 upgrade, schema constraints, REPLACE bypasses, ownership and query plans |
 | TEST | tests/integration/inventory-lot-d1.test.mjs | Real isolated workerd/D1 replay, RETURNING, late CAS rollback and actual executor replay |
@@ -23,3 +27,10 @@
 
 API/SERVICE, LEGACY ADAPTER, SCAN, SHOPPING and COOK: no changes yet. No native
 engine is exposed by HTTP. Existing live writers remain pending T09F integration.
+
+D updates the native repository with strict retained result/receipt/event replay
+validation (CORRUPT_RECEIPT), preserving later-stock-independent historical replay.
+The test-only Worker adds a pre-write barrier; actual D1 coverage grows to 25 tests.
+Schema tests grow to 26 with populated 0024 -> 0025 -> 0026 byte-preservation proof.
+Latest-migration assertions and local schema/smoke gates now require 0026/26;
+earlier 0024/24 entries above describe the C checkpoint, not current chain length.

@@ -23,7 +23,9 @@ required_migrations(name) AS (
     ('0021_recipe_personalization.sql'),
     ('0022_generated_meal_plans.sql'),
     ('0023_inventory_truth_foundation.sql'),
-    ('0024_inventory_lot_commands.sql')
+    ('0024_inventory_lot_commands.sql'),
+    ('0025_inventory_event_authority.sql'),
+    ('0026_inventory_event_poststate.sql')
 ),
 required_tables(name) AS (
   VALUES
@@ -139,6 +141,8 @@ required_triggers(name) AS (
     ('trg_inventory_items_projection_owner'),
     ('trg_inventory_items_projection_replace'),
     ('trg_inventory_events_command_insert'),
+    ('trg_inventory_events_command_authority_insert'),
+    ('trg_inventory_events_command_poststate_insert'),
     ('trg_inventory_events_command_update'),
     ('trg_inventory_events_command_replace'),
     ('trg_inventory_events_command_delete'),

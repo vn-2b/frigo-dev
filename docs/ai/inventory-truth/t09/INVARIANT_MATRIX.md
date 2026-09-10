@@ -9,6 +9,12 @@ exact quantity, identity, expiry/money and timestamp validation.
 Historical unmapped T08 ACTIVE-zero snapshots remain unchanged and unusable by
 the native executor until explicit adoption; T09F owns that transition.
 
+D evidence: retained result/header/effects/events are validated in one authorized
+read batch; new events match their declared receipt and actual written lot/core
+projection. Same-key/no-op/actor races and paired corruption rollback PASS in
+native tests, with real D1 proof. These guarantees are not a claim that unadapted
+legacy writers already use the authority; the all-writer table remains pending.
+
 | Invariant | Implementation / DB / domain / test | Status |
 | --- | --- | --- |
 | quantity >= 0 | T08 integer foundation; T09 decrement/CAS tests pending | PENDING |

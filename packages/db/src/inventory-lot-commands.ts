@@ -36,7 +36,25 @@ type LotRow = Omit<InventoryLot, 'purchasePrice'> & {
   legacyItemId: string | null; currency: string | null; amountMinor: number | null; minorDigits: number | null;
 };
 type LocationRow = Omit<StorageLocation, 'isDefault'> & { isDefault: number };
-interface ReceiptRow { fingerprint: string; result_json: string }
+interface ReceiptEventRow {
+  household_id: string; inventory_item_id: string; command_id: string; event_type: string;
+  quantity_delta: number; unit: string; reason: string | null; metadata: string; created_at: string;
+}
+interface ReceiptRow {
+  id: string; household_id: string; actor_id: string; client_key: string;
+  command_type: string; created_at: string; fingerprint: string; result_json: string;
+  events: ReceiptEventRow[];
+}
+const ReceiptResult = z.object({
+  commandId: Identity,
+  commandType: z.enum(['CREATE', 'USE', 'DISCARD', 'OPEN', 'MOVE', 'CORRECT']),
+  lotId: Identity,
+  version: z.number().int().safe().positive(),
+  effects: z.array(z.object({
+    before: InventoryLotSchema.nullable(), after: InventoryLotSchema,
+    changed: z.literal(true), deltaMilli: z.number().int().safe(),
+  }).strict()).max(1),
+}).strict();
 
 const MEMBERSHIP = `EXISTS (SELECT 1 FROM household_members m JOIN users u ON u.id = m.user_id
   WHERE m.household_id = households.id AND u.id = ?)`;
@@ -128,15 +146,95 @@ function sortedJson(value: unknown): string {
 async function readReceipt(db: D1DatabaseBinding, scope: InventoryLotCommandScope, key: string): Promise<ReceiptRow | undefined> {
   const results = await readBatch(db, [
     authorizedHousehold(db, scope),
-    db.prepare('SELECT fingerprint, result_json FROM inventory_commands WHERE household_id = ? AND client_key = ?')
+    db.prepare(`SELECT fingerprint, result_json, id, household_id, actor_id, client_key, command_type, created_at
+      FROM inventory_commands WHERE household_id = ? AND client_key = ?`)
+      .bind(scope.householdId, key),
+    db.prepare(`SELECT e.household_id, e.inventory_item_id, e.command_id, e.event_type, e.quantity_delta,
+      e.unit, e.reason, e.metadata, e.created_at FROM inventory_events e
+      JOIN inventory_commands c ON c.id = e.command_id WHERE c.household_id = ? AND c.client_key = ? ORDER BY e.id`)
       .bind(scope.householdId, key),
   ]);
   readAuthorization(results[0]);
-  return results[1].results[0] as ReceiptRow | undefined;
+  const row = results[1].results[0] as Omit<ReceiptRow, 'events'> | undefined;
+  return row ? { ...row, events: results[2].results as ReceiptEventRow[] } : undefined;
 }
-function replay(receipt: ReceiptRow, fingerprint: string): InventoryLotCommandExecution {
+function eventMetadata(scope: InventoryLotCommandScope, key: string, fingerprint: string,
+  result: InventoryLotCommandResult, plan: SingleLotCommandPlan, now: string) {
+  return {
+    schemaVersion: 1, householdId: scope.householdId, actorId: scope.actorId, commandId: result.commandId,
+    commandType: result.commandType, before: plan.before, after: plan.after, deltaMilli: plan.deltaMilli,
+    source: { type: plan.after.sourceType, id: plan.after.sourceId }, timestamp: now,
+    clientKey: key, fingerprint,
+    allocation: [{ lotId: plan.after.id, deltaMilli: plan.deltaMilli, canonicalUnit: plan.after.canonicalUnit }],
+  };
+}
+function legacyEventType(command: InventoryLotCommand): string {
+  return command.type === 'CREATE' ? 'ADD' : command.type === 'DISCARD' ? 'DISCARD' : 'MANUAL_UPDATE';
+}
+function replay(receipt: ReceiptRow, fingerprint: string, scope: InventoryLotCommandScope,
+  key: string, command: InventoryLotCommand): InventoryLotCommandExecution {
   if (receipt.fingerprint !== fingerprint) throw new LotCommandError('IDEMPOTENCY_CONFLICT');
-  return { result: JSON.parse(receipt.result_json) as InventoryLotCommandResult, replayed: true };
+  try {
+    const result = ReceiptResult.parse(JSON.parse(receipt.result_json));
+    const valid = (condition: boolean) => { if (!condition) throw new Error('Invalid receipt evidence'); };
+    valid(receipt.household_id === scope.householdId && receipt.actor_id === scope.actorId
+      && receipt.client_key === key && receipt.command_type === command.type
+      && result.commandType === command.type && result.commandId === receipt.id && result.lotId === command.lotId);
+    valid(receipt.events.length === result.effects.length);
+    if (result.effects.length === 0) {
+      valid(command.type !== 'CREATE' && command.type !== 'USE' && command.type !== 'DISCARD'
+        && result.version === command.expectedVersion);
+    }
+    for (const plan of result.effects) {
+      const { before, after, deltaMilli } = plan;
+      valid(after.id === result.lotId && after.householdId === scope.householdId && after.version === result.version
+        && after.updatedAt === receipt.created_at && after.sourceType !== 'LEGACY_BACKFILL'
+        && (after.state === 'ACTIVE' ? after.quantityMilli > 0 : after.quantityMilli === 0)
+        && deltaMilli === after.quantityMilli - (before?.quantityMilli ?? 0));
+      if (command.type === 'CREATE') {
+        valid(before === null && after.version === 1 && after.legacyVersion === 1 && after.createdAt === receipt.created_at);
+        const quantity = toLotQuantity(command.quantity, command.unit);
+        valid(after.quantityMilli === quantity.quantityMilli && after.canonicalUnit === quantity.canonicalUnit);
+        const declared = ['ingredientId', 'rawName', 'storageLocationId', 'expiryAt', 'estimatedExpiryAt', 'expiryKind',
+          'purchasedAt', 'openedAt', 'purchasePrice', 'sourceType', 'sourceId'] as const;
+        valid(declared.every((field) => sortedJson(after[field]) === sortedJson(command[field])));
+      } else {
+        valid(before !== null);
+        if (before === null) throw new Error('Missing prior lot');
+        valid(before.id === after.id && before.householdId === scope.householdId && before.version === command.expectedVersion
+          && after.version === before.version + 1 && before.legacyVersion !== null && after.legacyVersion === before.legacyVersion + 1);
+        const preserved = ['canonicalUnit', 'sourceType', 'sourceId', 'createdAt', 'legacyExpiryAt',
+          'legacyExpiryKind', 'legacyExpirySource', 'legacyOpenedAt'] as const;
+        valid(preserved.every((field) => before[field] === after[field]));
+        if (command.type === 'USE' || command.type === 'DISCARD') {
+          const quantity = toLotQuantity(command.quantity, command.unit);
+          valid(quantity.canonicalUnit === after.canonicalUnit && deltaMilli === -quantity.quantityMilli
+            && (after.quantityMilli > 0 || after.state === (command.type === 'USE' ? 'CONSUMED' : 'DISCARDED')));
+        }
+        if (command.type === 'OPEN') valid(before.openedAt === null && after.openedAt === command.openedAt && deltaMilli === 0);
+        if (command.type === 'MOVE') valid(after.storageLocationId === command.storageLocationId && deltaMilli === 0);
+        if (command.type === 'CORRECT') {
+          const { quantity, unit, ...changes } = command.changes;
+          valid(Object.entries(changes).every(([field, value]) => value === undefined
+            || sortedJson(after[field as keyof InventoryLot]) === sortedJson(value)));
+          if (quantity !== undefined) {
+            const corrected = toLotQuantity(quantity, unit ?? before.canonicalUnit);
+            valid(after.quantityMilli === corrected.quantityMilli && after.canonicalUnit === corrected.canonicalUnit
+              && (after.quantityMilli > 0 || after.state === command.terminalState));
+          } else valid(deltaMilli === 0);
+        }
+      }
+      const event = receipt.events[0];
+      valid(event.household_id === scope.householdId && event.command_id === receipt.id && event.inventory_item_id === after.id
+        && event.event_type === legacyEventType(command) && event.quantity_delta === exactLegacyQuantity(deltaMilli, after.canonicalUnit)
+        && event.unit === after.canonicalUnit && event.created_at === receipt.created_at
+        && event.reason === ('reason' in command ? command.reason ?? null : null)
+        && sortedJson(JSON.parse(event.metadata)) === sortedJson(eventMetadata(scope, key, fingerprint, result, plan, receipt.created_at)));
+    }
+    return { result, replayed: true };
+  } catch {
+    throw new LotCommandError('CORRUPT_RECEIPT');
+  }
 }
 
 function exactLegacyQuantity(milli: number, unit: InventoryLot['canonicalUnit']): number {
@@ -253,7 +351,7 @@ export async function executeInventoryLotCommand(db: D1DatabaseBinding, inputSco
   const command = parsed.data;
   const fingerprint = sortedJson({ ...scope, command });
   const prior = await readReceipt(db, scope, key.data);
-  if (prior) return replay(prior, fingerprint);
+  if (prior) return replay(prior, fingerprint, scope, key.data, command);
   try {
     const snapshot = await readMappedLotSnapshot(db, scope);
     const representedRows = new Set(snapshot.lots.map(({ legacyItemId }) => legacyItemId));
@@ -289,17 +387,11 @@ export async function executeInventoryLotCommand(db: D1DatabaseBinding, inputSco
     if (plan.changed) {
       statements.push(projectionWrites(db, plan, row, snapshot, now), writeGuard(db, scope, 'unit'),
         lotWrite(db, plan), writeGuard(db, scope, 'event_type'));
-      const metadata = {
-        schemaVersion: 1, householdId: scope.householdId, actorId: scope.actorId, commandId: result.commandId,
-        commandType: command.type, before: plan.before, after: plan.after, deltaMilli: plan.deltaMilli,
-        source: { type: plan.after.sourceType, id: plan.after.sourceId }, timestamp: now,
-        clientKey: key.data, fingerprint,
-        allocation: [{ lotId: plan.after.id, deltaMilli: plan.deltaMilli, canonicalUnit: plan.after.canonicalUnit }],
-      };
+      const metadata = eventMetadata(scope, key.data, fingerprint, result, plan, now);
       statements.push(db.prepare(`INSERT INTO inventory_events
         (id, household_id, inventory_item_id, event_type, quantity_delta, unit, reason, metadata, created_at, command_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(crypto.randomUUID(), scope.householdId, plan.after.id,
-        command.type === 'CREATE' ? 'ADD' : command.type === 'DISCARD' ? 'DISCARD' : 'MANUAL_UPDATE',
+        legacyEventType(command),
         exactLegacyQuantity(plan.deltaMilli, plan.after.canonicalUnit), plan.after.canonicalUnit,
         'reason' in command ? command.reason ?? null : null, JSON.stringify(metadata), now, result.commandId),
       writeGuard(db, scope, 'inventory_item_id'));
@@ -308,7 +400,7 @@ export async function executeInventoryLotCommand(db: D1DatabaseBinding, inputSco
     return { result, replayed: false };
   } catch (error) {
     const receipt = await readReceipt(db, scope, key.data);
-    if (receipt) return replay(receipt, fingerprint);
+    if (receipt) return replay(receipt, fingerprint, scope, key.data, command);
     if (error instanceof LotCommandError) throw error;
     const message = error instanceof Error ? error.message : '';
     if (/NOT NULL constraint failed: inventory_events\.quantity_delta/i.test(message)) throw new LotCommandError('STALE_SNAPSHOT');

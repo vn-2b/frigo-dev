@@ -13,7 +13,11 @@ Mixed legacy households fail closed with ADOPTION_REQUIRED. Full/native gates an
 corrected findings are recorded in inventory-truth/t09/VERIFICATION.md.
 Published C checkpoint 13133b3: 507 focused, 1,994 full / 93 files PASS;
 lint/typecheck/build, 24-migration/local schema PASS; remote-source worktree 507 PASS.
-Next: D/E and F legacy adoption/writer integration.
+T09D now validates retained receipt/event evidence, binds new events to declared
+effects and actual written stock (additive 0025/0026), and rejects paired evidence
+corruption. Final D gates: 1,031 focused / 2,518 full tests (95 files), lint,
+typecheck, build, 26-migration replay/local schema PASS. Publication receipt follows.
+Next: publish/fetch/verify D, then E FEFO and F legacy adoption/writer integration.
 T09 remains IN_PROGRESS; no application freeze or independent-review readiness.
 No main, legacy Frigo, production/staging, remote D1 or PayOS changes; no T10.
 The release/T08 sections below are historical evidence, not current work authority.

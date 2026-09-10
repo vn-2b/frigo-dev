@@ -1,10 +1,13 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import { backfillLegacyInventory } from '../../packages/db/src/inventory-truth';
+import { backfillLegacyInventory, readInventoryTruthSnapshot } from '../../packages/db/src/inventory-truth';
+import { InventoryLotCommandSchema, planSingleLotCommand } from '../../packages/domain/src/inventory-lot-commands';
 import { SqliteD1 } from '../helpers/sqlite-d1';
 
 const household = 'demo_household_01';
 const migration = readFileSync('migrations/0024_inventory_lot_commands.sql', 'utf8');
+const eventAuthorityMigration = readFileSync('migrations/0025_inventory_event_authority.sql', 'utf8');
+const eventPoststateMigration = readFileSync('migrations/0026_inventory_event_poststate.sql', 'utf8');
 const databases: SqliteD1[] = [];
 const database = (migrate = true) => {
   const db = new SqliteD1({ migrate });
@@ -16,12 +19,31 @@ afterEach(() => databases.splice(0).forEach((db) => db.close()));
 async function mapped(db: SqliteD1, owner = household, item = 'item_01') {
   await backfillLegacyInventory(db, owner);
   db.execute('UPDATE inventory_lots SET legacy_item_id = source_id WHERE source_id = ?', [item]);
+  const snapshot = await readInventoryTruthSnapshot(db, owner);
+  const before = snapshot.lots.find((lot) => lot.sourceId === item)!;
+  const now = '2026-09-10T00:00:00Z';
+  const command = InventoryLotCommandSchema.parse({ type: 'CORRECT', lotId: before.id, expectedVersion: before.version,
+    changes: { rawName: `${before.rawName} checked` }, reason: 'Schema fixture correction' });
+  const effect = planSingleLotCommand(command, before, { householdId: owner, now, locations: snapshot.locations,
+    ingredientIds: before.ingredientId === null ? [] : [before.ingredientId] });
+  effect.after = { ...effect.after, legacyVersion: before.legacyVersion! + 1 };
+  const result = { commandId: 'command-a', commandType: command.type, lotId: before.id, version: effect.after.version, effects: [effect] };
+  const fingerprint = JSON.stringify({ householdId: owner, actorId: 'demo_user_01', command });
+  const metadata = { schemaVersion: 1, householdId: owner, actorId: 'demo_user_01', commandId: result.commandId,
+    commandType: command.type, before, after: effect.after, deltaMilli: effect.deltaMilli,
+    source: { type: effect.after.sourceType, id: effect.after.sourceId }, timestamp: now, clientKey: 'key-a', fingerprint,
+    allocation: [{ lotId: before.id, deltaMilli: effect.deltaMilli, canonicalUnit: before.canonicalUnit }] };
+  db.execute('UPDATE inventory_items SET name = ?, version = ?, updated_at = ?, quantity = ?, unit = ? WHERE id = ?',
+    [effect.after.rawName, effect.after.legacyVersion, now, effect.after.quantityMilli / 1000, effect.after.canonicalUnit, item]);
+  db.execute('UPDATE inventory_lots SET raw_name = ?, version = ?, legacy_version = ?, updated_at = ? WHERE id = ?',
+    [effect.after.rawName, effect.after.version, effect.after.legacyVersion, now, before.id]);
   db.execute(`INSERT INTO inventory_commands
     (id, household_id, actor_id, client_key, fingerprint, command_type, result_json, created_at)
-    VALUES ('command-a', ?, 'demo_user_01', 'key-a', 'fingerprint-a', 'CREATE', '{}', '2026-09-10T00:00:00Z')`, [owner]);
+    VALUES ('command-a', ?, 'demo_user_01', 'key-a', ?, ?, ?, ?)`, [owner, fingerprint, command.type, JSON.stringify(result), now]);
   db.execute(`INSERT INTO inventory_events
-    (id, household_id, inventory_item_id, event_type, quantity_delta, unit, command_id)
-    VALUES ('event-a', ?, ?, 'LOT_CREATE', 1, 'piece', 'command-a')`, [owner, item]);
+    (id, household_id, inventory_item_id, event_type, quantity_delta, unit, command_id, metadata, reason, created_at)
+    VALUES ('event-a', ?, ?, 'MANUAL_UPDATE', ?, ?, 'command-a', ?, ?, ?)`,
+  [owner, item, effect.deltaMilli / 1000, before.canonicalUnit, JSON.stringify(metadata), 'Schema fixture correction', now]);
 }
 
 function revision(db: SqliteD1, owner = household): number {
@@ -29,6 +51,45 @@ function revision(db: SqliteD1, owner = household): number {
 }
 
 describe('T09 additive schema and immutable command evidence', () => {
+  it('upgrades populated 0024 through 0025 and 0026 without rewriting retained evidence or historical stock', async () => {
+    const db = database(false);
+    for (const file of readdirSync('migrations').filter((name) => /^\d+.*\.sql$/.test(name) && name < '0025').sort()) {
+      db.seed(readFileSync(`migrations/${file}`, 'utf8'));
+    }
+    await mapped(db);
+    db.execute(`INSERT INTO inventory_commands
+      (id, household_id, actor_id, client_key, fingerprint, command_type, result_json, created_at)
+      VALUES ('retained-corrupt', ?, 'demo_user_01', 'retained-key', 'old-fingerprint', 'CREATE', '{}', '2026-09-09')`, [household]);
+    db.execute(`INSERT INTO inventory_events
+      (id, household_id, inventory_item_id, event_type, quantity_delta, unit, command_id, metadata)
+      VALUES ('retained-event', ?, 'item_01', 'MANUAL_UPDATE', 0, 'piece', 'retained-corrupt', 'old metadata')`, [household]);
+    const tables = ['households', 'household_members', 'storage_locations', 'inventory_items', 'inventory_lots',
+      'inventory_commands', 'inventory_events'];
+    const bytes = () => JSON.stringify(tables.map((table) => db.query(`SELECT * FROM ${table} ORDER BY id`)));
+    const before = bytes();
+    db.seed(eventAuthorityMigration);
+    expect(bytes()).toBe(before);
+    db.seed(eventPoststateMigration);
+    expect(bytes()).toBe(before);
+    expect(db.query("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_events_command_authority_insert'"))
+      .toEqual([{ name: 'trg_inventory_events_command_authority_insert' }]);
+    expect(db.query("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_events_command_poststate_insert'"))
+      .toEqual([{ name: 'trg_inventory_events_command_poststate_insert' }]);
+    expect(() => db.execute(`INSERT INTO inventory_events
+      (id, household_id, inventory_item_id, event_type, quantity_delta, unit, command_id, metadata)
+      VALUES ('new-corrupt-event', ?, 'item_01', 'MANUAL_UPDATE', 0, 'piece', 'retained-corrupt', '{}')`, [household]))
+      .toThrow('Inventory command event evidence mismatch');
+    expect(bytes()).toBe(before);
+    db.execute(`INSERT INTO inventory_events
+      (id, household_id, inventory_item_id, event_type, quantity_delta, unit, metadata)
+      VALUES ('legacy-after-upgrade', ?, 'item_01', 'MANUAL_UPDATE', 0, 'piece', 'legacy free text')`, [household]);
+    db.execute("UPDATE inventory_events SET metadata = 'still legacy' WHERE id = 'legacy-after-upgrade'");
+    expect(db.query("SELECT command_id, metadata FROM inventory_events WHERE id = 'legacy-after-upgrade'"))
+      .toEqual([{ command_id: null, metadata: 'still legacy' }]);
+    expect(db.query('PRAGMA foreign_key_check')).toEqual([]);
+    expect(db.query('PRAGMA integrity_check')).toEqual([{ integrity_check: 'ok' }]);
+  });
+
   it('upgrades populated T08 without altering historical rows or activating snapshots', async () => {
     const db = database(false);
     for (const file of readdirSync('migrations').filter((name) => /^\d+.*\.sql$/.test(name) && name < '0024').sort()) {

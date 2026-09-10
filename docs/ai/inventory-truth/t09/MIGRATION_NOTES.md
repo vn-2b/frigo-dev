@@ -2,6 +2,8 @@
 
 T08 lineage ends at `0023_inventory_truth_foundation.sql`. T09C adds
 `0024_inventory_lot_commands.sql`; no applied T08 migration was modified.
+D adds `0025_inventory_event_authority.sql` and `0026_inventory_event_poststate.sql`;
+the current chain has 26 migrations. No 0001–0024 migration was rewritten.
 Do not modify applied migrations. Additive schema only when actual constraints
 need it; clean replay and populated upgrade must pass locally.
 
@@ -64,3 +66,25 @@ D1 denies `PRAGMA integrity_check` (SQLITE_AUTH); its runtime test uses supporte
 and migration tests; no coverage was silently removed. Actual D1 tests prove
 top-level changes(), exact RETURNING and rollback after a later CAS guard failure.
 Final exact counts/commands are in VERIFICATION.md. No remote database touched.
+
+## Implemented T09D authority guards
+
+0025 requires every new command-associated event to match the receipt's declared
+single-lot effect, ownership, command, actor, key, fingerprint, timestamp, reason,
+unit, exact delta and complete structured metadata. JSON key order/whitespace may
+differ; missing/extra/duplicate keys, malformed JSON and no-op/unrelated-lot events
+are rejected. Historical command_id-NULL events keep their previous behavior.
+
+Follow-up review reproduced paired receipt/event corruption that still contradicted
+written stock. 0026 binds the declared after snapshot to all persisted lot fields
+and core legacy quantity/unit/version/name/ingredient/storage parity at event insert.
+0025 was already applied locally, so this correction is additive rather than a
+rewrite. Populated sequential upgrades preserve all retained rows byte-for-byte;
+neither migration silently repairs old corrupt receipts. Replay diagnoses them as
+CORRUPT_RECEIPT and never uses newer live stock as historical evidence.
+
+Local D1 applied 0025 and then 0026 successfully. The final SQLite clean replay,
+local D1 schema gate and 25 runtime tests pass, including matching forged evidence
+versus real stock, receipt rollback, same-key races and late-event failure.
+Both new guards currently implement the native single-lot v1 contract. T09E must
+explicitly extend receipt/event validation for FEFO rather than bypass these guards.

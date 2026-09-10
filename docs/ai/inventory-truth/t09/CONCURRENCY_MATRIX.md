@@ -8,6 +8,14 @@ Tests must pause after snapshots and before the atomic batch, then
 release a known winner before a stale contender. Assert rows, events, command
 results and legacy parity, not merely rejection or Promise.all completion.
 
+D additionally verifies known-winner same-key races for all six native commands
+and receipt-only OPEN/MOVE/CORRECT no-ops, including changed payload and actor
+conflicts. Actual local D1 has 14 controlled same-key cases across CREATE/USE/
+DISCARD/OPEN/MOVE/CORRECT/already-open OPEN, plus retained-state assertions and
+poststate/late-event rollback. Receipt corruption recovery is covered at collision
+and response-loss boundaries. This completes D's native idempotency scope, not
+the distinct-key lifecycle pairs, FEFO or all-writer G acceptance below.
+
 | Race | Required result | Status |
 | --- | --- | --- |
 | USE / USE | 10 eggs, use 7 twice: no negative stock or 14 consumed | PENDING |
