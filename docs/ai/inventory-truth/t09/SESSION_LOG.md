@@ -22,3 +22,14 @@ diff check, commit/publish/fetch and local/remote SHA equality.
 LEGACY_FRIGO_MAIN_SHA_OBSERVED=UNAVAILABLE (repository-bound tool authority).
 Production deltas intentionally not reconciled. Legacy Frigo, development main,
 production/staging, remote D1 and PayOS untouched. T10 not started.
+
+## T09A — audit/lifecycle checkpoint
+
+Initial packet e56f163 published and fetched. Fresh T08 baseline 130/130 PASS.
+Audit found six live backend writers, offline scan fallback and guest transfer;
+no live auth demo stock seed or separate scan-correction route. Full map includes
+non-live helpers/fixtures/jobs. DEC-008 fixes lifecycle before implementation.
+D1 transaction design must force CAS misses to abort inside batch; full candidate
+snapshot must fence FEFO phantoms. See MIGRATION_NOTES for actual docs/mechanism.
+T09A complete after this docs checkpoint is published. Next: T09B pure command
+contracts/tests; no persistence implementation before that phase checkpoint.

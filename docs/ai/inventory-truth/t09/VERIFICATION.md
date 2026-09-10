@@ -16,3 +16,16 @@
   setup run via shell: sqlite3 installation + `pnpm install --frozen-lockfile` PASS
   (Node 24.19.0, pnpm 10.26.0); platform issue reported. No dependency edits.
 - Fresh tests, lint, typecheck, build and migration gates: NOT YET RUN.
+
+## T09A baseline and audit checkpoint
+
+- Initial review packet committed/published/fetched at
+  e56f163921a4afd901f63c46617a8f574bbc5be1.
+- `pnpm exec vitest run tests/unit/inventory-truth.test.ts tests/integration/inventory-truth.test.ts`:
+  PASS **130 tests / 2 files** (76 unit, 54 integration), 12:57:57 UTC, 2.38s.
+- `git diff --check`: PASS before initial commit.
+- Read-only delegated SQLite probe: 23-migration replay, invalid-event CAS guard
+  rollback confirmed; version+1 postcondition demonstrated unsafe. This probe is
+  design evidence, not the final T09 runtime/test suite.
+- Exhaustive writer audit completed; findings and required mitigations in WRITER_MAP.
+- No T09 application code yet. Full/lint/typecheck/build/migration final gates pending.

@@ -4,7 +4,7 @@
 
 Program: Inventory Truth Layer
 Current Task: T09 — Inventory Lot Engine & Event Authority
-Current Phase: T09A — audit and lifecycle
+Current Phase: T09A complete; T09B command contracts next
 Status: IN_PROGRESS
 Canonical Development Repository: vn-2b/frigo-dev (user-confirmed owner correction)
 Legacy Production Repository: Tungjpstore/Frigo (user packet; not accessed)
@@ -19,9 +19,9 @@ Staging Deployment Allowed: NO
 Remote D1 Allowed: NO
 PayOS Allowed: NO
 
-Publication-first PASS; initial review packet in t09/. Application implementation
-not started. Exact next action: finish exhaustive writer/D1 atomicity audit and
-focused T08 baseline, commit/publish T09A, then implement T09B. No T09 PASS claim.
+Publication-first PASS; packet e56f163 published/fetched. T09A writer/D1 audit and
+DEC-008 lifecycle complete; fresh T08 focused baseline 130 tests / 2 files PASS.
+Application not started. Next: publish T09A, then T09B contracts. No T09 PASS claim.
 Managed setup claim failed; existing setup executed successfully via shell.
 Pre-existing settings overlay preserved in local named stash; see t09/SESSION_LOG.
 Legacy SHA unavailable; production deltas intentionally pending reconciliation.

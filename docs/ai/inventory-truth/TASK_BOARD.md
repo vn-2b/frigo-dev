@@ -3,7 +3,7 @@
 ## T09 — IN_PROGRESS (vn-2b/frigo-dev)
 
 - [x] Publish authorized T09 branch at exact T08 HEAD; fetch/equality verified.
-- [ ] T09A — exhaustive writer audit, lifecycle decision, baseline tests.
+- [x] T09A — exhaustive writer audit, lifecycle decision, 130 fresh baseline tests PASS.
 - [ ] T09B — deterministic command contracts.
 - [ ] T09C — persistence and CAS.
 - [ ] T09D — existing idempotency and event authority.
@@ -12,7 +12,7 @@
 - [ ] T09G — controlled concurrency and tenancy matrix.
 - [ ] T09H — application freeze, full gates, review packet, remote-checkout proof.
 
-Exact next action: complete/publish T09A before code. No T10 or main integration.
+Exact next action: publish T09A then implement T09B contracts. No T10 or main integration.
 
 ## Historical T08 board
 
