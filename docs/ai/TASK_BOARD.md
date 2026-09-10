@@ -6,7 +6,8 @@ IN_PROGRESS in vn-2b/frigo-dev on hoplite/euhesperides-d77023a5, exact T08 base
 8f8788c1a0c9e486657751ef3875a5baa5334dec. Publication-first and A/B published;
 C internal native persistence/schema and real local D1 proof implemented. No HTTP
 or legacy-writer cutover. Latest gates/failures are in t09/VERIFICATION.md.
-Next: verify/publish C checkpoint, then D/E/F integration; G/H acceptance pending.
+Published C 13133b3: 507 focused and 1,994 full tests PASS, static/build/local
+migration gates PASS, remote-source 507 PASS. Next: D/E/F; G/H acceptance pending.
 See inventory-truth/TASK_BOARD.md and t09/REVIEW_INDEX.md.
 No production reconciliation, legacy/main synchronization or T10 in this task.
 

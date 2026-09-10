@@ -68,3 +68,13 @@ before a fresh final-schema local replay. No remote DB operation occurred.
 Targeted/native/runtime and full-suite evidence is in VERIFICATION.md. Next essential
 milestone: commit/publish/fetch C, then T09D authority hardening and T09E FEFO before
 T09F adoption/writer integration. T09 remains IN_PROGRESS, not independent-review-ready.
+
+## T09C publication receipt
+
+13133b3aad214f2dbe7bdfb0c6ad9a70483d32de committed, published and fetched.
+Final C gates: 507 focused; full 1,994 / 93 files; lint/typecheck/build;
+24-migration replay/populated upgrade/local schema; diff checks PASS. Fresh
+fetched-source detached worktree also passed 507 tests and was left clean after
+removing its dependency-only symlink. Main d1b0673 and T08 8f8788c unchanged.
+No remaining C verification failure. Full T09 still awaits D–H; do not confuse
+this native-core code checkpoint with final application freeze or readiness.

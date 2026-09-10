@@ -11,7 +11,9 @@ receipt/event and exact legacy projection; additive 0024 and actual local D1
 rollback/executor tests. No HTTP exposure, historical adoption or old writer cutover.
 Mixed legacy households fail closed with ADOPTION_REQUIRED. Full/native gates and
 corrected findings are recorded in inventory-truth/t09/VERIFICATION.md.
-Next: publish/verify C checkpoint, then D/E and F legacy adoption/writer integration.
+Published C checkpoint 13133b3: 507 focused, 1,994 full / 93 files PASS;
+lint/typecheck/build, 24-migration/local schema PASS; remote-source worktree 507 PASS.
+Next: D/E and F legacy adoption/writer integration.
 T09 remains IN_PROGRESS; no application freeze or independent-review readiness.
 No main, legacy Frigo, production/staging, remote D1 or PayOS changes; no T10.
 The release/T08 sections below are historical evidence, not current work authority.

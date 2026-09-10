@@ -74,3 +74,35 @@ Corrected failures/findings:
 
 Final post-adoption checkpoint gates and remote-worktree proof are recorded below
 after execution. These are T09C checks, not completion of D–H or the full T09 gate.
+
+## T09C published checkpoint verification — 2026-09-10
+
+T09C_CODE_CHECKPOINT_SHA=13133b3aad214f2dbe7bdfb0c6ad9a70483d32de
+This is not the final T09 application freeze. No application changes after this
+checkpoint during the verification below.
+
+| Exact executed gate | Result |
+| --- | --- |
+| `pnpm exec vitest run tests/unit/inventory-lot-commands.test.ts tests/unit/inventory-truth.test.ts tests/integration/inventory-lot-commands.test.ts tests/integration/inventory-lot-schema.test.ts tests/integration/inventory-lot-d1.test.mjs tests/integration/inventory-truth.test.ts` | PASS, **507 / 6 files**: 202 domain, 146 native repository, 25 schema, 4 actual D1, 130 T08 |
+| `pnpm test` | PASS, **1,994 / 93 files**, 13:52:05 UTC start, 68.78s |
+| `pnpm lint` | PASS |
+| `pnpm typecheck` | PASS, both web/test and Worker projects |
+| `pnpm build` | PASS, web + Worker; no deployment |
+| `pnpm check:migrations` | PASS, clean 24-migration chain |
+| `pnpm schema:check:local` | PASS, final 0024 guards and FK checks |
+| `pnpm wrangler d1 migrations apply frigo-db --local` | PASS, fresh 24/24 chain after preserving initial proof DB |
+| Populated 0023 -> 0024 / query plans | PASS in schema integration tests |
+| `git diff --check`; T08-base-to-head `--check` | PASS |
+
+Trusted publish/fetch returned 13133b3; local HEAD equality PASS. Fresh fetch also
+confirmed unchanged T08 8f8788c and main d1b0673. A separate detached worktree at
+`/tmp/frigo-t09-remote-check` was created from fetched origin/T09 and ran the same
+**507 tests / 6 files PASS** (13:51:53 UTC). Only the frozen installed node_modules
+was temporarily shared via symlink; it was removed afterward and the worktree's
+status/diff were clean. No source from uncommitted primary files was used.
+
+Protected-path comparison against T08: routes, web, workflows, wrangler config
+and payment migration unchanged. No hosted-CI PASS is claimed; branch push filters
+do not select this feature branch, and no PR or workflow was dispatched.
+All remaining work is D–H: native authority review/hardening, FEFO, explicit
+adoption/all-writer integration, complete races/tenancy, final freeze and review.

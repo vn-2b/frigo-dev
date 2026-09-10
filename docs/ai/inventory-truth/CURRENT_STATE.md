@@ -11,7 +11,7 @@ Legacy Production Repository: Tungjpstore/Frigo (user packet; not accessed)
 T09 Remote Branch: hoplite/euhesperides-d77023a5
 T09 Base T08 SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
 frigo-dev/main SHA at T09 start: d1b06732f8a80db4e77986df31ff28d9f04641fa
-Last Verified Remote SHA: 5d10bc5fd6d58922e33c18a737351d70864599c9
+Last Verified Remote SHA: 13133b3aad214f2dbe7bdfb0c6ad9a70483d32de
 Do Not Merge To Main: YES
 Do Not Sync From Legacy Frigo: YES
 Production Deployment Allowed: NO
@@ -23,7 +23,9 @@ Publication-first and A/B checkpoints published/fetched. C adds native atomic
 executor, additive 0024, receipt/event/projection coupling and local D1 proof.
 Unadopted/mixed legacy households fail ADOPTION_REQUIRED; no native HTTP route
 or legacy writer cutover. Latest exact verification: t09/VERIFICATION.md.
-Next: final C gates/publish/fetch, then D/E, followed by F adoption/writer migration.
+Published C checkpoint 13133b3: 507 focused, 1,994 full / 93 files,
+lint/typecheck/build, 24-migration/local schema PASS; remote worktree 507 PASS.
+Next: D/E, followed by F adoption/writer migration.
 No T09 completion or application-freeze claim; G/H full acceptance remains pending.
 Managed setup claim failed; existing setup executed successfully via shell.
 Pre-existing settings overlay preserved in local named stash; see t09/SESSION_LOG.

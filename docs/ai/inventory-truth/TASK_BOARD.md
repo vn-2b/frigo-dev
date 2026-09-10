@@ -12,7 +12,7 @@
 - [ ] T09G — controlled concurrency and tenancy matrix.
 - [ ] T09H — application freeze, full gates, review packet, remote-checkout proof.
 
-Exact next action: verify/publish final C checkpoint, then T09D/E before legacy
+Exact next action: T09D/E from published/verified C checkpoint 13133b3 before legacy
 adoption/writer integration. T09 is not ready for independent review.
 
 ## Historical T08 board

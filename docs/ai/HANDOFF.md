@@ -9,7 +9,7 @@ Status: IN_PROGRESS
 Canonical Repository: vn-2b/frigo-dev (user-confirmed correction)
 Canonical Branch: hoplite/euhesperides-d77023a5
 T08 Base SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
-Last Verified Remote SHA: 5d10bc5fd6d58922e33c18a737351d70864599c9
+Last Verified Remote SHA: 13133b3aad214f2dbe7bdfb0c6ad9a70483d32de
 Development Main Anchor: d1b06732f8a80db4e77986df31ff28d9f04641fa
 Application Freeze: NOT FROZEN
 
@@ -19,12 +19,13 @@ projection atomicity and actual local D1 proof. No HTTP or legacy-writer cutover
 unadopted/mixed households fail ADOPTION_REQUIRED rather than silently diverge.
 Checks: native/combined/full regression gates, static/build, 24-migration replay,
 populated upgrade and local D1 proof run; exact current counts in
-inventory-truth/t09/VERIFICATION.md. C final post-review checkpoint gates follow.
+inventory-truth/t09/VERIFICATION.md. Final C: 507 focused / 1,994 full (93 files),
+lint/typecheck/build, 24-migration/local schema PASS. Remote-source 507 PASS.
 Failure: managed setup claim blocked; workaround succeeded, platform issue filed.
 Full T09 D–H completion gates pending. Historical counts below are not
 T09 evidence. Preserved unrelated settings overlay in named local stash; details
 in inventory-truth/t09/SESSION_LOG.md. No tracked setup configuration changes.
-Exact Next Action: verify/publish C checkpoint, then D receipt/event hardening,
+Exact Next Action: continue from published C 13133b3 with D receipt/event hardening,
 E FEFO and F explicit adoption/all-writer integration before exposing HTTP.
 Read inventory-truth/t09/REVIEW_INDEX.md. T09 is not independent-review-ready.
 Legacy Frigo/main/production/staging/remote D1/PayOS untouched; T10 not started.
