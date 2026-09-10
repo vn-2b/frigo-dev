@@ -4,12 +4,13 @@
 
 Program: Inventory Truth Layer
 Task: T09 — Inventory Lot Engine & Event Authority
-Phase: T09D verified locally; publication checkpoint pending; E–H pending
+Phase: T09D complete and published; E–H pending
 Status: IN_PROGRESS
 Canonical Repository: vn-2b/frigo-dev (user-confirmed correction)
 Canonical Branch: hoplite/euhesperides-d77023a5
 T08 Base SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
-Last Verified Remote SHA: cc3121d9ec9a11f0b0ed0cbbe3ad8199083ce144
+Last Verified Remote SHA: b036b257a8ad775dd6f1a445dcfdcce38a6babf1
+T09D Code Checkpoint: b036b257a8ad775dd6f1a445dcfdcce38a6babf1
 Development Main Anchor: d1b06732f8a80db4e77986df31ff28d9f04641fa
 Application Freeze: NOT FROZEN
 
@@ -30,8 +31,11 @@ PASS. Review findings and exact commands: inventory-truth/t09/VERIFICATION.md.
 Full T09 E–H completion gates pending. Historical counts below are not
 T09 evidence. Preserved unrelated settings overlay in named local stash; details
 in inventory-truth/t09/SESSION_LOG.md. No tracked setup configuration changes.
-Exact Next Action: publish/fetch/verify the D checkpoint, then E FEFO and F explicit
-adoption/all-writer integration before exposing HTTP. No remaining D check failure.
+Publication: D b036b25 committed/published/fetched; local/remote equality PASS.
+Separate fetched-source worktree: 1,031 tests and typecheck PASS, clean source.
+Exact Next Action: T09E deterministic FEFO, then F explicit adoption/all-writer
+integration before exposing HTTP. No remaining D check failure. This documentation
+receipt follows the verified code SHA; resolve latest docs HEAD via Git.
 Read inventory-truth/t09/REVIEW_INDEX.md. T09 is not independent-review-ready.
 Legacy Frigo/main/production/staging/remote D1/PayOS untouched; T10 not started.
 

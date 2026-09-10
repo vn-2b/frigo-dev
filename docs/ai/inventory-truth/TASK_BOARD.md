@@ -6,15 +6,16 @@
 - [x] T09A — exhaustive writer audit, lifecycle decision, 130 fresh baseline tests PASS.
 - [x] T09B — six deterministic command contracts; 202 new tests, 332 combined PASS.
 - [x] T09C — internal native persistence/CAS, additive 0024, local D1 rollback proof.
-- [ ] T09D — idempotency/event/poststate authority verified locally; publish/fetch pending.
+- [x] T09D — idempotency/event/poststate authority; b036b25 published/fetched and remote-source verified.
 - [ ] T09E — deterministic FEFO allocations.
 - [ ] T09F — all legacy mutation writers adapted/migrated or safely rejected.
 - [ ] T09G — controlled concurrency and tenancy matrix.
 - [ ] T09H — application freeze, full gates, review packet, remote-checkout proof.
 
-Exact next action: publish/fetch/verify D, then E FEFO before legacy adoption/writer
+Exact next action: E FEFO from published D b036b25 before legacy adoption/writer
 integration. D: 1,031 focused and 2,518 full tests PASS; static/build and 26-migration
-local gates PASS. T09 is not ready for independent review.
+local gates PASS. Remote-source 1,031 tests and typecheck PASS.
+T09 is not ready for independent review.
 
 ## Historical T08 board
 

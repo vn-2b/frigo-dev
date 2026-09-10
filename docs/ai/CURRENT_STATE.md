@@ -16,8 +16,10 @@ lint/typecheck/build, 24-migration/local schema PASS; remote-source worktree 507
 T09D now validates retained receipt/event evidence, binds new events to declared
 effects and actual written stock (additive 0025/0026), and rejects paired evidence
 corruption. Final D gates: 1,031 focused / 2,518 full tests (95 files), lint,
-typecheck, build, 26-migration replay/local schema PASS. Publication receipt follows.
-Next: publish/fetch/verify D, then E FEFO and F legacy adoption/writer integration.
+typecheck, build, 26-migration replay/local schema PASS. D code checkpoint
+b036b257a8ad775dd6f1a445dcfdcce38a6babf1 published/fetched with exact equality;
+separate fetched-source worktree: 1,031 tests and typecheck PASS, clean tree.
+Next: E FEFO and F legacy adoption/writer integration.
 T09 remains IN_PROGRESS; no application freeze or independent-review readiness.
 No main, legacy Frigo, production/staging, remote D1 or PayOS changes; no T10.
 The release/T08 sections below are historical evidence, not current work authority.

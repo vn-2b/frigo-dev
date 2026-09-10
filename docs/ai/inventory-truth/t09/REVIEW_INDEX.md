@@ -6,7 +6,8 @@ T08 Base Branch: hoplite/xanthos-7d942897
 T08 Base SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
 T09 Application Freeze SHA: NOT FROZEN — T09D native authority checkpoint; E–H pending
 Latest Docs HEAD: resolve `git rev-parse HEAD`; this document cannot contain its own commit SHA
-Last Verified Remote HEAD: cc3121d9ec9a11f0b0ed0cbbe3ad8199083ce144
+Last Verified Remote HEAD: b036b257a8ad775dd6f1a445dcfdcce38a6babf1
+T09D Code Checkpoint: b036b257a8ad775dd6f1a445dcfdcce38a6babf1
 T09C Code Checkpoint: 13133b3aad214f2dbe7bdfb0c6ad9a70483d32de
 Status: IN_PROGRESS, not ready for independent review
 
@@ -36,7 +37,9 @@ At C checkpoint: 507 focused / 1,994 full tests PASS; lint/typecheck/build and
 At D prepublication: 1,031 focused / 2,518 full tests PASS; lint/typecheck/build,
 26-migration/local schema PASS. Receipt corruption, no-op/unrelated events and
 paired receipt/event versus stock mismatch fixed; review replay and both new SQL
-guards together. D publication and fetched-source verification receipt follows.
+guards together. D b036b25 published/fetched with exact local/remote equality.
+Separate fetched-source worktree: 1,031 tests and typecheck PASS, clean source.
+Only documentation changes follow the D code checkpoint; E is the next phase.
 
 Reviewer hotspots: lifecycle; CAS; idempotency; event atomicity; deterministic
 FEFO; exhaustive writer migration; tenant isolation; legacy parity; multi-lot

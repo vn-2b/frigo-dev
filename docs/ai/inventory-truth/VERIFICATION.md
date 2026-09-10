@@ -3,11 +3,12 @@
 ## T09 current verification
 
 See `t09/VERIFICATION.md`. Exact T08 base was published to the authorized T09
-branch then fetched; local/remote equality PASS. A–C checkpoints are published.
+branch then fetched; local/remote equality PASS. A–D checkpoints are published.
 D final local verification: 1,031 focused / 8 files and 2,518 full / 95 files;
 lint/typecheck/build, 26-migration replay, populated upgrades, actual local D1 and
 local schema PASS. Receipt/event/poststate findings fixed; publication receipt is
-in the T09 packet. E–H remain pending; no final T09 readiness claim.
+in the T09 packet: b036b257a8ad775dd6f1a445dcfdcce38a6babf1, fetched-source
+1,031 tests and typecheck PASS. E–H remain pending; no final T09 readiness claim.
 Historical T08 evidence below is not a T09 rerun.
 
 ## 2026-09-09 — initial checkpoint

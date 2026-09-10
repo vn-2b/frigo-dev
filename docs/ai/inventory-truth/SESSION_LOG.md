@@ -10,7 +10,8 @@ C docs checkpoint cc3121d published/fetched before D. D receipt/event/poststate
 authority is verified: 1,031 focused, 2,518 full, static/build and 26-migration/local
 gates PASS. Three review findings corrected, including paired evidence versus
 actual stock. See t09/SESSION_LOG.md and t09/VERIFICATION.md for exact checks and
-publication proof. Next phase E FEFO, then F writer integration; no T10 or release.
+publication proof. Published/fetched code b036b25; remote-source 1,031 tests and
+typecheck PASS. Next phase E FEFO, then F writer integration; no T10 or release.
 
 ## 2026-09-09 — session start
 

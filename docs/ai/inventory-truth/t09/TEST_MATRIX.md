@@ -1,6 +1,6 @@
 # T09 test matrix
 
-T09C native scope verified; full T09 integration gates remain PENDING. Historical
+T09A–D native scope verified; full T09 integration gates remain PENDING. Historical
 T08 counts are not fresh T09 evidence; executed commands are in VERIFICATION.md.
 
 Implemented tests: 202 domain contract tests, 146 native repository tests, 26 additive

@@ -153,3 +153,26 @@ unrelated dependency upgrade was made. Logs retained privately under
 No HTTP exposure or UI change; no browser proof is claimed. No PR/CI workflow
 dispatch, main mutation, legacy access, staging/production, remote D1 or PayOS
 operation. E–H and final independent-review readiness remain pending.
+
+## T09D publication and fetched-source receipt
+
+T09D_CODE_CHECKPOINT_SHA=b036b257a8ad775dd6f1a445dcfdcce38a6babf1
+
+Trusted publish and explicit branch fetch both returned that exact SHA; shell
+comparison to local HEAD and origin/T09 PASS. Fresh authorized fetch also returned
+unchanged T08 8f8788c1a0c9e486657751ef3875a5baa5334dec and main
+d1b06732f8a80db4e77986df31ff28d9f04641fa. No remote reference outside the canonical
+development repository was accessed or changed.
+
+Created a separate detached worktree from fetched origin/T09 at
+`/tmp/frigo-t09d-remote-check-LW4gBc`. Ran the exact eight-file focused command above:
+**1,031 / 8 files PASS**, 14:44:39 UTC, 36.33s. `pnpm typecheck` PASS for both
+projects. Only installed frozen-lockfile dependencies were shared temporarily by
+node_modules symlink; source came entirely from fetched Git. Removed the symlink;
+`git diff --exit-code b036b25` and empty `git status --porcelain` PASS.
+Log: `.hoplite/artifacts/t09-d-remote-verification.log`.
+
+D is complete as a published native-authority milestone. This following
+documentation-only receipt records its SHA and does not alter the verified code.
+Latest docs HEAD resolves through Git; no final T09 application-freeze SHA or
+READY FOR INDEPENDENT REVIEW claim is made. Next implementation phase: T09E FEFO.

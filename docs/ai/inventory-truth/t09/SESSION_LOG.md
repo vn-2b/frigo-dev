@@ -98,3 +98,13 @@ corrected findings are in VERIFICATION.md. Only docs changed after these final g
 Next: publish/fetch/verify this D checkpoint and run fetched-source focused/typecheck
 proof. E FEFO is the next implementation phase, followed by F writer integration;
 G/H and final T09 readiness remain pending. No T10 or protected-surface changes.
+
+## T09D publication receipt
+
+b036b257a8ad775dd6f1a445dcfdcce38a6babf1 committed/published/fetched; exact
+local/origin equality PASS. Authorized main and T08 fetches remain d1b0673 and
+8f8788c respectively. Separate fetched-source worktree passed 1,031 tests / 8
+files and both TypeScript projects, then verified clean after dependency symlink
+removal. Full verification is in VERIFICATION.md. This following docs-only
+checkpoint finalizes the milestone handoff. T09 stays IN_PROGRESS, next T09E;
+no unresolved D check failure, no PR/deployment/main/remote D1/PayOS operation.
