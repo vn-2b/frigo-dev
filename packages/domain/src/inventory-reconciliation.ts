@@ -270,23 +270,58 @@ function evaluateOne(observation: InventoryObservation, snapshot: Reconciliation
   if (conflicts.length > 0) {
     return { ...base, verdict: 'CONFLICT', reasons, matchedLotId: lot.id, proposals: [] };
   }
-  const proposals = Object.values(steps)
-    .filter((step) => step.proposal !== null)
-    .map((step) => step.proposal!);
+  const proposals = composeProposals(lot, Object.values(steps));
+  if (proposals === null) {
+    return { ...base, verdict: 'CONFLICT', reasons: [...reasons, 'PROPOSAL_COMPOSITION_CONFLICT'], matchedLotId: lot.id, proposals: [] };
+  }
   if (proposals.length === 0) {
     return { ...base, verdict: 'MATCH', reasons, matchedLotId: lot.id, proposals: [] };
   }
-  // All proposals must act on the same lot version to compose atomically.
-  if (!proposals.every((proposal) => proposal.expectedVersion === lot.version)) {
-    return { ...base, verdict: 'CONFLICT', reasons: [...reasons, 'PROPOSAL_VERSION_CONFLICT'], matchedLotId: lot.id, proposals: [] };
-  }
-  const verdict = proposals.some((proposal) => proposal.type === 'CORRECT')
-    ? proposals.some((proposal) => proposal.type === 'CORRECT'
-      && proposal.changes.expiryAt !== undefined
-      && proposal.changes.quantity === undefined && proposal.changes.openedAt === undefined)
-      ? 'PROPOSE_EXPIRY_UPDATE' : 'PROPOSE_CORRECTION'
-    : 'PROPOSE_MOVE';
+  // Verdict priority: a lone expiry correction is PROPOSE_EXPIRY_UPDATE; a lone
+  // move is PROPOSE_MOVE; every other combination (including expiry+move) is
+  // the general PROPOSE_CORRECTION. Execution never depends on the verdict,
+  // only on the exact proposals.
+  const correct = proposals.find((proposal): proposal is Extract<ReconciliationProposal, { type: 'CORRECT' }> => proposal.type === 'CORRECT');
+  const move = proposals.find((proposal) => proposal.type === 'MOVE');
+  const verdict: ReconciliationVerdict = correct === undefined
+    ? 'PROPOSE_MOVE'
+    : move === undefined && isExpiryOnlyChange(correct.changes)
+      ? 'PROPOSE_EXPIRY_UPDATE'
+      : 'PROPOSE_CORRECTION';
   return { ...base, verdict, reasons, matchedLotId: lot.id, proposals };
+}
+
+function isExpiryOnlyChange(changes: Extract<ReconciliationProposal, { type: 'CORRECT' }>['changes']): boolean {
+  const keys = Object.keys(changes).filter((key) => changes[key as keyof typeof changes] !== undefined);
+  return keys.length > 0 && keys.every((key) => key === 'expiryAt' || key === 'estimatedExpiryAt' || key === 'expiryKind');
+}
+
+// Merges every per-dimension CORRECT into exactly one CORRECT and keeps at most
+// one MOVE, all bound to the matched lot at its current version. Returns null
+// (composition conflict) if two dimensions disagree on a property value, name
+// different lots/versions, or more than one MOVE appears — never an arbitrary
+// pick by object spread.
+function composeProposals(lot: InventoryLot, steps: Step[]): ReconciliationProposal[] | null {
+  const corrections = steps.flatMap((step) => step.proposal?.type === 'CORRECT' ? [step.proposal] : []);
+  const moves = steps.flatMap((step) => step.proposal?.type === 'MOVE' ? [step.proposal] : []);
+  if (moves.length > 1) return null;
+  const all: ReconciliationProposal[] = [...corrections, ...moves];
+  if (all.some((proposal) => proposal.lotId !== lot.id || proposal.expectedVersion !== lot.version)) return null;
+  const merged: Record<string, unknown> = {};
+  for (const correction of corrections) {
+    for (const [key, value] of Object.entries(correction.changes)) {
+      if (value === undefined) continue;
+      if (key in merged && merged[key] !== value) return null;
+      merged[key] = value;
+    }
+  }
+  const result: ReconciliationProposal[] = [];
+  if (Object.keys(merged).length > 0) {
+    result.push({ type: 'CORRECT', lotId: lot.id, expectedVersion: lot.version,
+      changes: merged as Extract<ReconciliationProposal, { type: 'CORRECT' }>['changes'] });
+  }
+  if (moves.length === 1) result.push(moves[0]);
+  return result;
 }
 
 export function planInventoryReconciliation(snapshot: ReconciliationSnapshot,

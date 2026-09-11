@@ -62,6 +62,22 @@ const DecisionInput = z.object({
   proposals: z.array(ProposalSchema).max(2).optional(),
 }).strict();
 
+// Proposal-set invariant, independent of the planner: at most one CORRECT and
+// one MOVE, on one lot at one expected version. Array size is never a proxy for
+// command uniqueness; malformed caller input fails closed, never normalizes.
+function assertProposalSetInvariant(proposals: z.infer<typeof ProposalSchema>[]): void {
+  const corrects = proposals.filter((proposal) => proposal.type === 'CORRECT');
+  const moves = proposals.filter((proposal) => proposal.type === 'MOVE');
+  if (corrects.length > 1 || moves.length > 1) throw new ObservationError('INVALID_DECISION');
+  if (proposals.length === 2 && (proposals[0].lotId !== proposals[1].lotId
+    || proposals[0].expectedVersion !== proposals[1].expectedVersion)) {
+    throw new ObservationError('INVALID_DECISION');
+  }
+  for (const correct of corrects) {
+    if (Object.values(correct.changes).every((value) => value === undefined)) throw new ObservationError('INVALID_DECISION');
+  }
+}
+
 export interface DecisionRow {
   id: string; household_id: string; observation_id: string; decision_key: string;
   fingerprint: string; decision_type: string; proposed_verdict: string; actor_id: string;
@@ -160,26 +176,38 @@ export async function planInventoryReconciliationForHousehold(db: D1DatabaseBind
 
 function decisionCommandSpecs(decisionKey: string, proposals: ReconciliationProposal[]): LotCommandSpec[] {
   const reason = `Reconciliation decision ${decisionKey}`;
-  return proposals.map((proposal) => {
-    if (proposal.type === 'CORRECT') {
-      const terminalState = (proposal as { terminalState?: 'CONSUMED' | 'DISCARDED' }).terminalState;
-      return {
-        clientKey: `${decisionKey}#CORRECT`,
-        input: {
-          type: 'CORRECT', lotId: proposal.lotId, expectedVersion: proposal.expectedVersion,
-          changes: proposal.changes, reason,
-          ...(terminalState === undefined ? {} : { terminalState }),
-        },
-      };
-    }
-    return {
+  const correct = proposals.find((proposal) => proposal.type === 'CORRECT');
+  const move = proposals.find((proposal) => proposal.type === 'MOVE');
+  // Defense in depth: exactly the proposal-set invariant, so the derived client
+  // keys <decisionKey>#CORRECT / <decisionKey>#MOVE are unique per decision.
+  if (proposals.length !== (correct ? 1 : 0) + (move ? 1 : 0)) throw new ObservationError('INVALID_DECISION');
+  const specs: LotCommandSpec[] = [];
+  if (correct && correct.type === 'CORRECT') {
+    const terminalState = (correct as { terminalState?: 'CONSUMED' | 'DISCARDED' }).terminalState;
+    specs.push({
+      clientKey: `${decisionKey}#CORRECT`,
+      input: {
+        type: 'CORRECT', lotId: correct.lotId, expectedVersion: correct.expectedVersion,
+        changes: correct.changes, reason,
+        ...(terminalState === undefined ? {} : { terminalState }),
+      },
+    });
+  }
+  if (move && move.type === 'MOVE') {
+    specs.push({
       clientKey: `${decisionKey}#MOVE`,
       input: {
-        type: 'MOVE', lotId: proposal.lotId, expectedVersion: proposal.expectedVersion,
-        storageLocationId: proposal.storageLocationId,
+        type: 'MOVE', lotId: move.lotId, expectedVersion: move.expectedVersion,
+        storageLocationId: move.storageLocationId,
       },
-    };
-  });
+      // Same T09 composition semantics as the manual PATCH adapter: the first
+      // command fences the confirmed expectedVersion; a following MOVE on the
+      // same lot rides the version the composed CORRECT produced, all in one
+      // atomic batch.
+      ...(correct ? { useCurrentLotVersion: { lotId: move.lotId } } : {}),
+    });
+  }
+  return specs;
 }
 
 // The terminal state is the actor's decision semantics, not planner output,
@@ -219,6 +247,14 @@ export async function confirmReconciliationDecision(db: D1DatabaseBinding,
   const decision = DecisionInput.parse(input);
   const proposals = decision.proposals ?? [];
   if ((decision.decisionType === 'DISMISS') !== (proposals.length === 0)) {
+    throw new ObservationError('INVALID_DECISION');
+  }
+  assertProposalSetInvariant(proposals);
+  // The declared decision type must match the proposal set it carries.
+  if (decision.decisionType === 'MOVE' && proposals.some((proposal) => proposal.type === 'CORRECT')) {
+    throw new ObservationError('INVALID_DECISION');
+  }
+  if (decision.decisionType === 'CORRECT' && !proposals.some((proposal) => proposal.type === 'CORRECT')) {
     throw new ObservationError('INVALID_DECISION');
   }
   // Session/actor-bound scope: the actor must belong to the household even for
