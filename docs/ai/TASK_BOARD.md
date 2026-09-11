@@ -1,6 +1,19 @@
 # Frigo task board
 
-## Current authoritative T09 board — backfill compatibility, 2026-09-11
+## Current authoritative T09 board — FEFO v2 backfill compatibility, 2026-09-11
+
+- Final FEFO backfill P1: REPRODUCED → FIXED (additive 0029 + executor mapping fix)
+  → VERIFIED from a clean published checkout.
+- New final application freeze: `bf391c5fdcdd9e9c2f2257db515815e082cb4381`, published/fetched, local == remote.
+- 1,237 focused/15 files; 2,926 full/108; 44 real local-D1; lint/typecheck/build/
+  29-migration smoke/local schema/diff PASS; clean exact-SHA checkout repeats all.
+- Native equal-ID FEFO, PATCH, replay, concurrency, adoption and writer-fence
+  suites unchanged and PASS. Historical migrations 0023-0028 untouched.
+- Remaining P0/P1: NONE. Verdict: **READY FOR FINAL MAIN MERGE REVIEW**.
+- Next: external main-merge review. No merge/deploy/remote D1/PayOS/T10 by this agent.
+  Full receipt: `inventory-truth/t09/FINAL_PATCH_VERIFICATION.md`.
+
+## Historical backfill compatibility board — superseded by bf391c5
 
 - Backfilled manual PATCH P1: REPRODUCED → FIXED → VERIFIED, no migration.
 - Final application freeze: `df73bc035c2938b6fd082c57f6bca89a82d8e443`, published/fetched.

@@ -1,6 +1,18 @@
 # Inventory Truth task board
 
-## Current authoritative backfill compatibility — 2026-09-11
+## Current authoritative FEFO v2 backfill compatibility — 2026-09-11
+
+Final FEFO backfill P1 fixed at published/fetched **`bf391c5fdcdd9e9c2f2257db515815e082cb4381`** on
+`hoplite/himera-6d3eda84` (successor of kydonia at docs HEAD 8552fe5337245f2ac8349933c02946bf7d9dcc8f).
+13 permanent backfilled-FEFO tests plus extended schema/D1 proofs; 1,237
+focused/15 files, 2,926 full/108 and 44 real-D1 tests pass. Clean exact-SHA
+full/static/build/29-migration/schema gates PASS, empty git status. Historical
+migrations untouched; migration smoke now replays 0028+0029; schema gate requires
+0029. Remaining P0/P1: NONE. **READY FOR FINAL MAIN MERGE REVIEW** (external review
+decides the merge; this agent does not merge main). Exact evidence:
+`t09/FINAL_PATCH_VERIFICATION.md`. No T10/deploy/remote D1.
+
+## Historical backfill compatibility board — superseded by bf391c5
 
 Backfilled manual PATCH P1 fixed at published/fetched
 `df73bc035c2938b6fd082c57f6bca89a82d8e443`. 43 permanent backfill cases and 25

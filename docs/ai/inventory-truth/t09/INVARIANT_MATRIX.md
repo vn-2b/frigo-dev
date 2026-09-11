@@ -1,6 +1,24 @@
 # T09 invariant matrix
 
-## Current mapping invariants — df73bc035c2938b6fd082c57f6bca89a82d8e443
+## Current FEFO mapping invariants — bf391c5fdcdd9e9c2f2257db515815e082cb4381
+
+| Invariant | Current evidence |
+| --- | --- |
+| v2 FEFO lot identity is the native lot; projection identity is legacy_item_id | Receipt effects carry `after.id` (native) and `legacyItemId` (projection); events insert the projection ID |
+| Synthetic mapping must be proven, never inferred | 0029 SQL: LEGACY_BACKFILL + source_id = legacy_item_id + adoption receipt evidence (household/actor/source version, lot/legacy effect match, createdAt/provenance, version >= evidence, preserved offset); TS requireParity/authoritativeMapping admission and replay authentication |
+| Native equal-ID lots unchanged | First branch of every 0029 mapping check; all native FEFO/PATCH/replay/concurrency suites PASS unchanged |
+| Prestate projection parity authoritative | Exact canonical parity or the exact kg/l display aliases; any other unit/quantity is drift; poststate guards stay strict and the first native write canonicalizes |
+| No cross-tenant or foreign stock | Foreign actor FORBIDDEN; foreign household stock untouched; household-bound receipt joins retained |
+| Drift stays fail-closed | Wrong ingredient/unit INSUFFICIENT_INVENTORY; tampered receipt CORRUPT_RECEIPT; broken version offset DRIFT_DETECTED; deleted receipt ADOPTION_REQUIRED; SQL receipt/event mismatch aborts |
+| Multi-lot atomicity and one race outcome | Household CAS fences racers; FEFO/FEFO, FEFO/CORRECT, FEFO/DISCARD, FEFO/MOVE and multi-lot races leave one receipt, no overspend, no partial effects |
+| Receipt replay and idempotency | Same key+intent exact replay; changed quantity or expected version IDEMPOTENCY_CONFLICT; distinct stale key STALE_SNAPSHOT; lost response replays the committed receipt once |
+| Version offset semantics | Adoption offset preserved across FEFO → CORRECT → MOVE → FEFO and later-writes replay; lot.version - evidence.version = legacyVersion delta asserted in TS and SQL |
+
+13 new backfilled-FEFO tests; 1,237 focused/15 files; 2,926 full/108; 44 real-D1
+PASS; clean exact-SHA checkout repeats every gate. Historical migrations 0023-0028
+byte-untouched. **READY FOR FINAL MAIN MERGE REVIEW**.
+
+## Historical PATCH mapping invariants — superseded by bf391c5
 
 | Invariant | Current evidence |
 | --- | --- |

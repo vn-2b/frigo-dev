@@ -1,6 +1,19 @@
 # Inventory Truth current state
 
-## Current authoritative backfill compatibility — 2026-09-11
+## Current authoritative FEFO v2 backfill compatibility — 2026-09-11
+
+`vn-2e/frigo-dev` / `hoplite/himera-6d3eda84` (successor at exact docs HEAD
+8552fe5337245f2ac8349933c02946bf7d9dcc8f). New final application freeze **`bf391c5fdcdd9e9c2f2257db515815e082cb4381`** is published/fetched.
+FEFO v2 now operates on legitimate adopted/backfilled synthetic mappings: additive
+0029 swaps the 0027 equal-ID guards for authoritative adoption-mapping checks
+(provenance, source identity, receipt-bound lot/legacy identity, preserved version
+offset) plus exact kg/l prestate display parity; the executor admits via requireParity,
+replays via authoritativeMapping and writes the lot CAS with the projection identity.
+1,237 focused/15 files; 2,926 full/108; 44 local-D1; static/build/migration/schema
+PASS, repeated from a clean exact-SHA checkout with empty status. `t09/FINAL_PATCH_VERIFICATION.md`.
+**READY FOR FINAL MAIN MERGE REVIEW**: no P0/P1 or known merge-blocking P2 remains.
+
+## Historical backfill compatibility state — superseded by bf391c5
 
 `vn-2e/frigo-dev` / `hoplite/kydonia-2785bb72`.
 Final application freeze **`df73bc035c2938b6fd082c57f6bca89a82d8e443`** is published/fetched.

@@ -1,6 +1,55 @@
 # T09 change manifest
 
-## Current backfill compatibility application — df73bc035c2938b6fd082c57f6bca89a82d8e443
+## Current FEFO v2 backfill application — bf391c5fdcdd9e9c2f2257db515815e082cb4381
+
+- `migrations/0029_inventory_fefo_backfill_compatibility.sql` (new, additive):
+  drops and recreates only `trg_inventory_commands_fefo_authority_insert` and
+  `trg_inventory_events_command_fefo_authority_insert`. Every retained guard is
+  byte-identical to 0027 except: (1) the equal-ID terms are replaced by an
+  authoritative mapping check — LEGACY_BACKFILL provenance, `source_id =
+  legacy_item_id`, and the immutable adoption receipt binding household/actor/
+  source version, `lotId`/`legacyItemId`, `after.householdId`/`createdAt`/
+  `sourceType`/`sourceId`, `after.version <= l.version` and a preserved
+  `version - legacy_version` offset; (2) prestate projection parity accepts the
+  exact kg/l display aliases requireParity reconciles. The replacement checks are
+  separate shallow trigger statements so D1's expression-depth limit (100) is met;
+  the first attempt nested them inline and real D1 aborted every receipt insert
+  with `Expression tree is too large`, which is why the restructure exists.
+- `packages/db/src/inventory-lot-commands.ts`: FEFO admission is requireParity's
+  authoritative mapping (the explicit equal-ID TS guard is removed, mirroring v1);
+  `replayFefo` authenticates each effect via `authoritativeMapping(after,
+  effect.legacyItemId, receipt.adoptedMappings)` instead of `legacyItemId ===
+  after.id`; the FEFO lot CAS binds `legacy_item_id` with the mapped projection
+  identity (`lotWrite(db, effect, effect.legacyItemId)`).
+- `tests/integration/inventory-backfilled-fefo.test.ts` (new, 13 tests): real
+  adoption fixtures covering single-lot, multi-lot, mixed native/synthetic with a
+  kg display row, terminal/partial depletion, version-offset chain across
+  FEFO/CORRECT/MOVE plus replay-after-later-writes, exact replay, changed-intent
+  and changed-version same-key conflicts, distinct-key stale snapshot, lost
+  response recovery, foreign actor/household isolation, four drift fail-closed
+  cases, FEFO-vs-FEFO/CORRECT/DISCARD/MOVE races and a multi-lot allocation race.
+- `tests/integration/inventory-backfilled-patch.test.ts`: the previously
+  fail-closed v2 FEFO admission case now asserts the fixed success path with
+  durable lot/projection/event identity.
+- `tests/integration/inventory-fefo-schema.test.ts`: 0029 upgrade replay preserves
+  all five 0027 v1/v2 trigger objects, v1 replay and native v2 still pass; a
+  captured synthetic FEFO batch commits under 0029, is rejected without the
+  adoption receipt, and is rejected when projection parity leaves the exact kg/l
+  aliases.
+- `tests/integration/inventory-lot-d1.test.mjs`: two real local-D1 workerd tests —
+  adopted multi-lot FEFO with durable identity and replay, and a multi-lot
+  backfilled FEFO race with one authority outcome (44 tests total).
+- `tests/integration/inventory-truth.test.ts`, `tests/integration/recipe-foundation.test.ts`,
+  `tests/e2e/planner-preview.test.mjs`: migration-head assertions extended to the
+  29th migration.
+- `scripts/migration-smoke.sh`: replays 0028 (previously missing) and 0029 and
+  asserts the adoption table/triggers; `scripts/d1-schema-gate.sql` requires 0029.
+- No route, adoption executor, 0023-0028 migration, auth, PayOS, other writer,
+  production config or settings-overlay changes. Bounded caller audit: no HTTP
+  route constructs v2 FEFO inputs; adopted cooking uses synthetic-compatible v1
+  single-lot USE commands, so no route change was required.
+
+## Historical backfill PATCH application — superseded by bf391c5
 
 - `packages/db/src/inventory-lot-commands.ts`: bounded exact adoption mapping witness;
   preserve live parity; use projection identity in lot CAS and event insertion;

@@ -1,6 +1,26 @@
 # T09 continuation — 2026-09-11
 
-## Current authoritative continuation — backfill compatibility
+## Current authoritative continuation — FEFO v2 backfill compatibility
+
+Repository `vn-2e/frigo-dev` (live origin `vb-2f/frigo-dev`, same lineage); branch
+`hoplite/himera-6d3eda84`, the platform-verified successor checked out at the exact
+previous docs HEAD `8552fe5337245f2ac8349933c02946bf7d9dcc8f` (kydonia tip unchanged at that SHA).
+Start/docs: `8552fe5337245f2ac8349933c02946bf7d9dcc8f`. Historical freezes: GLM `9bf9ac0`, Astra replay
+`2742738`, PATCH parity `e796f69`, backfill PATCH `df73bc035c2938b6fd082c57f6bca89a82d8e443`.
+**New final FEFO backfill application freeze: `bf391c5fdcdd9e9c2f2257db515815e082cb4381`**. Published/fetched
+equality PASS. The docs HEAD is this docs-only commit's tip; the final operator
+report supplies its exact SHA. Main unchanged at `d1b06732f8a80db4e77986df31ff28d9f04641fa`.
+Startup 29 ahead/0 behind; application 30/0; this docs checkpoint 31/0.
+All gates PASS: 1,237 focused/15 files, 2,926 full/108, 44 local-D1, static/build/
+schema/migrations, repeated from a clean exact-SHA detached checkout (empty status).
+No uncommitted application work; settings overlay preserved byte-for-byte.
+**READY FOR FINAL MAIN MERGE REVIEW**: adopted/backfilled and native and mixed FEFO,
+receipt replay, multi-lot atomicity, event identity, tenant isolation, drift
+fail-closed and concurrency all pass; no P0/P1 remains. Next: external final
+main-merge review; do not merge main, deploy, touch remote D1/PayOS or start T10.
+Exact commands, failures and clean-checkout proof: `FINAL_PATCH_VERIFICATION.md`.
+
+## Historical backfill PATCH continuation — superseded by bf391c5
 
 Repository `vn-2e/frigo-dev`; branch `hoplite/kydonia-2785bb72`.
 Start/docs: `f06289b8d440071b213604c360b8839dbbf350cb`.

@@ -1,6 +1,21 @@
 # T09 verification (append-only evidence)
 
-## Current backfill compatibility verification — 2026-09-11
+## Current FEFO v2 backfill verification — 2026-09-11
+
+Final application freeze **`bf391c5fdcdd9e9c2f2257db515815e082cb4381`**, published/fetched on
+`hoplite/himera-6d3eda84` (successor at exact docs HEAD `8552fe5337245f2ac8349933c02946bf7d9dcc8f`; kydonia tip
+unchanged). The FEFO v2 backfill P1 was reproduced (13/13 new tests fail
+DRIFT_DETECTED pre-fix, zero mutation) and fixed with additive 0029 SQL authority
+plus the minimal executor mapping fix; native equal-ID behavior is unchanged.
+Executed: focused 1,237/15 files (59.52s); full 2,926/108 (118.20s); 44 real
+local-D1; lint; typecheck; build; 29-migration smoke; local D1 apply + schema gate;
+`git diff --check`. Clean detached exact remote SHA worktree repeated: frozen
+install, 2,926/108 (119.10s), lint/typecheck/build/migration smoke/local schema,
+44 real-D1, `git diff --check` clean, empty `git status --porcelain`. All PASS.
+NO GITHUB CI STATUS. Remaining P0/P1: NONE. **READY FOR FINAL MAIN MERGE REVIEW**.
+Full commands/failure chronology: `FINAL_PATCH_VERIFICATION.md`.
+
+## Historical backfill PATCH verification — superseded by bf391c5
 
 Final application freeze **`df73bc035c2938b6fd082c57f6bca89a82d8e443`**, published/fetched
 on `hoplite/kydonia-2785bb72`. Backfilled manual PATCH P1 reproduced/fixed; all required

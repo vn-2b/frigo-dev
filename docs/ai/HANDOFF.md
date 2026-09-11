@@ -1,6 +1,42 @@
 # Frigo AI Handoff — isolated T09 development
 
-## Current authoritative handoff — backfill compatibility, 2026-09-11
+## Current authoritative handoff — FEFO v2 backfill compatibility, 2026-09-11
+
+Program: Inventory Truth Layer
+Task: T09 — final FEFO v2 backfilled synthetic-lot compatibility
+Status: FINAL_P1_FIXED_AND_FULLY_VERIFIED; READY_FOR_FINAL_MAIN_MERGE_REVIEW
+Canonical Repository: vn-2e/frigo-dev (live origin vb-2f/frigo-dev, same lineage)
+Published Branch: hoplite/himera-6d3eda84 (successor at exact docs HEAD 8552fe5337245f2ac8349933c02946bf7d9dcc8f;
+hoplite/kydonia-2785bb72 tip unchanged at 8552fe5337245f2ac8349933c02946bf7d9dcc8f)
+Starting Docs HEAD: 8552fe5337245f2ac8349933c02946bf7d9dcc8f
+Historical GLM Freeze: 9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f
+Historical Astra Replay Fix: 27427383d61930ea1b67ccbc1d69bb1cc069f931
+Historical PATCH Parity Freeze: e796f695bdb4228853992cdedc4e3cecf3437adb
+Historical Backfill PATCH Freeze: df73bc035c2938b6fd082c57f6bca89a82d8e443
+New Final FEFO Application Freeze: bf391c5fdcdd9e9c2f2257db515815e082cb4381
+Docs HEAD: docs-only commit containing this receipt; exact fetched SHA in final operator report
+Main SHA: d1b06732f8a80db4e77986df31ff28d9f04641fa (unchanged)
+Ahead/behind main: start 29/0; application 30/0; following docs checkpoint 31/0
+Changes: additive 0029 replaces the two 0027 v2 FEFO equal-ID/strict-prestate-parity
+guards with authoritative adoption-mapping checks as separate shallow trigger
+statements (D1 expression depth <= 100); FEFO executor drops the fail-closed TS guard
+(requireParity admission now governs, exactly as v1), authenticates replay mappings
+via authoritativeMapping, and writes the lot CAS with the mapped projection identity.
+Migration smoke now replays 0028 (previously missed) and 0029; the local D1 schema
+gate requires 0029.
+Verification: 13-test permanent backfilled-FEFO matrix (single/multi/mixed incl. kg
+display, terminal/partial, replay, changed-intent, stale, lost response, tenancy,
+drift, four race pairs plus a multi-lot allocation race); 1,237 focused/15 files;
+2,926 full/108; 44 real local-D1; lint/typecheck/build/migration/schema/diff PASS;
+clean detached exact-SHA checkout repeats everything with empty status. Native
+equal-ID FEFO/PATCH suites unchanged and PASS. NO GITHUB CI STATUS.
+Remaining P0/P1: NONE. Relevant merge-blocking P2: NONE known.
+Next action: external final main-merge review. Do not merge main, deploy, touch
+remote D1/PayOS, redesign guest transfer or start T10 from this packet.
+Settings overlay preserved byte-for-byte/uncommitted. Details:
+inventory-truth/t09/FINAL_PATCH_VERIFICATION.md.
+
+## Historical backfill compatibility handoff — superseded by bf391c5
 
 Program: Inventory Truth Layer
 Task: T09 — targeted legitimate backfilled-lot PATCH compatibility
