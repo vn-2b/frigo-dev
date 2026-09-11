@@ -74,6 +74,13 @@ pnpm install --frozen-lockfile
   rejected by GitHub (ref conflict with the live parent branch) — resolved via
   the platform start-branch successor (dashed name) after the internal train
   merge of PR #1
+- The PR tooling twice auto-committed the `.hoplite/settings.json` workspace
+  overlay onto published branches (`99e4b7b` on the T09 branch during PR #1
+  creation; `a3abd6d` on this branch during PR #2 creation). Both were
+  corrected by following restore commits (`09f13c4`, `ab1e983`) published with
+  compare-and-swap leases; the repository's committed settings (sqlite3 setup +
+  security-preview run script) are intact on the branch and the overlay remains
+  uncommitted local workspace state, byte-for-byte.
 
 ## 6. Known non-issues
 

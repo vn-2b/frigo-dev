@@ -24,8 +24,11 @@ is untouched and NOT merged).
 - **T10 application freeze: `6c28858acd0627d2d602998107c2e260c5e4f0d5`** —
   `feat(t10): add inventory observation reconciliation authority` — published/fetched,
   local == remote == exact clean-checkout SHA
-- T10 docs HEAD: the docs-only commit on top of the freeze; exact SHA in the
-  final operator report (a commit cannot embed its own hash)
+- T10 docs checkpoint: `18519f0e1ea2763f7e922ba3e18e7ca67a1ff486`
+- Second PR-tooling overlay auto-commit (`a3abd6d`, during PR #2 creation)
+  corrected by `ab1e9832e7674af9a0712664192547004663729e`; the branch tip after
+  this docs follow-up is recorded in the final operator report. The overlay
+  remains uncommitted, byte-for-byte (same SHA-256 as above).
 
 ## Baseline before edits (from the T10 branch at the T09 tree)
 
