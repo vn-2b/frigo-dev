@@ -1,6 +1,20 @@
 # T09 review index
 
-## Current authoritative backfill compatibility packet — 2026-09-11
+## Current authoritative FEFO v2 backfill packet — 2026-09-11
+
+Repository `vn-2e/frigo-dev` (live origin `vb-2f/frigo-dev`); branch
+`hoplite/himera-6d3eda84` (successor at exact docs HEAD `8552fe5337245f2ac8349933c02946bf7d9dcc8f`;
+kydonia tip unchanged). **New final application freeze: `bf391c5fdcdd9e9c2f2257db515815e082cb4381`**
+(published/fetched, local == remote). Historical lineage: GLM `9bf9ac0` →
+Astra replay `2742738` → PATCH parity `e796f69` → docs `f06289b` → backfill PATCH
+`df73bc035c2938b6fd082c57f6bca89a82d8e443` → docs `8552fe5337245f2ac8349933c02946bf7d9dcc8f` → FEFO backfill `bf391c5fdcdd9e9c2f2257db515815e082cb4381` → this docs-only
+checkpoint. Read `FINAL_PATCH_VERIFICATION.md` first: reproduced/fixed final FEFO
+backfill P1; authoritative (not bypassed) SQL mapping checks in additive 0029;
+1,237 focused/15 files, 2,926 full/108, 44 real-D1; complete clean detached-source
+gates PASS with empty status. Native equal-ID authority unchanged. Remaining
+P0/P1: NONE. **READY FOR FINAL MAIN MERGE REVIEW**; this agent does not merge main.
+
+## Historical backfill PATCH packet — superseded by bf391c5
 
 Repository `vn-2e/frigo-dev`; branch `hoplite/kydonia-2785bb72`.
 **Final application freeze: `df73bc035c2938b6fd082c57f6bca89a82d8e443`** (published/fetched).

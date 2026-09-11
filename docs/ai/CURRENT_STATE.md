@@ -1,6 +1,29 @@
 # Frigo current state — isolated T09 development
 
-## Current authoritative state — backfill compatibility, 2026-09-11
+## Current authoritative state — FEFO v2 backfill compatibility, 2026-09-11
+
+Repository `vn-2e/frigo-dev` (live origin `vb-2f/frigo-dev`, same lineage), branch
+`hoplite/himera-6d3eda84`, the platform-verified successor checked out at the exact
+previous docs HEAD `8552fe5337245f2ac8349933c02946bf7d9dcc8f` (`hoplite/kydonia-2785bb72` tip unchanged there).
+**New final T09 application freeze: `bf391c5fdcdd9e9c2f2257db515815e082cb4381`** — `fix(t09): support backfilled
+mappings in fefo authority` — published/fetched with local/remote equality PASS.
+The last remaining P1 is fixed: FEFO v2 now serves legitimate adopted/backfilled
+synthetic lot mappings. Equal-ID authority was replaced, not bypassed: additive
+`0029_inventory_fefo_backfill_compatibility.sql` recreates only the two v2 FEFO
+triggers so a lot acts under its legacy projection identity only when LEGACY_BACKFILL
+provenance, source identity and the immutable adoption receipt prove the mapping with
+a preserved version offset; prestate parity accepts the exact kg/l display aliases;
+poststate guards stay strict and native equal-ID lots pass unchanged. P1 reproduced
+first (13/13 new tests fail DRIFT_DETECTED on the pre-fix tree, zero mutation).
+Fresh PASS: 1,237 focused/15 files (59.52s); 2,926 full/108 (118.20s); 44 real
+local-D1; lint/typecheck/build/29-migration smoke/local schema/diff. Clean detached
+exact-remote-SHA checkout repeated every gate: 2,926/108 (119.10s), 44 D1, empty
+git status. NO GITHUB CI STATUS for the branch. No route invokes v2 FEFO; the adopted
+cook path already uses synthetic-compatible v1 commands. Verdict: **READY FOR FINAL
+MAIN MERGE REVIEW** (main not merged by this agent). Exact evidence:
+`inventory-truth/t09/FINAL_PATCH_VERIFICATION.md`.
+
+## Historical backfill compatibility state — superseded by bf391c5
 
 Repository `vn-2e/frigo-dev`, branch `hoplite/kydonia-2785bb72`.
 Final backfill compatibility application freeze: **`df73bc035c2938b6fd082c57f6bca89a82d8e443`**.

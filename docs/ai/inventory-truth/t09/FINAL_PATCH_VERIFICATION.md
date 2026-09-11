@@ -1,6 +1,74 @@
 # T09 final targeted PATCH verification — 2026-09-11
 
-## Current authority — backfilled-lot compatibility
+## Current authority — FEFO v2 backfill compatibility
+
+| Field | Current value |
+| --- | --- |
+| Repository / branch | `vn-2e/frigo-dev` (live origin `vb-2f/frigo-dev`) / `hoplite/himera-6d3eda84` (successor at docs HEAD `8552fe5337245f2ac8349933c02946bf7d9dcc8f`; kydonia tip unchanged) |
+| Starting docs HEAD | `8552fe5337245f2ac8349933c02946bf7d9dcc8f` |
+| Historical GLM freeze | `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` |
+| Historical Astra replay fix | `27427383d61930ea1b67ccbc1d69bb1cc069f931` |
+| Historical PATCH parity freeze | `e796f695bdb4228853992cdedc4e3cecf3437adb` |
+| Previous backfill PATCH freeze | `df73bc035c2938b6fd082c57f6bca89a82d8e443` |
+| **New final FEFO application freeze** | **`bf391c5fdcdd9e9c2f2257db515815e082cb4381`** (published/fetched, local == remote) |
+| Docs HEAD | Following docs-only commit containing this section; exact fetched SHA in the final operator report |
+| Main | `d1b06732f8a80db4e77986df31ff28d9f04641fa` (unchanged) |
+| Ahead / behind main | Start 29/0; application 30/0; following docs checkpoint 31/0 |
+| P1 reproduction | REPRODUCED — 13/13 new tests fail `DRIFT_DETECTED` at `prepareInventoryFefoCommand:818` on the pre-fix tree, zero mutation |
+| Equal-ID assumptions found | TS admission guard; TS replay `legacyItemId === after.id`; TS lot CAS default; SQL 0027 receipt `l.id IS NOT l.legacy_item_id` + strict prestate parity; SQL 0027 event `l.id = l.legacy_item_id` |
+| Migration decision | 0029 ADDED — TS-only fix insufficient: 0027's v2 receipt/event triggers abort synthetic inserts at the SQL boundary |
+| Verdict | **READY FOR FINAL MAIN MERGE REVIEW** — no P0/P1 or known merge-blocking P2 remains |
+
+### FEFO identity model
+
+- Native lot identity: `inventory_lots.id` (for example `t08-legacy:patch-rice`).
+- Projection identity: `inventory_lots.legacy_item_id` → `inventory_items.id`
+  (for example `patch-rice`); FEFO events reference the projection identity.
+- Authoritative mapping evidence: the immutable 0028 adoption receipt effects
+  (`lotId`, `legacyItemId`, `after`, `projectionAfter`) bound to household/actor/
+  source version, checked by TS `requireParity`/`authoritativeMapping` admission
+  and replay, and independently by the 0029 SQL mapping guards (provenance, source
+  identity, createdAt, version ceiling and preserved `version - legacy_version`
+  offset). Never name/ingredient/quantity/household-only or caller-provided IDs.
+
+### Executed verification (exact)
+
+- Reproduction (pre-fix tree): `pnpm exec vitest run
+  tests/integration/inventory-backfilled-fefo.test.ts` — 13 failed (13),
+  all `DRIFT_DETECTED` at `prepareInventoryFefoCommand:818`, facts unchanged.
+- Focused (fixed tree): 15 files listed in the packet — **1,237/1,237 PASS**
+  (59.52s), including the new 13-test backfilled-FEFO matrix, the extended
+  78-test FEFO schema authority suite and all native FEFO/PATCH/adoption/
+  concurrency/writer-fence suites.
+- Full: `pnpm test` — **2,926/2,926 PASS, 108 files, 118.20s**.
+- `pnpm lint` PASS; `pnpm typecheck` PASS; `pnpm build` PASS.
+- `pnpm check:migrations` PASS — 29 migrations replay (0028 was previously missing
+  from the smoke and is now included with 0029; adoption objects asserted).
+- `pnpm exec wrangler d1 migrations apply frigo-db --local` — all 29 applied.
+- `pnpm schema:check:local` PASS (requires 0029).
+- `pnpm exec vitest run tests/integration/inventory-lot-d1.test.mjs` —
+  **44/44 PASS** (real workerd/D1, both trees).
+- `git diff --check` clean.
+- Clean detached checkout at exact remote `bf391c5fdcdd9e9c2f2257db515815e082cb4381`: frozen install (1.9s);
+  full **2,926/108 PASS (119.10s)**; lint/typecheck/build PASS; 29-migration
+  smoke PASS; local D1 apply + schema gate PASS; **44/44 D1 PASS**;
+  `git diff --check` clean; `git status --porcelain` **empty**.
+- GitHub CI: **NO GITHUB CI STATUS** (zero runs for the branch).
+
+### Failure chronology corrected during this task
+
+1. First 0029 draft nested the new mapping/parity predicates inside 0027's deep
+   guards; node:sqlite accepted it but real D1 aborted every receipt insert with
+   `D1_ERROR: Expression tree is too large (maximum depth 100)` (SQLite compiles
+   all trigger bodies when preparing inserts). Restructured into separate shallow
+   trigger statements; bisected through the D1 worker; all D1 tests then passed.
+2. The FEFO lot CAS defaulted `legacy_item_id` to the native lot ID, so synthetic
+   updates matched zero rows (`STALE_VERSION`); fixed by binding the mapped
+   projection identity, mirroring the v1 executor.
+3. Migration-head assertions in three suites and the migration smoke/gate were
+   extended from 28 to 29 migrations (0028 was never in the smoke; now included).
+
+## Historical PATCH authority — superseded by bf391c5
 
 | Field | Current value |
 | --- | --- |

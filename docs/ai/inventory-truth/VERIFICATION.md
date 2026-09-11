@@ -1,6 +1,20 @@
 # Inventory Truth verification
 
-## T09 current backfill compatibility verification — 2026-09-11
+## T09 current FEFO v2 backfill verification — 2026-09-11
+
+Final application freeze **`bf391c5fdcdd9e9c2f2257db515815e082cb4381`** published/fetched on `hoplite/himera-6d3eda84`
+in `vn-2e/frigo-dev` (successor at exact docs HEAD 8552fe5337245f2ac8349933c02946bf7d9dcc8f; kydonia tip unchanged).
+1,237 focused/15 files (59.52s); 2,926 full/108 (118.20s); 44 actual local-D1,
+zero failures/skips. Lint/typecheck/build/29-migration smoke/local schema/diff PASS.
+Clean exact-SHA worktree: frozen install; 2,926/108 (119.10s); static/build/migration
+and local schema gates; 44 local-D1; empty git status. P1 reproduced first: all 13
+new backfilled-FEFO tests failed DRIFT_DETECTED at prepareInventoryFefoCommand:818
+on the pre-fix tree with zero mutation. NO GITHUB CI STATUS.
+The FEFO v2 backfill P1 is fixed with additive 0029 SQL authority. Verdict:
+**READY FOR FINAL MAIN MERGE REVIEW**. Full commands/failure chronology:
+`t09/FINAL_PATCH_VERIFICATION.md`.
+
+## Historical backfill PATCH verification — superseded by bf391c5
 
 Final application freeze `df73bc035c2938b6fd082c57f6bca89a82d8e443` published/fetched
 on `hoplite/kydonia-2785bb72` in `vn-2e/frigo-dev`.

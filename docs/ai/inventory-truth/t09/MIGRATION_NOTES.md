@@ -1,5 +1,33 @@
 # T09 migration notes
 
+## T09 final FEFO backfill compatibility — 0029 (bf391c5fdcdd9e9c2f2257db515815e082cb4381)
+
+`0029_inventory_fefo_backfill_compatibility.sql` is additive and immutable-history
+safe: 0023-0028 are untouched; it only drops and recreates the two v2 FEFO authority
+triggers 0027 created. Reason a TypeScript-only fix was insufficient: with the TS
+guards removed, 0027's receipt trigger still aborted every synthetic v2 receipt
+insert with `Inventory FEFO command evidence mismatch` (`l.id IS NOT l.legacy_item_id`
+in the before-snapshot guard and strict `i.unit = l.canonical_unit` prestate parity),
+and the v2 event trigger aborted on `l.id = l.legacy_item_id`; the SQL boundary is
+authoritative, so compatibility had to be installed in SQL.
+New authority: a lot may act under its legacy projection identity when it is
+LEGACY_BACKFILL stock whose `source_id` equals `legacy_item_id` and the immutable
+`inventory_adoption_receipts` evidence binds household/actor/source version and an
+effect with matching `lotId`/`legacyItemId`, matching `after` provenance
+(householdId/createdAt/sourceType/sourceId), `after.version <= l.version` and the
+preserved `version - legacy_version` offset. Prestate parity accepts exactly the
+kg/l display aliases; poststate parity and the completion fence stay strict.
+Implementation constraint: D1 caps expression depth at 100 and compiles all trigger
+bodies when preparing inserts on the table, so the new checks are separate shallow
+trigger statements (0027's own technique); an inline variant failed on real D1 with
+`Expression tree is too large` and was restructured before publish.
+Backward compatibility: native equal-ID lots satisfy the first branch of every
+replaced check; all 0027 v1 trigger objects are preserved by name (schema-test
+asserted); all 29 migrations replay from empty and populated baselines; the
+migration smoke now also replays 0028 (previously missed) and 0029 and asserts the
+adoption objects; the local D1 schema gate requires 0029; real workerd/D1 applies
+all 29 and passes 44 tests. Remote D1 untouched.
+
 ## T09F additive schema — 0028 (9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f)
 
 `0028_inventory_adoption_authority.sql` adds `inventory_adoption_receipts`

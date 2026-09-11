@@ -547,3 +547,65 @@ describe('T09 receipt-backed synthetic mappings on real local D1', () => {
     expect(committed[2].some((row) => row.id === input.lotId)).toBe(false);
   });
 });
+
+describe('T09 backfilled FEFO authority on real local D1', () => {
+  async function backfillFefoFixture() {
+    const fixture = await raceFixture('CREATE');
+    const { scope, now } = fixture;
+    expect(await batch([{ sql: `INSERT INTO inventory_items(id,household_id,ingredient_id,name,quantity,unit,category,storage,
+      expiry_date, expiry_kind, expiry_source) VALUES
+      (?, ?, 'RICE', 'Rice A', 1, 'g', 'grain', 'pantry', '2026-09-15', 'use_by', 'user'),
+      (?, ?, 'RICE', 'Rice B', 1, 'g', 'grain', 'pantry', '2026-09-20', 'use_by', 'user')`,
+      values: [`rice-a-${scope.householdId}`, scope.householdId, `rice-b-${scope.householdId}`, scope.householdId] }]))
+      .toMatchObject({ status: 200 });
+    const adoption = await requestCommand('adopt', { scope, now });
+    expect(adoption, adoption.error).toMatchObject({ status: 200, result: { mappedLotCount: 2 } });
+    expect(adoption.result.effects.map((effect) => [effect.lotId, effect.legacyItemId])).toEqual([
+      [`t08-legacy:rice-a-${scope.householdId}`, `rice-a-${scope.householdId}`],
+      [`t08-legacy:rice-b-${scope.householdId}`, `rice-b-${scope.householdId}`],
+    ]);
+    return { ...fixture, riceA: `rice-a-${scope.householdId}`, riceB: `rice-b-${scope.householdId}`,
+      input: { type: 'USE', mode: 'FEFO', ingredientId: 'RICE', quantity: 1.5, unit: 'g', reason: 'Real D1 proof' } };
+  }
+
+  it('allocates adopted backfilled lots atomically with projection and event identity', async () => {
+    const { scope, input, now, facts, riceA, riceB } = await backfillFefoFixture();
+    const executed = await requestCommand('command', { scope, input, now, key: 'backfill-fefo' });
+    expect(executed).toMatchObject({ status: 200, replayed: false, result: { schemaVersion: 2, mode: 'FEFO', effects: [
+      { ordinal: 0, legacyItemId: riceA, deltaMilli: -1000,
+        after: { quantityMilli: 0, state: 'CONSUMED', version: 3, legacyVersion: 2 } },
+      { ordinal: 1, legacyItemId: riceB, deltaMilli: -500,
+        after: { quantityMilli: 500, state: 'ACTIVE', version: 3, legacyVersion: 2 } },
+    ] } });
+    const stock = await facts();
+    expect(stock[1].map((row) => [row.id, row.legacy_item_id, row.quantity_milli, row.version])).toEqual([
+      [`t08-legacy:${riceA}`, riceA, 0, 3], [`t08-legacy:${riceB}`, riceB, 500, 3],
+    ]);
+    expect(stock[2].map((row) => [row.id, row.quantity, row.unit, row.version])).toEqual([
+      [riceA, 0, 'g', 2], [riceB, 0.5, 'g', 2],
+    ]);
+    expect(stock[4].filter((row) => row.command_id === executed.result.commandId)
+      .sort((a, b) => Number(JSON.parse(a.metadata).ordinal) - Number(JSON.parse(b.metadata).ordinal))
+      .map((row) => row.inventory_item_id)).toEqual([riceA, riceB]);
+    const committed = await facts();
+    expect(await requestCommand('command', { scope, input, now, key: 'backfill-fefo' }))
+      .toEqual({ status: 200, result: executed.result, replayed: true });
+    expect(await facts()).toEqual(committed);
+  });
+
+  it('resolves a multi-lot backfilled FEFO race with one authority outcome', async () => {
+    const { scope, input, now, facts, riceA, riceB } = await backfillFefoFixture();
+    const race = await requestCommand('race', {
+      contender: { scope, input, now, key: 'backfill-contender' },
+      winner: { scope, input, now, key: 'backfill-winner' },
+    });
+    expect(race).toMatchObject({ status: 200, arrivals: 1,
+      winner: { execution: { replayed: false } }, contender: { error: 'STALE_SNAPSHOT' } });
+    const stock = await facts();
+    expect(stock[3].map((row) => row.client_key)).toEqual(['backfill-winner']);
+    expect(stock[1].map((row) => [row.quantity_milli, row.state])).toEqual([[0, 'CONSUMED'], [500, 'ACTIVE']]);
+    expect(stock[2].map((row) => row.quantity)).toEqual([0, 0.5]);
+    expect(stock[4].filter((row) => row.command_id === race.winner.execution.result.commandId)).toHaveLength(2);
+    expect(stock[1].every((row) => row.quantity_milli >= 0)).toBe(true);
+  });
+});

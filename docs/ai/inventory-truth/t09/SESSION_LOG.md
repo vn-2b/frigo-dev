@@ -1,5 +1,33 @@
 # T09 session log (append-only)
 
+## 2026-09-11 — final FEFO v2 backfill compatibility
+
+Verified startup safety on `hoplite/himera-6d3eda84` (successor at exact docs HEAD
+8552fe5337245f2ac8349933c02946bf7d9dcc8f): df73bc0/e796f69/2742738/9bf9ac0 ancestors, main d1b06732f8a80db4e77986df31ff28d9f04641fa unchanged,
+29 ahead/0 behind, settings overlay preserved uncommitted. Audited the full FEFO v2
+authority chain and proved four equal-ID dependencies: the TS admission guard and
+replay's `legacyItemId === after.id` in `inventory-lot-commands.ts`, the lot CAS
+default binding, and 0027's receipt (`l.id IS NOT l.legacy_item_id`, strict prestate
+parity) and event (`l.id = l.legacy_item_id`) triggers. Wrote the 13-test permanent
+matrix first and reproduced the P1 on the pre-fix tree (all DRIFT_DETECTED at
+prepareInventoryFefoCommand:818, zero mutation). Proved TS-only insufficient, then
+added additive 0029 (authoritative adoption-mapping checks + exact kg/l prestate
+parity) and the minimal executor fix. First 0029 draft nested the checks inline and
+real local D1 aborted every receipt insert with `Expression tree is too large
+(maximum depth 100)`; restructured the checks as separate shallow trigger statements
+and bisected the failure through the D1 worker before publish. Flipped the previous
+fail-closed admission test to the fixed success path; extended schema tests (0029
+upgrade replay preserves 0027 objects; captured synthetic batch accepted only with
+adoption evidence), migration smoke (now replays 0028+0029), the D1 schema gate
+(requires 0029) and two real local-D1 workerd tests. Focused 1,237/15 (59.52s);
+full 2,926/108 (118.20s); D1 44/44; lint/typecheck/build/29-migration smoke/local
+schema/diff PASS. Application `bf391c5fdcdd9e9c2f2257db515815e082cb4381` published/fetched with equality, then a
+clean detached worktree at that exact SHA repeated every gate (2,926/108 in 119.10s,
+44 D1, empty git status). NO GITHUB CI STATUS. Bounded caller audit: no HTTP route
+invokes v2 FEFO; adopted cooking already uses synthetic-compatible v1 commands.
+Remaining P0/P1: NONE. Verdict: READY FOR FINAL MAIN MERGE REVIEW; no main merge,
+deployment, remote D1, PayOS or T10 performed.
+
 ## 2026-09-11 — receipt-backed backfill compatibility
 
 Verified f06289b docs HEAD, e796f69/2742738/9bf9ac0 ancestors, unchanged main d1b0673,

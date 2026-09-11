@@ -67,6 +67,8 @@ VALUES ('migration_smoke_req_only', 'migration_smoke_plan', 'GINGER', 'Gừng', 
 .read migrations/0025_inventory_event_authority.sql
 .read migrations/0026_inventory_event_poststate.sql
 .read migrations/0027_inventory_fefo_authority.sql
+.read migrations/0028_inventory_adoption_authority.sql
+.read migrations/0029_inventory_fefo_backfill_compatibility.sql
 
 CREATE TEMP TABLE assert_zero (value INTEGER NOT NULL CHECK (value = 0));
 INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_foreign_key_check;
@@ -85,6 +87,9 @@ INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger'
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_commands_fefo_authority_insert';
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_commands_fefo_envelope_insert';
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_events_command_fefo_authority_insert';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'inventory_adoption_receipts';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_adoption_receipts_immutable_update';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_adoption_receipts_immutable_delete';
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'storage_locations';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('ingredient_aliases') WHERE name = 'normalized_alias';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_items') WHERE name = 'expiry_source';

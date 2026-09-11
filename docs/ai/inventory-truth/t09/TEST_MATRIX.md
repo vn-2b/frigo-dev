@@ -1,6 +1,29 @@
 # T09 test matrix
 
-## Current backfill compatibility gate — df73bc035c2938b6fd082c57f6bca89a82d8e443
+## Current FEFO v2 backfill gate — bf391c5fdcdd9e9c2f2257db515815e082cb4381
+
+| Proof | Result |
+| --- | --- |
+| P1 reproduction on pre-fix tree (real adoption, real FEFO) | 13/13 fail DRIFT_DETECTED, zero mutation |
+| Adopted single-lot FEFO | Durable lot/projection/event identity and versions PASS |
+| Adopted multi-lot FEFO | Deterministic order, per-effect native→projection mapping PASS |
+| Mixed native + synthetic (incl. kg display row) | Expiry-only ordering; canonicalization; native untouched PASS |
+| Terminal depletion / partial depletion | CONSUMED + out_of_stock projection / coherent remainders PASS |
+| Version offset across FEFO→CORRECT→MOVE→FEFO and replay after later writes | PASS |
+| Exact same-key replay; changed quantity; changed expected version | Replay PASS; IDEMPOTENCY_CONFLICT PASS |
+| Distinct-key stale snapshot; lost response after commit | STALE_SNAPSHOT; receipt-backed replay PASS, no duplicates |
+| Foreign actor / foreign household stock | FORBIDDEN; foreign stock untouched PASS |
+| Drift: wrong ingredient/unit, tampered evidence, broken offset, deleted receipt | INSUFFICIENT_INVENTORY / CORRUPT_RECEIPT / DRIFT_DETECTED / ADOPTION_REQUIRED PASS |
+| FEFO vs FEFO/CORRECT/DISCARD/MOVE; multi-lot allocation race (barriers) | One winner, STALE_SNAPSHOT, no overspend/partial effects PASS |
+| SQL authority: captured synthetic batch | Commits with evidence; rejected without receipt; rejected outside kg/l aliases PASS |
+| 0029 upgrade replay; 0027 objects; 29 migrations; schema gate | All PASS; native v1/v2 still pass |
+| Real local D1 workerd | Adopted multi-lot FEFO + replay; multi-lot race one-outcome PASS |
+| Native equal-ID regression | All pre-existing FEFO/PATCH/replay/concurrency/adoption/fence suites PASS |
+
+1,237 focused/15 files (59.52s); 2,926 full/108 (118.20s; clean tree 119.10s);
+44 real local-D1 both trees; lint/typecheck/build/migration/schema/diff PASS.
+
+## Historical PATCH compatibility gate — superseded by bf391c5
 
 | Proof | Result |
 | --- | --- |
