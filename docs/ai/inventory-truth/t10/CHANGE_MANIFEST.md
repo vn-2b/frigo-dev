@@ -1,7 +1,16 @@
 # T10 change manifest
 
-Application freeze `6c28858acd0627d2d602998107c2e260c5e4f0d5` (16 files,
-+2,465/−7). Docs-only commit follows on top.
+## Composition fix freeze `4c414fa7eb33329ee12936c0899644af67e48f07` (3 files)
+
+| File | Change |
+| --- | --- |
+| `packages/domain/src/inventory-reconciliation.ts` | `composeProposals` merges per-dimension CORRECTs into one CORRECT + at most one MOVE bound to the matched lot/version; `PROPOSAL_COMPOSITION_CONFLICT` on contradictory values; verdict priority (lone expiry / lone move / otherwise PROPOSE_CORRECTION) |
+| `packages/db/src/inventory-reconciliation.ts` | `assertProposalSetInvariant` at the decision boundary (max one CORRECT, one MOVE, same lot/version, type consistency; fail closed); `decisionCommandSpecs` re-asserts uniqueness and composes MOVE with `useCurrentLotVersion` after CORRECT |
+| `tests/integration/inventory-reconciliation-composition.test.ts` | New — 19 permanent regressions (16 fail pre-fix) |
+
+No migration; 0023–0030 untouched (count 30). No unrelated files.
+
+## Initial freeze `6c28858acd0627d2d602998107c2e260c5e4f0d5` (historical; 16 files, +2,465/−7)
 
 ## Added (application)
 

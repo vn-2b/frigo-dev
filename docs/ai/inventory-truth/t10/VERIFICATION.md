@@ -1,5 +1,77 @@
 # T10 verification receipt
 
+## Current authoritative freeze — multi-field reconciliation composition fix
+
+**T10 application freeze: `4c414fa7eb33329ee12936c0899644af67e48f07`** —
+`fix(t10): compose multi-field reconciliation commands atomically` — published/
+fetched, local == remote == clean-checkout SHA. The previous freeze `6c28858acd0627d2d602998107c2e260c5e4f0d5`
+is superseded (historical; remains an ancestor).
+
+### Reproduced P1 (pre-fix, at `6c28858`)
+
+Pure-planner repro (native lot v3, 2 kg, KNOWN 2026-09-20, fridge; observation OBSERVED):
+
+| Case | Pre-fix verdict | Pre-fix proposals |
+| --- | --- | --- |
+| quantity + expiry | PROPOSE_EXPIRY_UPDATE | **2 CORRECT** ({quantity,unit}, {expiryAt,expiryKind}) |
+| quantity + openedAt | PROPOSE_CORRECTION | **2 CORRECT** ({quantity,unit}, {openedAt}) |
+| quantity + expiry + openedAt | PROPOSE_EXPIRY_UPDATE | **3 CORRECT** |
+| quantity + storage | PROPOSE_CORRECTION | 1 CORRECT + 1 MOVE (correct count; verdict fine) |
+| quantity + expiry + storage | PROPOSE_EXPIRY_UPDATE | **2 CORRECT + 1 MOVE** (3 proposals; also exceeded the declared max of 2) |
+
+Root cause: `evaluateOne` collected each dimension's proposal independently and
+the verdict chose EXPIRY_UPDATE whenever any expiry-only CORRECT existed;
+`decisionCommandSpecs` mapped every CORRECT to `<decisionKey>#CORRECT`, so split
+CORRECTs shared a client key and a single expectedVersion (idempotency/CAS hazard).
+
+### Fix
+
+- Planner `composeProposals`: merges all compatible CORRECT changes into exactly
+  one CORRECT and keeps at most one MOVE, both bound to the matched lot at its
+  current version; contradictory values for one property, cross-lot/version
+  proposals or a second MOVE → CONFLICT `PROPOSAL_COMPOSITION_CONFLICT`.
+- Verdicts: lone expiry → PROPOSE_EXPIRY_UPDATE; lone move → PROPOSE_MOVE; any
+  other combination (incl. expiry+storage) → PROPOSE_CORRECTION with exact proposals.
+- Decision boundary `assertProposalSetInvariant`: max one CORRECT, max one MOVE,
+  same lotId and expectedVersion, declared decision type consistent with the set;
+  malformed caller input → INVALID_DECISION (never normalized). `decisionCommandSpecs`
+  re-asserts uniqueness and composes CORRECT+MOVE via T09 `useCurrentLotVersion`
+  (the manual PATCH adapter's atomic pattern).
+- No migration; 0023–0030 byte-identical; migration count stays 30.
+
+### Regression coverage
+
+`tests/integration/inventory-reconciliation-composition.test.ts` (19 tests):
+8-case pure matrix + single-dimension verdict preservation + zero-quantity
+no-fabricated-terminal-state + all-match; boundary rejections (two CORRECT, two
+MOVE, cross-lot, mismatched version, split CORRECTs, type/proposal mismatch,
+split-valid → OBSERVATION_STALE); native and backfilled execution (one CORRECT
++ one MOVE, lot version +2, projection coherent, exact replay, four altered-field
+IDEMPOTENCY_CONFLICTs, new key → OBSERVATION_NOT_OPEN); merged CORRECT-only single
+command; zero quantity requires explicit terminalState; races vs CORRECT/MOVE/FEFO.
+**16/19 fail on the pre-fix source** (stash proof), 19/19 pass after the fix.
+
+### Gates at the new freeze (working tree)
+
+| Gate | Result |
+| --- | --- |
+| Full tests | **3,009/3,009 across 113 files** (176.06s) |
+| T10 focused (4 prior suites + composition suite) | 78/78 (59 + 19) |
+| Lint / typecheck / build | PASS / PASS / PASS |
+| Migration smoke | `migration-smoke=ok`, **30 migrations** |
+| Local schema gate | PASS |
+| Real local D1 | 49/49 |
+| `git diff --check` | clean |
+
+### Clean detached checkout at exact remote SHA `4c414fa`
+
+`git worktree add --detach /tmp/frigo-t10-fix 4c414fa…` + `pnpm install --frozen-lockfile`:
+full **3,009/3,009 across 113 files** (173.74s); lint/typecheck/build PASS;
+`migration-smoke=ok` (30); local D1 apply (fresh worktree DB) then schema gate PASS;
+real local D1 49/49; `git diff --check` clean; `git status --porcelain` **empty**.
+
+## Historical receipt — freeze `6c28858acd0627d2d602998107c2e260c5e4f0d5` (superseded)
+
 Application freeze: `6c28858acd0627d2d602998107c2e260c5e4f0d5`
 (`feat(t10): add inventory observation reconciliation authority`),
 branch `hoplite/himera-6d3eda84-t10-observation-reconciliation`,

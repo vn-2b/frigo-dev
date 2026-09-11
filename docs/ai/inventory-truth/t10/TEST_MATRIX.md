@@ -1,6 +1,31 @@
 # T10 test matrix
 
-All rows PASS at application freeze `6c28858acd0627d2d602998107c2e260c5e4f0d5`.
+All rows PASS at application freeze `4c414fa7eb33329ee12936c0899644af67e48f07` (composition fix; `6c28858` historical).
+Suites add `tests/integration/inventory-reconciliation-composition.test.ts` (19).
+
+## Multi-field composition regressions (fix freeze)
+
+| Requirement | Test | Result |
+| --- | --- | --- |
+| quantity + expiry → exactly 1 CORRECT | pure matrix | PASS |
+| quantity + openedAt → exactly 1 CORRECT | pure matrix | PASS |
+| expiry + openedAt → exactly 1 CORRECT (PROPOSE_CORRECTION) | pure matrix | PASS |
+| quantity + expiry + openedAt → exactly 1 CORRECT | pure matrix | PASS |
+| quantity + storage → 1 CORRECT + 1 MOVE | pure matrix | PASS |
+| expiry + storage → 1 CORRECT + 1 MOVE (PROPOSE_CORRECTION, documented) | pure matrix | PASS |
+| quantity + expiry + storage → 1 CORRECT + 1 MOVE | pure matrix | PASS |
+| all four → 1 CORRECT + 1 MOVE | pure matrix | PASS |
+| merged changes object carries every field | pure matrix `toEqual` | PASS |
+| no duplicate CORRECT / MOVE; same lotId + version | `invariant()` on every case | PASS |
+| single-dimension verdicts preserved | dedicated test | PASS |
+| zero-quantity merge never fabricates terminalState | pure + db tests | PASS |
+| boundary: two CORRECT / two MOVE / cross-lot / version mismatch / split CORRECTs / type mismatch | INVALID_DECISION; split-valid → OBSERVATION_STALE; zero mutation | PASS |
+| native lot: one T09 CORRECT + one MOVE, version +2, exact replay, 4 altered-field conflicts, new key → NOT_OPEN | execution test | PASS |
+| backfilled synthetic lot: same + projection coherent (no equal-ID assumption) | execution test | PASS |
+| merged CORRECT-only = one T09 command, one expectedVersion | execution test | PASS |
+| races: multi-field reconcile vs CORRECT / MOVE / FEFO | one winner, no partial correction, zero decision rows/receipts | PASS |
+
+Historical matrix (unchanged, still PASS):
 Suites: `tests/unit/inventory-observations.test.ts` (33),
 `tests/integration/inventory-observations.test.ts` (22),
 `tests/integration/inventory-observation-concurrency.test.ts` (4),

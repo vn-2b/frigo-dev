@@ -1,6 +1,34 @@
 # Frigo AI Handoff — isolated T09 development
 
-## Current authoritative handoff — T10 observations and reconciliation, 2026-09-11
+## Current authoritative handoff — T10 multi-field reconciliation fix, 2026-09-11
+
+Program: Inventory Truth Layer
+Task: T10 — final targeted multi-field reconciliation composition fix
+Status: P1_REPRODUCED_FIXED_AND_FULLY_VERIFIED; T10_COMPLETE_READY_FOR_INDEPENDENT_REVIEW
+Repository: vb-2f/frigo-dev (repository ID 1364064929)
+Branch: hoplite/himera-6d3eda84-t10-observation-reconciliation
+Starting docs HEAD: aa17aeed18b61cad97a2f4f976046a102969a23a
+Previous application freeze (superseded): 6c28858acd0627d2d602998107c2e260c5e4f0d5
+NEW T10 application freeze: 4c414fa7eb33329ee12936c0899644af67e48f07
+Docs HEAD: docs-only commit on top of the freeze; exact SHA in the final report
+T09 ancestors: docs d522769ae89496fd4b3f26419f1fdfe23d9e926a, application
+bf391c5fdcdd9e9c2f2257db515815e082cb4381 (both intact)
+Main SHA: d1b06732f8a80db4e77986df31ff28d9f04641fa (NOT merged)
+Reproduction (pre-fix): quantity+expiry → 2 CORRECT (verdict EXPIRY_UPDATE);
+quantity+opened → 2 CORRECT; quantity+expiry+opened → 3 CORRECT; quantity+storage →
+1 CORRECT + 1 MOVE; quantity+expiry+storage → 2 CORRECT + 1 MOVE (3 proposals).
+Fix: planner merges into ≤1 CORRECT + ≤1 MOVE (contradiction → CONFLICT); decision
+boundary enforces the same invariant and fails closed on malformed caller proposals;
+decisionCommandSpecs re-asserts uniqueness and composes MOVE via useCurrentLotVersion.
+Verification: 19 new regressions (16 fail pre-fix); full 3,009/3,009 (113 files);
+T10 focused 78/78; real local D1 49/49; lint/typecheck/build/30-migration smoke/local
+schema/diff PASS; clean detached exact-SHA checkout repeats everything with EMPTY status.
+No migration; 0023–0030 untouched; PayOS untouched; no PR created/updated for this fix.
+Remaining P0/P1: NONE. Merge-blocking P2: NONE.
+Next action: independent review. Do NOT merge main, deploy, run remote D1 migrations,
+touch PayOS, or start T11. Settings overlay preserved byte-for-byte/uncommitted.
+
+## Historical handoff — initial T10 freeze 6c28858 (superseded)
 
 Program: Inventory Truth Layer
 Task: T10 — observations, evidence and reconciliation authority

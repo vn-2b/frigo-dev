@@ -1,6 +1,15 @@
 # Inventory Truth task board
 
-## Current authoritative T10 observations and reconciliation — 2026-09-11
+## Current authoritative T10 multi-field reconciliation fix — 2026-09-11
+
+Multi-field composition P1 REPRODUCED → FIXED → VERIFIED at new published/fetched application
+freeze **`4c414fa7eb33329ee12936c0899644af67e48f07`** (supersedes `6c28858`). ≤1 merged CORRECT + ≤1 MOVE per finding; boundary
+invariant fail-closed; T09 atomic compose. 3,009 full/113; T10 focused 78/78; 49 real D1;
+all static/30-migration/schema gates PASS from the clean exact-SHA checkout. No migration.
+Remaining P0/P1: NONE. **T10 COMPLETE — READY FOR INDEPENDENT REVIEW.** Main NOT merged;
+T11 NOT STARTED. Receipt: `t10/VERIFICATION.md`.
+
+## Historical T10 initial freeze 6c28858 — superseded
 
 T10 COMPLETE at published/fetched application freeze **`6c28858acd0627d2d602998107c2e260c5e4f0d5`**
 on `hoplite/himera-6d3eda84-t10-observation-reconciliation` (successor of the train base after the

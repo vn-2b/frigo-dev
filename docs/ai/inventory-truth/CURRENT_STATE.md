@@ -1,6 +1,20 @@
 # Inventory Truth current state
 
-## Current authoritative T10 observations and reconciliation — 2026-09-11
+## Current authoritative T10 multi-field reconciliation fix — 2026-09-11
+
+`hoplite/himera-6d3eda84-t10-observation-reconciliation`. **New T10 application freeze
+`4c414fa7eb33329ee12936c0899644af67e48f07`** (published/fetched; local == remote == clean-checkout SHA) supersedes
+`6c28858`. Reproduced P1 — multi-field claims produced 2–3 CORRECT proposals per lot
+with an expiry-only verdict — fixed: the planner now merges all compatible corrections into
+exactly one CORRECT plus at most one MOVE on the matched lot/version (contradictions →
+CONFLICT), and the decision boundary independently enforces max one CORRECT / one MOVE /
+same lot+version, failing closed; CORRECT+MOVE composes atomically through T09. 19 permanent
+regressions (16 fail pre-fix). Gates: 3,009 full/113; T10 focused 78/78; 49 real D1;
+lint/typecheck/build/30-migration smoke/local schema/diff PASS from the clean exact-SHA
+checkout. No migration. Main NOT merged; production NOT deployed; remote D1 NOT touched.
+**T10 COMPLETE — READY FOR INDEPENDENT REVIEW.** T11/T12 NOT STARTED.
+
+## Historical T10 initial freeze 6c28858 — superseded by 4c414fa
 
 `vb-2f/frigo-dev` (repository ID 1364064929; task lineage `vn-2e/frigo-dev`) /
 `hoplite/himera-6d3eda84-t10-observation-reconciliation` (platform start-branch

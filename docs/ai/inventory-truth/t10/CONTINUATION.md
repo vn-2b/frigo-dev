@@ -21,14 +21,21 @@ is untouched and NOT merged).
   byte-for-byte identical, SHA-256
   `6d8f5b45041a5f41bfa6463a5f88fe1e0f5602822ecb403a5d949961f00bbee7`)
 - Train merge (internal base only, NOT main): `668920fa462524e65a79d31a7b0844720baf38e0`
-- **T10 application freeze: `6c28858acd0627d2d602998107c2e260c5e4f0d5`** —
-  `feat(t10): add inventory observation reconciliation authority` — published/fetched,
-  local == remote == exact clean-checkout SHA
+- Historical T10 freeze: `6c28858acd0627d2d602998107c2e260c5e4f0d5` — `feat(t10): add inventory observation
+  reconciliation authority` (superseded by the composition fix; remains an ancestor)
 - T10 docs checkpoint: `18519f0e1ea2763f7e922ba3e18e7ca67a1ff486`
 - Second PR-tooling overlay auto-commit (`a3abd6d`, during PR #2 creation)
   corrected by `ab1e9832e7674af9a0712664192547004663729e`; the branch tip after
   this docs follow-up is recorded in the final operator report. The overlay
   remains uncommitted, byte-for-byte (same SHA-256 as above).
+- Docs follow-up: `aa17aeed18b61cad97a2f4f976046a102969a23a`
+- **T10 application freeze (current): `4c414fa7eb33329ee12936c0899644af67e48f07`** —
+  `fix(t10): compose multi-field reconciliation commands atomically` —
+  published/fetched, local == remote == clean-checkout SHA. Reproduced P1
+  (multi-field claims produced 2–3 CORRECT proposals per lot; mixed claims took an
+  expiry-only verdict) fixed in the planner and defended at the decision boundary;
+  19 permanent regressions. Full 3,009/113; real D1 49/49; 30 migrations.
+- Docs HEAD after this fix: the docs-only commit on top; exact SHA in the final report.
 
 ## Baseline before edits (from the T10 branch at the T09 tree)
 
@@ -38,7 +45,7 @@ local-D1 tests PASS; `git diff --check` clean.
 
 ## Gates at the T10 application freeze
 
-Full 2,990/2,990 across 112 files (177.04s); T10 focused 1,097/1,097 across 19
+Historical at 6c28858: full 2,990/2,990 across 112 files (177.04s); T10 focused 1,097/1,097 across 19
 files (103.49s with the pre-fix 29-count assertion; clean rerun PASS); lint,
 typecheck, build PASS; 30-migration smoke PASS (0030 included with T10 object
 and behavioral assertions); local D1 schema gate requires 0030 PASS; real local
@@ -56,9 +63,9 @@ migrations, touch PayOS, or start T11 from this packet. T11 is NOT STARTED.
 
 - repo: vb-2f/frigo-dev (1364064929)
 - branch: hoplite/himera-6d3eda84-t10-observation-reconciliation
-- last application SHA: 6c28858acd0627d2d602998107c2e260c5e4f0d5
+- last application SHA: 4c414fa7eb33329ee12936c0899644af67e48f07
 - completed phases: T10A–T10G all COMPLETE
-- test status: full 2,990/2,990; real D1 49/49; all static gates PASS
+- test status: full 3,009/3,009; real D1 49/49; all static gates PASS
 - remaining phase: none in T10; T11 next (requires its own authorization)
 - exact next action: independent review; then docs HEAD publication of any
   review follow-ups

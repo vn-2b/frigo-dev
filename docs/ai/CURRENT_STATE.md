@@ -1,6 +1,26 @@
 # Frigo current state — isolated T09 development
 
-## Current authoritative state — T10 observations and reconciliation, 2026-09-11
+## Current authoritative state — T10 multi-field reconciliation fix, 2026-09-11
+
+Branch `hoplite/himera-6d3eda84-t10-observation-reconciliation`.
+**New T10 application freeze: `4c414fa7eb33329ee12936c0899644af67e48f07`** — `fix(t10): compose multi-field
+reconciliation commands atomically` — published/fetched, local == remote ==
+clean-checkout SHA; the previous freeze `6c28858` is superseded (historical ancestor).
+Reproduced P1: the planner collected per-dimension proposals independently, so one
+lot could receive 2–3 CORRECT proposals (quantity/expiry/openedAt) plus a MOVE, mixed
+claims took an expiry-only verdict, and split CORRECTs shared the `<decisionKey>#CORRECT`
+client key (idempotency/CAS hazard). Fix: `composeProposals` merges all compatible
+CORRECT changes into exactly one CORRECT plus at most one MOVE bound to the matched
+lot/version (contradictions → CONFLICT `PROPOSAL_COMPOSITION_CONFLICT`); the decision
+boundary independently enforces max one CORRECT / one MOVE / same lot+version / type
+consistency and fails closed; CORRECT+MOVE composes through T09 `useCurrentLotVersion`
+atomically. 19 permanent regressions (16 fail pre-fix). Gates: full 3,009/3,009 across
+113 files; T10 focused 78/78; real local D1 49/49; lint/typecheck/build/30-migration
+smoke/local schema/diff PASS — repeated from the clean detached exact-SHA checkout.
+No migration; 0023–0030 untouched. Main NOT merged. Production NOT deployed. Remote D1
+NOT touched. **T10 COMPLETE — READY FOR INDEPENDENT REVIEW.** T11/T12 NOT STARTED.
+
+## Historical T10 state — initial freeze 6c28858 (superseded by 4c414fa)
 
 Repository `vb-2f/frigo-dev` (repository ID 1364064929; task lineage `vn-2e/frigo-dev`).
 Branch `hoplite/himera-6d3eda84-t10-observation-reconciliation`, the platform-verified

@@ -1,6 +1,20 @@
 # Frigo task board
 
-## Current authoritative T10 board — observations and reconciliation, 2026-09-11
+## Current authoritative T10 board — multi-field reconciliation fix, 2026-09-11
+
+- Multi-field composition P1: REPRODUCED (2–3 CORRECT per lot; expiry-only verdict on mixed
+  claims) → FIXED (single merged CORRECT + ≤1 MOVE; boundary invariant; T09 atomic compose)
+  → VERIFIED from a clean published checkout.
+- New application freeze: `4c414fa7eb33329ee12936c0899644af67e48f07`, published/fetched, local == remote.
+  Previous `6c28858` superseded.
+- 3,009 full/113 files; T10 focused 78/78; 49 real local-D1; lint/typecheck/build/
+  30-migration smoke/local schema/diff PASS; clean exact-SHA checkout repeats all.
+- No migration; historical migrations untouched. Main NOT merged; production NOT deployed;
+  remote D1 NOT touched. T11 NOT STARTED.
+- Remaining P0/P1: NONE. Verdict: **T10 COMPLETE — READY FOR INDEPENDENT REVIEW**.
+  Receipt: `inventory-truth/t10/VERIFICATION.md`.
+
+## Historical T10 board — initial freeze 6c28858 (superseded)
 
 - T10A source audit: COMPLETE (`inventory-truth/t10/OBSERVATION_SOURCE_MAP.md`).
 - T10B domain contracts: COMPLETE (categorical evidence, deterministic identity, pure planner).
