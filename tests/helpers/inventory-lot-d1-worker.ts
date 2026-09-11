@@ -1,5 +1,6 @@
 import type { D1DatabaseBinding, D1PreparedStatement } from '../../packages/db/src';
-import { executeInventoryFefoCommand, executeInventoryLotCommand, type InventoryLotCommandScope } from '../../packages/db/src/inventory-lot-commands';
+import { composeInventoryLotCommands, executeInventoryFefoCommand, executeInventoryLotCommand, readLotCommandReceipt,
+  type InventoryLotCommandScope, type LotCommandSpec } from '../../packages/db/src/inventory-lot-commands';
 import { runLegacyInventoryBatch } from '../../packages/db/src/inventory-writer-fence';
 
 interface CommandRequest { scope: InventoryLotCommandScope; key: string; input: unknown; now: string }
@@ -56,6 +57,13 @@ export default {
   async fetch(request: Request, env: { DB: D1DatabaseBinding; TEST_TOKEN: string }): Promise<Response> {
     if (request.headers.get('x-test-token') !== env.TEST_TOKEN) return new Response('Forbidden', { status: 403 });
     try {
+      if (new URL(request.url).pathname === '/patch-compose') {
+        const body = await request.json() as { scope: InventoryLotCommandScope; specs: LotCommandSpec[]; now: string };
+        const composed = await composeInventoryLotCommands(env.DB, body.scope, body.specs, body.now);
+        if (composed.statements.length) await env.DB.batch(composed.statements);
+        const receipts = await Promise.all(body.specs.map(({ clientKey }) => readLotCommandReceipt(env.DB, body.scope, clientKey)));
+        return Response.json({ receipts });
+      }
       if (new URL(request.url).pathname === '/command') {
         return Response.json(await run(env.DB, await request.json() as CommandRequest));
       }

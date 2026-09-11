@@ -482,3 +482,25 @@ describe('T09F actual local D1 legacy writer fences', () => {
     expect(await facts()).toEqual(winner);
   });
 });
+
+describe('T09 targeted manual PATCH on real local D1', () => {
+  it.each([false, true])('retains metadata, versions and replay with MOVE=%s', async (move) => {
+    const { scope, input, now, facts } = await raceFixture('CORRECT');
+    const moveKey = move ? 'patch-move' : null;
+    const intent = { requestFingerprint: JSON.stringify({ version: 1, category: 'vegetable', storage: move ? 'pantry' : undefined }),
+      category: 'vegetable', freshness: 'fresh', moveClientKey: moveKey };
+    const specs = [{ clientKey: 'patch-correct', input: { ...input, changes: { quantity: 10 } }, manualPatch: intent }];
+    if (move) specs.push({ clientKey: moveKey, input: { type: 'MOVE', lotId: input.lotId, expectedVersion: 1,
+      storageLocationId: `PANTRY-${scope.householdId.slice('household-'.length)}` },
+      useCurrentLotVersion: { lotId: input.lotId }, manualPatch: { ...intent, moveClientKey: null } });
+    const first = await requestCommand('patch-compose', { scope, specs, now });
+    expect(first, first.error).toMatchObject({ status: 200 });
+    const committed = await facts();
+    expect(committed[1][0]).toMatchObject({ quantity_milli: 10000, legacy_version: move ? 3 : 2, version: move ? 3 : 2 });
+    expect(committed[2][0]).toMatchObject({ category: 'vegetable', storage: move ? 'pantry' : 'fridge', version: move ? 3 : 2 });
+    expect(first.receipts.at(-1).manualPatch.projectionAfter).toMatchObject({ category: 'vegetable', version: move ? 3 : 2 });
+    const replay = await requestCommand('patch-compose', { scope, specs, now: '2026-09-11T11:00:00Z' });
+    expect(replay, replay.error).toEqual(first);
+    expect(await facts()).toEqual(committed);
+  });
+});

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { InventoryAdoptionProjectionSchema } from '../../domain/src/inventory-adoption';
 import type { D1DatabaseBinding, D1PreparedStatement, D1Result } from './index';
 import {
   InventoryLotCommandSchema, LotCommandError, planSingleLotCommand,
@@ -29,7 +30,15 @@ export interface InventoryLotCommandExecution { result: InventoryLotCommandResul
 export interface StoredLotCommandReceipt {
   command: InventoryLotCommand;
   execution: InventoryLotCommandExecution;
+  manualPatch?: z.infer<typeof ManualPatchReceipt>;
 }
+
+const ManualPatchIntent = z.object({
+  requestFingerprint: z.string().min(1), category: z.string().max(30), freshness: z.string(),
+  moveClientKey: z.string().max(200).nullable(),
+}).strict();
+const ManualPatchReceipt = ManualPatchIntent.extend({ projectionAfter: InventoryAdoptionProjectionSchema });
+export type ManualPatchIntent = z.infer<typeof ManualPatchIntent>;
 
 interface IngredientRow { id: string; category: string }
 interface ProjectionRow extends LegacyInventoryRow {
@@ -345,20 +354,20 @@ function freshness(expiry: string | null, now: string): string {
   return hours <= 24 ? 'expiring' : hours <= 72 ? 'use_soon' : 'fresh';
 }
 function projectionWrites(db: D1DatabaseBinding, plan: SingleLotCommandPlan, row: ProjectionRow | null,
-  snapshot: MappedLotSnapshot, now: string): D1PreparedStatement {
+  snapshot: MappedLotSnapshot, now: string, manualPatch?: ManualPatchIntent): D1PreparedStatement {
   const { before, after } = plan;
   const unchangedExpiry = before !== null && before.expiryKind === after.expiryKind
     && before.expiryAt === after.expiryAt && before.estimatedExpiryAt === after.estimatedExpiryAt;
   const expiry = unchangedExpiry && row ? row : expiryProjection(after);
   const openedAt = before && row && before.openedAt === after.openedAt ? row.opened_at : after.openedAt;
-  const category = snapshot.ingredients.find((ingredient) => ingredient.id === after.ingredientId)?.category ?? 'other';
+  const category = manualPatch?.category ?? snapshot.ingredients.find((ingredient) => ingredient.id === after.ingredientId)?.category ?? 'other';
   const storage = snapshot.locations.find((location) => location.id === after.storageLocationId)!.type.toLowerCase();
   const projectedFreshness = after.quantityMilli === 0 ? 'out_of_stock'
     : row && before && before.quantityMilli > 0 && unchangedExpiry ? row.freshness
       : freshness(expiry.expiry_date, now);
   const values = [after.ingredientId, after.rawName, exactLegacyQuantity(after.quantityMilli, after.canonicalUnit),
     after.canonicalUnit, category, storage, expiry.expiry_date, expiry.expiry_kind, expiry.expiry_source,
-    openedAt, projectedFreshness, after.legacyVersion, after.updatedAt];
+    openedAt, manualPatch?.freshness ?? projectedFreshness, after.legacyVersion, after.updatedAt];
   if (row) return db.prepare(`UPDATE inventory_items SET ingredient_id = ?, name = ?, quantity = ?, unit = ?,
     category = ?, storage = ?, expiry_date = ?, expiry_kind = ?, expiry_source = ?, opened_at = ?, freshness = ?,
     version = ?, updated_at = ? WHERE id = ? AND household_id = ? AND version = ? RETURNING id, version`)
@@ -418,14 +427,21 @@ function requireParsableLotCommand(clientKey: string, input: unknown): void {
 // Plans one canonical command against the given snapshot without executing.
 export async function prepareInventoryLotCommand(db: D1DatabaseBinding, scope: InventoryLotCommandScope,
   clientKey: string, input: unknown, now: string, snapshot: MappedLotSnapshot,
-  skipHouseholdVersionCas = false): Promise<PreparedLotCommand> {
+  skipHouseholdVersionCas = false, manualPatch?: ManualPatchIntent): Promise<PreparedLotCommand> {
   const key = ClientKey.safeParse(clientKey);
   const parsed = InventoryLotCommandSchema.safeParse(input);
   if (!key.success || !parsed.success) throw new LotCommandError('INVALID_COMMAND');
   const command = parsed.data;
-  const fingerprint = sortedJson({ ...scope, command });
+  if (manualPatch && (!ManualPatchIntent.safeParse(manualPatch).success
+    || (command.type !== 'CORRECT' && command.type !== 'MOVE'))) throw new LotCommandError('INVALID_COMMAND');
+  let fingerprint = sortedJson({ ...scope, command });
   const prior = await readReceipt(db, scope, key.data);
   if (prior) {
+    if (manualPatch) {
+      const stored = decodeLotCommandReceipt(prior, scope, key.data);
+      if (stored.manualPatch?.requestFingerprint !== manualPatch.requestFingerprint) throw new LotCommandError('IDEMPOTENCY_CONFLICT');
+      return { kind: 'replay', clientKey: key.data, command, fingerprint: prior.fingerprint, execution: stored.execution };
+    }
     return { kind: 'replay', clientKey: key.data, command, fingerprint, execution: replay(prior, fingerprint, scope, key.data, command) };
   }
   const mapped = snapshot.lots.find(({ lot }) => lot.id === command.lotId);
@@ -434,6 +450,13 @@ export async function prepareInventoryLotCommand(db: D1DatabaseBinding, scope: I
   const plan = planSingleLotCommand(command, mapped?.lot ?? null, {
     householdId: scope.householdId, now, locations: snapshot.locations, ingredientIds: snapshot.ingredients.map(({ id }) => id),
   });
+  // A manual metadata-only PATCH still advances optimistic versions, as the
+  // legacy route does. Native no-op command semantics remain unchanged.
+  if (manualPatch && command.type === 'CORRECT' && !plan.changed) {
+    if (plan.after.version === Number.MAX_SAFE_INTEGER) throw new LotCommandError('VERSION_OVERFLOW');
+    plan.changed = true;
+    plan.after = { ...plan.after, version: plan.after.version + 1, updatedAt: now };
+  }
   if (plan.changed) {
     if (row?.version === Number.MAX_SAFE_INTEGER) throw new LotCommandError('VERSION_OVERFLOW');
     plan.after = { ...plan.after, legacyVersion: row ? row.version + 1 : 1 };
@@ -444,6 +467,14 @@ export async function prepareInventoryLotCommand(db: D1DatabaseBinding, scope: I
     commandId: crypto.randomUUID(), commandType: command.type, lotId: command.lotId,
     version: plan.after.version, effects: plan.changed ? [plan] : [],
   };
+  let patchReceipt: z.infer<typeof ManualPatchReceipt> | undefined;
+  if (manualPatch) {
+    const projected = structuredClone(snapshot);
+    advanceSnapshotWithResult(projected, result, now, manualPatch);
+    patchReceipt = ManualPatchReceipt.parse({ ...manualPatch,
+      projectionAfter: projected.legacyRows.find((entry) => entry.id === row?.id) });
+    fingerprint = sortedJson({ ...scope, command, manualPatch: patchReceipt });
+  }
   const statements = [
     db.prepare(`INSERT INTO inventory_commands (id, household_id, actor_id, client_key, fingerprint, command_type, result_json, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).bind(result.commandId, scope.householdId, scope.actorId, key.data,
@@ -458,7 +489,7 @@ export async function prepareInventoryLotCommand(db: D1DatabaseBinding, scope: I
     );
   }
   if (plan.changed) {
-    statements.push(projectionWrites(db, plan, row, snapshot, now), writeGuard(db, scope, 'unit'),
+    statements.push(projectionWrites(db, plan, row, snapshot, now, manualPatch), writeGuard(db, scope, 'unit'),
       lotWrite(db, plan), writeGuard(db, scope, 'event_type'));
     const metadata = eventMetadata(scope, key.data, fingerprint, result, plan, now);
     statements.push(db.prepare(`INSERT INTO inventory_events
@@ -468,6 +499,14 @@ export async function prepareInventoryLotCommand(db: D1DatabaseBinding, scope: I
       exactLegacyQuantity(plan.deltaMilli, plan.after.canonicalUnit), plan.after.canonicalUnit,
       'reason' in command ? command.reason ?? null : null, JSON.stringify(metadata), now, result.commandId),
     writeGuard(db, scope, 'inventory_item_id'));
+  }
+  if (patchReceipt) {
+    const entries = Object.entries(patchReceipt.projectionAfter);
+    statements.push(db.prepare(`INSERT INTO inventory_events
+      (id, household_id, inventory_item_id, event_type, quantity_delta, unit)
+      SELECT ?, ?, NULL, 'T09_PATCH_POSTSTATE', 0, 'piece' WHERE NOT EXISTS
+        (SELECT 1 FROM inventory_items WHERE ${entries.map(([column]) => `${column} IS ?`).join(' AND ')})`)
+      .bind(crypto.randomUUID(), scope.householdId, ...entries.map(([, value]) => value)));
   }
   return { kind: 'prepared', clientKey: key.data, command, fingerprint, result, statements };
 }
@@ -488,10 +527,28 @@ export async function readLotCommandReceipt(db: D1DatabaseBinding, scope: Invent
   if (!key.success) return undefined;
   const receipt = await readReceipt(db, scope, key.data);
   if (!receipt) return undefined;
-  const stored = InventoryLotCommandSchema.safeParse(
-    (JSON.parse(receipt.fingerprint) as { command?: unknown }).command);
-  if (!stored.success) throw new LotCommandError('CORRUPT_RECEIPT');
-  return { command: stored.data, execution: replay(receipt, receipt.fingerprint, scope, key.data, stored.data) };
+  return decodeLotCommandReceipt(receipt, scope, key.data);
+}
+
+function decodeLotCommandReceipt(receipt: ReceiptRow, scope: InventoryLotCommandScope,
+  key: string): StoredLotCommandReceipt {
+  try {
+    const envelope = JSON.parse(receipt.fingerprint) as { command?: unknown; manualPatch?: unknown };
+    const command = InventoryLotCommandSchema.parse(envelope.command);
+    const manualPatch = envelope.manualPatch === undefined ? undefined : ManualPatchReceipt.parse(envelope.manualPatch);
+    const execution = replay(receipt, receipt.fingerprint, scope, key, command);
+    if (manualPatch) {
+      const after = execution.result.effects[0]?.after;
+      const row = manualPatch.projectionAfter;
+      if (!after || row.household_id !== scope.householdId || row.version !== after.legacyVersion
+        || row.category !== manualPatch.category || row.freshness !== manualPatch.freshness
+        || row.name !== after.rawName || toLotQuantity(row.quantity, row.unit).quantityMilli !== after.quantityMilli
+        || row.unit !== after.canonicalUnit || row.updated_at !== after.updatedAt) throw new Error('Invalid PATCH result');
+    }
+    return { command, execution, manualPatch };
+  } catch {
+    throw new LotCommandError('CORRUPT_RECEIPT');
+  }
 }
 
 // Adapter boundary: one authoritative read plus the adoption evidence check,
@@ -780,6 +837,7 @@ export async function executeInventoryFefoCommand(db: D1DatabaseBinding, inputSc
 export interface LotCommandSpec {
   clientKey: string;
   input: unknown;
+  manualPatch?: ManualPatchIntent;
   // Multi-command intents (edit+move) plan against the shared snapshot: the
   // composition injects the current advanced lot version as expectedVersion.
   useCurrentLotVersion?: { lotId: string };
@@ -792,7 +850,8 @@ export interface ComposedLotCommands {
   statements: D1PreparedStatement[];
 }
 
-function advanceSnapshotWithResult(snapshot: MappedLotSnapshot, result: AnyLotCommandResult, now: string): void {
+function advanceSnapshotWithResult(snapshot: MappedLotSnapshot, result: AnyLotCommandResult, now: string,
+  manualPatch?: ManualPatchIntent): void {
   for (const effect of result.effects) {
     const after = effect.after;
     const before = effect.before;
@@ -813,7 +872,7 @@ function advanceSnapshotWithResult(snapshot: MappedLotSnapshot, result: AnyLotCo
       : row && before && before.quantityMilli > 0 && unchangedExpiry ? row.freshness
         : freshness(expiry.expiry_date, now);
     const openedAt = before && row && before.openedAt === after.openedAt ? row.opened_at : after.openedAt;
-    const category = snapshot.ingredients.find((ingredient) => ingredient.id === after.ingredientId)?.category ?? 'other';
+    const category = manualPatch?.category ?? snapshot.ingredients.find((ingredient) => ingredient.id === after.ingredientId)?.category ?? 'other';
     if (row) {
       row.ingredient_id = after.ingredientId;
       row.name = after.rawName;
@@ -825,7 +884,7 @@ function advanceSnapshotWithResult(snapshot: MappedLotSnapshot, result: AnyLotCo
       row.expiry_kind = expiry.expiry_kind;
       row.expiry_source = expiry.expiry_source;
       row.opened_at = openedAt;
-      row.freshness = projectedFreshness;
+      row.freshness = manualPatch?.freshness ?? projectedFreshness;
       row.version = after.legacyVersion!;
       row.updated_at = after.updatedAt;
     } else {
@@ -875,12 +934,12 @@ export async function composeInventoryLotCommands(db: D1DatabaseBinding, scope: 
     const result = isFefoInput(input)
       ? await prepareInventoryFefoCommand(db, scope, spec.clientKey, input, now, snapshot, householdCasPlaced)
       : await prepareInventoryLotCommand(db, scope, spec.clientKey, input, now, snapshot,
-          householdCasPlaced);
+          householdCasPlaced, spec.manualPatch);
     prepared.push(result);
     if (result.kind === 'prepared') {
       statements.push(...result.statements);
       householdCasPlaced = true;
-      advanceSnapshotWithResult(snapshot, result.result, now);
+      advanceSnapshotWithResult(snapshot, result.result, now, spec.manualPatch);
     }
   }
   return { snapshot, prepared, statements };

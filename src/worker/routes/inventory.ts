@@ -6,7 +6,7 @@ import { InventoryWriterAuthorityError, readInventoryAuthorityMode, runLegacyInv
 import { executeInventoryAdoption } from '../../../packages/db/src/inventory-adoption-executor';
 import {
   composeInventoryLotCommands, prepareInventoryLotCommand, readAdoptedLotSnapshot,
-  readLotCommandReceipt, recoverComposedLotCommands, replayLotCommandReceipt, type LotCommandSpec,
+  classifyLotCommandBatchFailure, readLotCommandReceipt, replayLotCommandReceipt, type LotCommandSpec,
 } from '../../../packages/db/src/inventory-lot-commands';
 import { LotCommandError } from '../../../packages/domain/src/inventory-lot-commands';
 import {
@@ -145,27 +145,26 @@ async function adoptedItemResponse(c: any, db: any, kv: any, auth: AuthContext,
 async function replayAdoptedManualUpdate(c: any, db: any, auth: AuthContext, itemId: string,
   idempotencyKey: string | null, body: Record<string, unknown>) {
   if (!idempotencyKey) return null;
-  const receipt = await readLotCommandReceipt(db, { householdId: auth.householdId, actorId: auth.userId },
-    `manual-update:${itemId}:${idempotencyKey}:correct`);
+  const scope = { householdId: auth.householdId, actorId: auth.userId };
+  const key = await stableInventoryEventId('update', auth.householdId, itemId, idempotencyKey);
+  const receipt = await readLotCommandReceipt(db, scope, `${key}:correct`)
+    ?? await readLotCommandReceipt(db, scope, `manual-update:${itemId}:${idempotencyKey}:correct`);
   if (!receipt) return null;
-  const { command, execution } = receipt;
-  const before = execution.result.effects[0]?.before;
-  // A receipt key cannot turn an altered or stale request into a successful
-  // replay. Compare only caller-controlled PATCH fields to the retained command.
-  const matches = command.type === 'CORRECT'
-    && command.lotId === execution.result.lotId
-    && before?.legacyVersion === body.version
-    && (body.quantity === undefined || command.changes.quantity === Number(body.quantity))
-    && (body.unit === undefined || command.changes.unit === body.unit)
-    && (body.name === undefined || command.changes.rawName === String(body.name).trim())
-    && (body.expiryDate === undefined || command.changes.expiryAt === body.expiryDate
-      || command.changes.estimatedExpiryAt === body.expiryDate);
-  if (!matches) {
+  const fingerprint = inventoryMutationFingerprint('PATCH', itemId, body);
+  // Older receipts did not retain field presence; do not guess their intent.
+  if (receipt.manualPatch?.requestFingerprint !== fingerprint) {
     return c.json({ error: 'Idempotency-Key đã được dùng cho một lệnh cập nhật khác', code: 'IDEMPOTENCY_CONFLICT' }, 409);
   }
-  const persisted = await db.prepare(SQL.GET_INVENTORY_ITEM).bind(itemId, auth.householdId).first();
-  if (!persisted) throw new LotCommandError('CORRUPT_RECEIPT');
-  return c.json({ success: true, idempotentReplay: true, item: mapInventoryRow(persisted) });
+  let result = receipt.manualPatch.projectionAfter;
+  if (receipt.manualPatch.moveClientKey) {
+    const move = await readLotCommandReceipt(db, scope, receipt.manualPatch.moveClientKey);
+    if (!move?.manualPatch || move.command.type !== 'MOVE' || move.command.lotId !== receipt.command.lotId
+      || move.manualPatch.requestFingerprint !== fingerprint
+      || move.command.expectedVersion !== receipt.execution.result.version) throw new LotCommandError('CORRUPT_RECEIPT');
+    result = move.manualPatch.projectionAfter;
+  }
+  if (receipt.command.type !== 'CORRECT' || result.id !== itemId) throw new LotCommandError('CORRUPT_RECEIPT');
+  return c.json({ success: true, idempotentReplay: true, item: mapInventoryRow(result) });
 }
 
 function lotFailureResponse(c: any, error: LotCommandError) {
@@ -177,6 +176,7 @@ async function adoptManualInventoryUpdate(c: any, db: any, kv: any, auth: AuthCo
   id: string; expectedVersion: number; storedVersion: number; rawName: string;
   ingredientId: string | null; quantity: number; unit: string; storage: string;
   expiryDate: string | null; expirySubmitted: boolean; idempotencyKey: string | null;
+  category: string; freshness: string; body: Record<string, unknown>;
 }) {
   const scope = { householdId: auth.householdId, actorId: auth.userId };
   const conflict = () => c.json({
@@ -191,8 +191,18 @@ async function adoptManualInventoryUpdate(c: any, db: any, kv: any, auth: AuthCo
     if (!mapped) throw new LotCommandError('ADOPTION_REQUIRED');
     // The PATCH If-Match contract is the projection version; native commands
     // CAS the lot version, which tracks the projection one for mapped lots.
-    if (mapped.lot.legacyVersion !== input.expectedVersion) return conflict();
+    if (mapped.lot.legacyVersion !== input.expectedVersion) {
+      return await replayAdoptedManualUpdate(c, db, auth, input.id, input.idempotencyKey, input.body) ?? conflict();
+    }
     const now = new Date().toISOString();
+    const key = await stableInventoryEventId('update', auth.householdId, input.id,
+      input.idempotencyKey ?? crypto.randomUUID());
+    const targetLocation = snapshot.locations.find((entry) => entry.isDefault
+      && entry.type.toLowerCase() === input.storage);
+    if (!targetLocation) throw new LotCommandError('DRIFT_DETECTED');
+    const moveClientKey = targetLocation.id !== mapped.lot.storageLocationId ? `${key}:move` : null;
+    const manualPatch = { requestFingerprint: inventoryMutationFingerprint('PATCH', input.id, input.body),
+      category: input.category, freshness: input.freshness, moveClientKey };
     const changes: Record<string, unknown> = {
       quantity: input.quantity,
       unit: input.unit,
@@ -208,19 +218,16 @@ async function adoptManualInventoryUpdate(c: any, db: any, kv: any, auth: AuthCo
     // A combined edit and move is one atomic commit: composition advances the
     // shared snapshot so the MOVE plans against the corrected lot version.
     const specs: LotCommandSpec[] = [{
-      clientKey: `manual-update:${input.id}:${input.idempotencyKey ?? crypto.randomUUID()}:correct`,
+      clientKey: `${key}:correct`, manualPatch,
       input: {
         type: 'CORRECT', lotId: mapped.lot.id, expectedVersion: mapped.lot.version,
         changes, reason: 'Cập nhật nguyên liệu',
         revive: mapped.lot.state !== 'ACTIVE' && input.quantity > 0,
       },
     }];
-    const targetLocation = snapshot.locations.find((entry) => entry.isDefault
-      && entry.type.toLowerCase() === input.storage);
-    if (!targetLocation) throw new LotCommandError('DRIFT_DETECTED');
-    if (targetLocation.id !== mapped.lot.storageLocationId) {
+    if (moveClientKey) {
       specs.push({
-        clientKey: `manual-update:${input.id}:${input.idempotencyKey ?? crypto.randomUUID()}:move`,
+        clientKey: moveClientKey, manualPatch: { ...manualPatch, moveClientKey: null },
         input: {
           type: 'MOVE', lotId: mapped.lot.id, expectedVersion: mapped.lot.version,
           storageLocationId: targetLocation.id,
@@ -231,15 +238,18 @@ async function adoptManualInventoryUpdate(c: any, db: any, kv: any, auth: AuthCo
     const composed = await composeInventoryLotCommands(db, scope, specs, now);
     if (composed.statements.length > 0) {
       try {
-        await db.batch(composed.statements);
+        assertBatchSucceeded(await db.batch(composed.statements));
       } catch (error) {
-        await recoverComposedLotCommands(db, scope, composed, error);
+        const replay = await replayAdoptedManualUpdate(c, db, auth, input.id, input.idempotencyKey, input.body);
+        if (replay) return replay;
+        throw classifyLotCommandBatchFailure(error);
       }
     }
     if (kv) await kv.delete(`inv_${auth.householdId}`).catch(() => {});
-    const persisted = await db.prepare(SQL.GET_INVENTORY_ITEM).bind(input.id, auth.householdId).first();
-    if (!persisted) throw new Error('Adopted inventory update did not produce a durable row');
-    return c.json({ success: true, item: mapInventoryRow(persisted) });
+    const receipt = await readLotCommandReceipt(db, scope, moveClientKey ?? `${key}:correct`);
+    if (!receipt?.manualPatch) throw new LotCommandError('CORRUPT_RECEIPT');
+    return c.json({ success: true, ...(composed.statements.length === 0 ? { idempotentReplay: true } : {}),
+      item: mapInventoryRow(receipt.manualPatch.projectionAfter) });
   } catch (error: any) {
     if (error instanceof LotCommandError) return lotFailureResponse(c, error);
     console.error('Adopted manual update failed:', error);
@@ -760,6 +770,9 @@ inventoryRoutes.patch('/inventory/:id', async (c) => {
         expiryDate,
         expirySubmitted: body.expiryDate !== undefined,
         idempotencyKey,
+        category,
+        freshness,
+        body: body as Record<string, unknown>,
       });
     }
 
