@@ -1,6 +1,31 @@
 # Frigo current state — isolated T09 development
 
-## Current authoritative state — FEFO v2 backfill compatibility, 2026-09-11
+## Current authoritative state — T10 observations and reconciliation, 2026-09-11
+
+Repository `vb-2f/frigo-dev` (repository ID 1364064929; task lineage `vn-2e/frigo-dev`).
+Branch `hoplite/himera-6d3eda84-t10-observation-reconciliation`, the platform-verified
+successor created from the configured train base after PR #1 merged the frozen T09
+branch internally (train merge `668920fa462524e65a79d31a7b0844720baf38e0`; main
+`d1b06732f8a80db4e77986df31ff28d9f04641fa` is untouched and NOT merged).
+**T10 application freeze: `6c28858acd0627d2d602998107c2e260c5e4f0d5`** —
+`feat(t10): add inventory observation reconciliation authority` — published/fetched
+with local == remote == clean-checkout equality. T10 adds the observation/evidence/
+reconciliation layer above T09 authority without any second stock writer: additive
+`0030` observation/decision persistence (evidence never mutates inventory), a pure
+deterministic planner (MATCH / NO_ACTION / STALE / AMBIGUOUS / CONFLICT /
+PROPOSE_CORRECTION / PROPOSE_MOVE / PROPOSE_EXPIRY_UPDATE / UNSUPPORTED) with exact
+milli quantities, name-matching refusal, contextual-unit refusal and confirmed-expiry
+precedence, and a decision authority that composes existing T09 CORRECT/MOVE commands
+in one atomic batch with receipt-backed response-loss replay and IDEMPOTENCY_CONFLICT
+on altered semantics. Baseline before edits: 2,926/108 full, 44 real D1, all static
+gates PASS. At the freeze: 2,990 full/112 files; T10 focused 1,097/19 files; real
+local-D1 49/49; lint/typecheck/build/30-migration smoke/local schema gate (requires
+0030)/diff PASS — all repeated from the clean detached exact-remote-SHA checkout with
+empty status. No HTTP routes added (T09 precedent; T11 owns UX surfaces).
+**T10 COMPLETE — READY FOR INDEPENDENT REVIEW.** T11 and T12 are NOT STARTED.
+Exact evidence: `inventory-truth/t10/VERIFICATION.md`, `inventory-truth/t10/TEST_MATRIX.md`.
+
+## Historical T09 state — FEFO v2 backfill compatibility (superseded as current; freeze remains a verified ancestor)
 
 Repository `vn-2e/frigo-dev` (live origin `vb-2f/frigo-dev`, same lineage), branch
 `hoplite/himera-6d3eda84`, the platform-verified successor checked out at the exact

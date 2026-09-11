@@ -1,6 +1,23 @@
 # Frigo task board
 
-## Current authoritative T09 board — FEFO v2 backfill compatibility, 2026-09-11
+## Current authoritative T10 board — observations and reconciliation, 2026-09-11
+
+- T10A source audit: COMPLETE (`inventory-truth/t10/OBSERVATION_SOURCE_MAP.md`).
+- T10B domain contracts: COMPLETE (categorical evidence, deterministic identity, pure planner).
+- T10C persistence: COMPLETE (additive 0030; evidence never mutates inventory; smoke + schema gate require 0030).
+- T10D reconciliation planner: COMPLETE (9 verdicts; exact quantities; no name matching; expiry precedence).
+- T10E decision authority: COMPLETE (T09 CORRECT/MOVE composition, one atomic batch, receipt replay, idempotency).
+- T10F concurrency/tenancy/corruption matrix: COMPLETE (F1–F5 races, real-D1 trigger battery).
+- T10G verification/freeze/handoff: COMPLETE.
+- Application freeze: `6c28858acd0627d2d602998107c2e260c5e4f0d5`, published/fetched,
+  local == remote == clean-checkout SHA. Full 2,990/112; focused 1,097/19; real D1 49/49;
+  lint/typecheck/build/migration/schema/diff PASS from the clean checkout (empty status).
+- Remaining P0/P1: NONE. Verdict: **T10 COMPLETE — READY FOR INDEPENDENT REVIEW**.
+- T11: NOT STARTED. T12: NOT STARTED.
+- Next: independent review of PR #2. No merge of main, no deploy, no remote D1, no PayOS.
+  Full receipt: `inventory-truth/t10/VERIFICATION.md`.
+
+## Historical T09 board — FEFO v2 backfill compatibility (train-merged internally; main merge remains human-gated)
 
 - Final FEFO backfill P1: REPRODUCED → FIXED (additive 0029 + executor mapping fix)
   → VERIFIED from a clean published checkout.

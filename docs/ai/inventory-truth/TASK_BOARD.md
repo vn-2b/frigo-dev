@@ -1,6 +1,19 @@
 # Inventory Truth task board
 
-## Current authoritative FEFO v2 backfill compatibility — 2026-09-11
+## Current authoritative T10 observations and reconciliation — 2026-09-11
+
+T10 COMPLETE at published/fetched application freeze **`6c28858acd0627d2d602998107c2e260c5e4f0d5`**
+on `hoplite/himera-6d3eda84-t10-observation-reconciliation` (successor of the train base after the
+internal PR #1 merge `668920fa462524e65a79d31a7b0844720baf38e0`; main NOT merged). Source audit,
+domain contracts, additive 0030 persistence, pure planner, T09-composing decision authority,
+concurrency/tenancy/corruption matrix and full verification are done: 2,990 full/112 files;
+T10 focused 1,097/19 files; 49 real local-D1; lint/typecheck/build/30-migration smoke/local
+schema gate (requires 0030)/diff PASS, repeated from the clean detached exact-SHA checkout with
+empty status. Remaining P0/P1: NONE. **T10 COMPLETE — READY FOR INDEPENDENT REVIEW.**
+T11: NOT STARTED. T12: NOT STARTED. Next: independent review of PR #2; no merge of main,
+no deploy, no remote D1, no PayOS. Exact evidence: `t10/VERIFICATION.md`.
+
+## Historical FEFO v2 backfill compatibility board — superseded as current; freeze `bf391c5` remains a verified ancestor
 
 Final FEFO backfill P1 fixed at published/fetched **`bf391c5fdcdd9e9c2f2257db515815e082cb4381`** on
 `hoplite/himera-6d3eda84` (successor of kydonia at docs HEAD 8552fe5337245f2ac8349933c02946bf7d9dcc8f).

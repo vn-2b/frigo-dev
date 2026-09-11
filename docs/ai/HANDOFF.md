@@ -1,5 +1,48 @@
 # Frigo AI Handoff — isolated T09 development
 
+## Current authoritative handoff — T10 observations and reconciliation, 2026-09-11
+
+Program: Inventory Truth Layer
+Task: T10 — observations, evidence and reconciliation authority
+Status: T10G COMPLETE; T10_COMPLETE_READY_FOR_INDEPENDENT_REVIEW
+Repository: vb-2f/frigo-dev (repository ID 1364064929; task lineage vn-2e/frigo-dev)
+Branch: hoplite/himera-6d3eda84-t10-observation-reconciliation (platform start-branch
+successor, dashed to avoid the GitHub ref conflict with the live parent branch name)
+Starting T09 docs SHA: d522769ae89496fd4b3f26419f1fdfe23d9e926a
+T09 application ancestor: bf391c5fdcdd9e9c2f2257db515815e082cb4381 (intact)
+Train merge: 668920fa462524e65a79d31a7b0844720baf38e0 (PR #1 himera -> kydonia,
+internal base ONLY; main NOT merged)
+PR tooling overlay-commit correction: 09f13c41beb826b9dd0b53037935947d6b09fd7f
+(settings.json restored; overlay itself uncommitted and byte-preserved,
+SHA-256 6d8f5b45041a5f41bfa6463a5f88fe1e0f5602822ecb403a5d949961f00bbee7)
+T10 application freeze: 6c28858acd0627d2d602998107c2e260c5e4f0d5 (published/fetched,
+local == remote == clean-checkout SHA)
+T10 docs HEAD: docs-only commit on top of the freeze; exact SHA in the final report
+Main SHA: d1b06732f8a80db4e77986df31ff28d9f04641fa (unchanged, NOT merged)
+Baseline (pre-edit, T09 tree): 2,926 tests/108 files; 44 real local-D1; all static
+gates PASS.
+Verification: full 2,990/2,990 (112 files, 177.04s working tree; 175.72s clean
+checkout); T10 focused 1,097/19 files; real local D1 49/49; lint/typecheck/build;
+30-migration smoke incl. 0030 + T10 object/behavioral asserts; local D1 schema gate
+requires 0030; fresh 0001->0030 and upgrade 0029->0030 local-only PASS;
+`git diff --check` clean; clean detached exact-SHA checkout repeats everything with
+EMPTY `git status --porcelain`. NO GITHUB CI STATUS for the branch.
+Key design: additive 0030 observations/decisions (evidence never mutates inventory);
+pure deterministic planner (9 verdicts, exact milli comparison, name-only matching
+refusal, contextual units UNSUPPORTED, confirmed-expiry precedence, stale detection
+by household inventory version); decision confirmation composes existing T09
+CORRECT/MOVE via composeInventoryLotCommands in ONE atomic D1 batch (decision receipt
++ T09 receipts/events + observation lifecycle); response-loss replay by decision
+fingerprint; altered semantics -> IDEMPOTENCY_CONFLICT; drift -> OBSERVATION_STALE
+fail-closed; no second stock ledger; NO new HTTP routes (T09 precedent; T11 owns UX).
+T11: NOT STARTED. T12: NOT STARTED.
+Remaining P0/P1: NONE. Relevant merge-blocking P2: NONE known.
+Next action: independent review of PR #2. Do NOT merge main, deploy, run remote D1
+migrations, touch PayOS/payment code, or start T11 from this packet.
+Details: inventory-truth/t10/{VERIFICATION,TEST_MATRIX,INVARIANT_MATRIX,CHANGE_MANIFEST,CONTINUATION}.md
+
+## Historical T09 handoff — superseded as current (freeze remains a verified ancestor)
+
 ## Current authoritative handoff — FEFO v2 backfill compatibility, 2026-09-11
 
 Program: Inventory Truth Layer

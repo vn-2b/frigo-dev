@@ -1,6 +1,27 @@
 # Inventory Truth current state
 
-## Current authoritative FEFO v2 backfill compatibility — 2026-09-11
+## Current authoritative T10 observations and reconciliation — 2026-09-11
+
+`vb-2f/frigo-dev` (repository ID 1364064929; task lineage `vn-2e/frigo-dev`) /
+`hoplite/himera-6d3eda84-t10-observation-reconciliation` (platform start-branch
+successor from the configured base after the internal train merge
+`668920fa462524e65a79d31a7b0844720baf38e0` of PR #1; main NOT merged).
+**T10 application freeze `6c28858acd0627d2d602998107c2e260c5e4f0d5`** is
+published/fetched (local == remote == clean-checkout SHA). T10 adds the
+observation/evidence/reconciliation layer above T09 authority: additive 0030
+persistence (evidence never mutates inventory), a pure deterministic planner
+(MATCH/NO_ACTION/STALE/AMBIGUOUS/CONFLICT/PROPOSE_CORRECTION/PROPOSE_MOVE/
+PROPOSE_EXPIRY_UPDATE/UNSUPPORTED) and a decision authority that composes
+existing T09 CORRECT/MOVE commands in one atomic batch with receipt-backed
+response-loss replay. Baseline before edits: 2,926 full/108, 44 real D1, all
+static gates PASS. At the freeze: 2,990 full/112 files; T10 focused 1,097/19;
+49 real local-D1; lint/typecheck/build/30-migration smoke/local schema gate
+(requires 0030)/diff PASS from the clean detached exact-SHA checkout (empty
+status). No HTTP routes added (T09 precedent; T11 owns UX surfaces).
+**T10 COMPLETE — READY FOR INDEPENDENT REVIEW.** T11 and T12 are NOT STARTED.
+Exact evidence: `t10/VERIFICATION.md`, `t10/TEST_MATRIX.md`.
+
+## Historical FEFO v2 backfill compatibility — superseded as current; freeze `bf391c5` remains a verified ancestor
 
 `vn-2e/frigo-dev` / `hoplite/himera-6d3eda84` (successor at exact docs HEAD
 8552fe5337245f2ac8349933c02946bf7d9dcc8f). New final application freeze **`bf391c5fdcdd9e9c2f2257db515815e082cb4381`** is published/fetched.
