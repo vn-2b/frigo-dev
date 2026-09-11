@@ -1,6 +1,25 @@
 # T09 test matrix
 
-## Current targeted PATCH final gate — e796f695bdb4228853992cdedc4e3cecf3437adb
+## Current backfill compatibility gate — df73bc035c2938b6fd082c57f6bca89a82d8e443
+
+| Proof | Result |
+| --- | --- |
+| Real adoption, missing and existing T08 snapshots | Permanent pre-fix failure reproduced; category/version/mapping/stock/event PASS |
+| Backfilled quantity, storage, combined PATCH | Durable row/lot/location/version/receipt/event PASS |
+| Exact replay, changed category/storage/quantity/version, distinct-key stale CAS | PASS; no duplicate effect |
+| Category failure, late MOVE failure, poststate corruption, lost response | Atomic rollback/recovery PASS |
+| Foreign actor/item IDs, tampered/missing/wrong-household mapping | Fail-closed PASS |
+| Ingredient/quantity/storage/unit/version/name/expiry/opened/state/reference drift | Fail-closed PASS; no repair |
+| Missing/mismatched adoption evidence | Fail-closed PASS |
+| Shared native v1 USE/DISCARD/OPEN/MOVE | Synthetic mapping and replay PASS |
+| v2 FEFO | Existing synthetic rejection preserved; remaining P1, not compatible success |
+
+`inventory-backfilled-patch.test.ts`: 43 PASS. Existing native PATCH: 25 PASS.
+Required focused gate: 619/nine files. Full: 2,910/107. Actual local-D1: 42/one file
+(two new synthetic cases). Clean exact-SHA full/D1/static/schema gates PASS.
+Exact commands and failed-attempt chronology: `FINAL_PATCH_VERIFICATION.md`.
+
+## Historical PATCH parity gate — e796f695bdb4228853992cdedc4e3cecf3437adb
 
 | Proof | Evidence |
 | --- | --- |

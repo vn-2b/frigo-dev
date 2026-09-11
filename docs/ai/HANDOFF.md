@@ -1,6 +1,31 @@
 # Frigo AI Handoff — isolated T09 development
 
-## Current authoritative handoff — final targeted PATCH, 2026-09-11
+## Current authoritative handoff — backfill compatibility, 2026-09-11
+
+Program: Inventory Truth Layer
+Task: T09 — targeted legitimate backfilled-lot PATCH compatibility
+Status: TARGETED_P1_FIXED_AND_VERIFIED; NOT_READY_FOR_MAIN
+Canonical Repository: vn-2e/frigo-dev
+Published Branch: hoplite/kydonia-2785bb72
+Starting Docs HEAD: f06289b8d440071b213604c360b8839dbbf350cb
+Historical GLM Freeze: 9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f
+Historical Astra Replay Fix: 27427383d61930ea1b67ccbc1d69bb1cc069f931
+Historical PATCH Parity Freeze: e796f695bdb4228853992cdedc4e3cecf3437adb
+Final Backfill Compatibility Application Freeze: df73bc035c2938b6fd082c57f6bca89a82d8e443
+Docs HEAD: docs-only commit containing this receipt; exact fetched SHA in final operator report
+Main SHA: d1b06732f8a80db4e77986df31ff28d9f04641fa (unchanged)
+Changes: exact adoption witness authenticates synthetic mappings; native lot CAS,
+event projection ID, replay and virtual snapshot advancement use mapped projection identity.
+Verification: 43 new backfill tests; previous 25 native PATCH tests; 619 focused/nine files;
+2,910 full/107; 42 real local-D1; static/build/migration/schema PASS. Exact remote
+SHA clean checkout: frozen install, 2,910/107, all required gates, 42 D1, empty git status.
+Remaining P1: unchanged v2 FEFO SQL requires equal lot/projection IDs; no mutation
+is permitted for synthetic FEFO. This shared-path limitation is not fixed by v1 PATCH.
+Next action: separately authorize the additive FEFO compatibility/schema follow-up.
+Do not merge, deploy, change remote D1/PayOS, implement guest transfer or start T10.
+Settings overlay preserved byte-for-byte/uncommitted. Details: inventory-truth/t09/FINAL_PATCH_VERIFICATION.md.
+
+## Historical PATCH parity handoff — superseded by df73bc0
 
 Program: Inventory Truth Layer
 Task: T09 — final targeted manual PATCH fix

@@ -1,6 +1,16 @@
 # Inventory Truth task board
 
-## Current authoritative final targeted PATCH — 2026-09-11
+## Current authoritative backfill compatibility — 2026-09-11
+
+Backfilled manual PATCH P1 fixed at published/fetched
+`df73bc035c2938b6fd082c57f6bca89a82d8e443`. 43 permanent backfill cases and 25
+unchanged native PATCH cases pass; 619 focused/nine files, 2,910 full/107 and
+42 real-D1 tests pass. Clean exact-SHA full/static/build/migration/schema gates PASS.
+**NOT READY FOR MAIN**: inherited v2 FEFO equal-ID SQL restriction remains P1;
+no migration or authority bypass made. Next: separately authorized compatibility
+follow-up. Exact evidence: `t09/FINAL_PATCH_VERIFICATION.md`. No T10/merge/deploy.
+
+## Historical PATCH parity board — superseded by df73bc0
 
 Final application freeze `e796f695bdb4228853992cdedc4e3cecf3437adb` published on
 `hoplite/kydonia-2785bb72` in `vn-2e/frigo-dev`. Targeted storage replay/category

@@ -1,6 +1,20 @@
 # T09 writer map
 
-## T09F final classification (9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f)
+## Current bounded mapping compatibility correction — df73bc0
+
+The manual PATCH adapter now handles actual adopted backfill as well as native
+equal-ID stock. Its shared v1 persistence also passes synthetic USE/DISCARD/OPEN/
+MOVE tests without changing their route callers. Adoption, scan/shopping/cook
+routes were not changed or broadly re-reviewed.
+
+**Exception to the historical all-writer claim below:** the shared v2 FEFO executor
+still rejects synthetic mappings because migration 0027's receipt and event guards
+require equal lot/projection IDs. Preserve its fail-closed preflight; this is a
+remaining P1 compatibility limitation, not successful adopted-backfill cooking.
+It requires separately authorized schema work. `FINAL_PATCH_VERIFICATION.md`
+records the bounded caller proof and gates; main readiness is NOT established.
+
+## Historical T09F classification — superseded (9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f)
 
 Every inventory mutation path has exactly one final status; no UNKNOWN entries.
 Adopted households are served by the lot authority; unactivated households keep

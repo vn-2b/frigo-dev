@@ -1,6 +1,23 @@
 # T09 invariant matrix
 
-## COMPLETE — 2026-09-11 (9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f)
+## Current mapping invariants — df73bc035c2938b6fd082c57f6bca89a82d8e443
+
+| Invariant | Current evidence |
+| --- | --- |
+| Identity is exact persisted projection mapping, not equal lot ID | 0024 unique FK/immutable tenant guards; complete adoption witness crosslinks both IDs |
+| Synthetic identity needs legitimate backfill provenance | Bounded v3 evidence; deterministic ID, source, household, unique effects and version offset |
+| Live stock still matches current projection | Ingredient/name/quantity/unit/storage/version/expiry/opened/lifecycle/reference checks retained |
+| No cross-tenant/nonexistent/arbitrary mapping | DB tamper rejection plus corrupted-fixture fail-closed tests |
+| CORRECT/MOVE/metadata atomicity and historical replay | Full backfilled PATCH matrix, injected rollback, original result and receipt/event counts |
+| Native equal-ID behavior unchanged | Original 25 PATCH cases, native receipt/concurrency suites PASS |
+| v2 FEFO still requires equal IDs | Unchanged 0027 SQL and replay; explicit preflight rejection with no effects |
+
+43 new backfill tests; 619 focused/nine files; 2,910 full/107; 42 real-D1 PASS.
+Exact-SHA clean gates PASS. **All-writer synthetic compatibility is NOT complete**:
+the remaining FEFO restriction is a P1 and prevents main readiness. Full receipt:
+`FINAL_PATCH_VERIFICATION.md`.
+
+## Historical COMPLETE claim — superseded (9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f)
 
 All-writer invariants now hold with executable evidence: atomic adoption, mapped
 lifecycle (ACTIVE positive / terminal zero), stale CAS denial with no partial

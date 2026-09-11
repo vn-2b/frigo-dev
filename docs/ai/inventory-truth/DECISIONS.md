@@ -1,5 +1,27 @@
 # Inventory Truth architecture decisions
 
+## DEC-014 — Authenticate distinct backfilled lot/projection identities
+
+Verified application: `df73bc035c2938b6fd082c57f6bca89a82d8e443` (2026-09-11).
+The authoritative mapping is `inventory_lots.legacy_item_id → inventory_items.id`,
+unique and immutable once live, with SQL same-household guards. T08 intentionally
+uses `t08-legacy:<projection-id>` as the lot ID. Receipt-backed adoption preserves
+that ID and provenance while recording both identities and independent versions.
+
+Single-lot admission now validates bounded adoption evidence, exact deterministic
+source identity, household/projection/lot links, unique effects and version offset.
+Mutable live values must match the current projection, not the historical adoption
+snapshot. CAS and event columns address the projection; command/effect IDs address
+the lot. Replay authenticates the retained mapping; composition advances its existing
+projection rather than inventing another row. All original quantity/unit/location/
+expiry/identity/tenancy guards remain. No migration or adoption rewrite is required.
+
+The bounded shared-caller check found v2 FEFO still has explicit equal-ID SQL
+predicates in 0027 and equal-ID replay. Preserve that preflight restriction, with a
+no-effect regression, rather than extend v2 admission beyond its authority contract.
+Removing that separate inherited P1 requires a separately authorized additive schema
+compatibility change. This decision does not authorize it or any main merge/deploy.
+
 ## Historical DEC-013 — Recovery-stage writer safety and explicit adoption preparation
 
 Canonical repository after transfer: `vn-2d/frigo-dev`; prior owners are historical

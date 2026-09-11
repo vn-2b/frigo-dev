@@ -1,6 +1,199 @@
 # T09 final targeted PATCH verification — 2026-09-11
 
-## Current authority and verdict
+## Current authority — backfilled-lot compatibility
+
+| Field | Current value |
+| --- | --- |
+| Repository / branch | `vn-2e/frigo-dev` / `hoplite/kydonia-2785bb72` |
+| Starting docs HEAD | `f06289b8d440071b213604c360b8839dbbf350cb` |
+| Historical GLM freeze | `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` |
+| Historical Astra first replay fix | `27427383d61930ea1b67ccbc1d69bb1cc069f931` |
+| Historical PATCH parity freeze | `e796f695bdb4228853992cdedc4e3cecf3437adb` |
+| **Final backfill compatibility application freeze** | **`df73bc035c2938b6fd082c57f6bca89a82d8e443`** |
+| Docs HEAD | Following docs-only commit containing this section; exact fetched SHA in the final operator report |
+| Main | `d1b06732f8a80db4e77986df31ff28d9f04641fa` (unchanged) |
+| Ahead / behind main | Start 27/0; application 28/0; following docs checkpoint 29/0 |
+| Verdict | **NOT READY FOR MAIN** — backfilled PATCH P1 fixed; shared v2 FEFO limitation remains |
+
+Startup remote/status/branch/HEAD/main/merge-base/count/log and every requested
+ancestor passed. Application publish → fetch → exact local/remote equality passed.
+No history rewrite, successor, merge, deployment, remote D1, PayOS, guest transfer
+or T10 operation. `.hoplite/settings.json` remained uncommitted, SHA-256
+`6d8f5b45041a5f41bfa6463a5f88fe1e0f5602822ecb403a5d949961f00bbee7` unchanged.
+
+### P1 reproduction and root cause
+
+**REPRODUCED before editing application source.** Permanent regression file
+`tests/integration/inventory-backfilled-patch.test.ts` creates an authorized household
+and `patch-rice` (RICE, 2000 g, grain, pantry, projection version 1), executes real
+adoption, and verifies `t08-legacy:patch-rice → patch-rice`, lot version 2 / legacy
+version 1. Both variants—adoption-created snapshot and existing T08 backfill—returned
+`500 {error:"DRIFT_DETECTED",code:"DATABASE_ERROR"}` for category-only PATCH.
+The initial two tests failed on unchanged e796f69 application source at f06289b.
+
+Root cause was the invalid equal-ID predicate in `requireParity`, plus equal-ID
+assumptions downstream in lot CAS, event projection ID, replay and composed snapshot
+advancement. Removing only the first check would not produce a correct atomic command.
+
+### Proven identity model and minimal fix
+
+- 0024 defines `inventory_lots.legacy_item_id REFERENCES inventory_items(id)` and
+  the unique non-null projection mapping. Its live triggers enforce same-household
+  ownership and immutable lot/mapping/provenance identity after activation.
+- T08's `legacyInventoryToLot` intentionally generates a deterministic synthetic
+  lot ID and retains the projection ID in `sourceId`. Actual adoption records
+  `lotId`, `legacyItemId`, before/after lots and projections in one retained v3
+  receipt, committing that witness with its exact mapping and poststate fence.
+- v1 SQL in 0027 joins `NEW.inventory_item_id` through `legacy_item_id`, while
+  command/result/effect IDs name the native lot. Its v1 guards already support
+  the distinct IDs: **no migration is needed for this PATCH fix**.
+
+The only application file changed is `packages/db/src/inventory-lot-commands.ts`:
+bounded v3 mapping evidence is checked against household/actor/source-version,
+unique exact deterministic lot/projection IDs and backfill provenance. Current
+version advancement is checked against the retained adoption offset. Live parity
+still checks ingredient/reference, name, exact quantity/display-unit compatibility,
+location, projection version, expiry, opened state and lot lifecycle. Mutable stock
+is compared to its current projection, never forced back to the historical snapshot.
+
+Lot CAS and event columns now use the validated projection ID. Command/effect IDs
+remain native lot IDs. Replay authenticates the historical mapping, and composition
+advances that projection rather than constructing a duplicate virtual row.
+No caller-supplied mapping, arbitrary household row, name/ingredient matching, repair
+fallback or weakened tenant guard was introduced. Existing native equal-ID stock
+retains its behavior. Migrations 0023–0028, adoption executor and routes are unchanged.
+
+### Backfilled PATCH, drift and tenancy matrix
+
+| Requirement | Result / durable assertions |
+| --- | --- |
+| Category-only, existing/missing T08 snapshot | PASS; category, lot/projection versions, mapping and receipt/event IDs |
+| Quantity | PASS; exact native milli and projection quantities; one row/lot only |
+| Storage | PASS; location and projection storage, unchanged mapping |
+| Combined quantity/category/storage/expiry | PASS; all fields and both CORRECT/MOVE receipts/effects |
+| Exact replay, including after later stock changes | PASS; original result, no duplicate command/event/effect |
+| Changed category/storage/quantity/version under same key | PASS; 409 IDEMPOTENCY_CONFLICT, no mutation |
+| Distinct-key stale CAS | PASS; 409 CONFLICT, no mutation |
+| Zero-row category write, late MOVE failure, poststate metadata corruption | PASS; all effects roll back |
+| Error thrown after commit | PASS; receipt-backed recovery, no second mutation |
+| Legacy kg display | PASS; exact canonical conversion, identity retained |
+| Foreign actors and caller-selected foreign projection/native IDs | PASS; FORBIDDEN/404, no foreign data or changes |
+| Tampered null/nonexistent/foreign mapping | PASS; database guards reject; state unchanged |
+| Corrupted same-household/foreign/missing mapping or projection | PASS; fails closed, not silent repair |
+| Ingredient/quantity/storage/unit/version/name/expiry/opened drift | PASS; DRIFT_DETECTED and unchanged durable state |
+| Invalid state/ingredient reference | PASS; fails closed |
+| Missing/mismatched adoption effect, lot, projection, household or source | PASS; no synthetic admission |
+| Shared v1 USE/DISCARD/OPEN/MOVE and replay | PASS; native/projection identities and evidence retained |
+| Original native equal-ID PATCH suite | PASS, all 25 tests unchanged |
+
+New permanent backfill suite: **43 tests**. Test-only local-D1 harness adds actual
+adoption; two new workerd/D1 cases verify category-only and combined synthetic
+mapping writes/replay under the unchanged real SQL guards.
+
+### Bounded shared-caller check and remaining P1
+
+`requireParity` has only single-lot and FEFO preparation callers. The common v1
+paths are covered above. **v2 FEFO is separately incompatible with synthetic IDs**:
+0027 receipt prestate line 270 rejects `l.id IS NOT l.legacy_item_id`, event
+poststate line 453 requires `l.id = l.legacy_item_id`, and retained v2 replay also
+requires equal IDs. These are unchanged authority contracts, not merely a TypeScript
+predicate that this task can safely remove.
+
+An explicit FEFO preflight restriction now preserves the former fail-closed behavior
+after shared parity is corrected. A real-adoption regression verifies FEFO returns
+DRIFT_DETECTED with no stock/receipt/event changes. That test is a boundary proof,
+**not a claim that FEFO/cooking on backfilled stock works**. No cook route redesign
+or v2 guard bypass was attempted. Removing this separate inherited P1 requires
+separately authorized additive schema compatibility work; stopped before any such
+migration. No 0029 was created. This prevents a main-ready recommendation.
+
+### Exact executed verification
+
+Runtime: Node `v24.19.0`, pnpm `10.26.0`. Commands from repository root:
+
+```sh
+pnpm exec vitest run tests/integration/inventory-patch-parity.test.ts tests/integration/inventory-backfilled-patch.test.ts tests/integration/inventory-lot-commands.test.ts tests/integration/inventory-lot-authority.test.ts tests/integration/inventory-writer-fence.test.ts tests/integration/inventory-adoption.test.ts tests/integration/inventory-concurrency.test.ts tests/unit/command-route-integrity.test.ts tests/integration/inventory-lot-d1.test.mjs
+pnpm test
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm check:migrations
+pnpm schema:check:local
+pnpm exec vitest run tests/integration/inventory-lot-d1.test.mjs
+git diff --check
+```
+
+| Gate | Result |
+| --- | --- |
+| Required focused gate | **619/619, nine files, 48.34s**, zero failures/skips |
+| Full fresh rerun | **2,910/2,910, 107 files, 168.05s**, zero failures/skips |
+| Isolated actual local-D1 | **42/42, one file, 5.10s**, zero failures/skips |
+| Lint / both typechecks / build | PASS |
+| Migration smoke / local schema / diff | PASS; 28 migrations, none modified |
+| Scoped independent review | No additional issue; **179 tests/four files, 33.95s**, zero failures/skips |
+| GitHub CI | **NO GITHUB CI STATUS**; zero provider contexts/completed push runs for application SHA |
+
+Independent reviewer executed backfilled PATCH, native PATCH, inventory FEFO and
+FEFO-schema suites with `pnpm exec vitest run ... --reporter=dot`. No review edits.
+CI's checked-in push filters do not include this branch; no PR/workflow/deployment
+was created. Local gates are not described as hosted CI.
+
+### Clean exact remote application checkout
+
+After publishing and fetching `df73bc035c2938b6fd082c57f6bca89a82d8e443` with local
+equality, created a fresh detached worktree and ran:
+
+```sh
+git worktree add --detach /tmp/frigo-t09-backfill-clean-df73bc0 df73bc035c2938b6fd082c57f6bca89a82d8e443
+cd /tmp/frigo-t09-backfill-clean-df73bc0
+pnpm install --frozen-lockfile
+pnpm test
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm check:migrations
+pnpm exec wrangler d1 migrations apply frigo-db --local
+pnpm schema:check:local
+pnpm exec vitest run tests/integration/inventory-lot-d1.test.mjs
+git diff --check
+git status --porcelain
+```
+
+**All PASS at exactly df73bc035c2938b6fd082c57f6bca89a82d8e443.** Frozen install
+did not alter the lockfile. Full suite **2,910/107, 163.39s**, zero failures/skips.
+Lint/typecheck/build/migration smoke passed; all 28 migrations applied to this
+worktree's fresh **local-only** D1 and schema passed. Isolated D1 rerun **42/one file,
+5.17s**, zero failures/skips. Final porcelain status empty.
+
+### Failed attempts and recoveries
+
+- The initial two permanent backfill tests failed at the intended 500 response
+  before source edits. After the fix, their event assertion initially included
+  migration-seeded events from another household; corrected to assert only this
+  fixture's household, with no production change.
+- First full run: 2,910 tests/107 source files passed, but an extra suite failed
+  to load. The previous turn's ignored `.hoplite/artifacts/t09-final-patch/backfill-probe.test.ts`
+  archive was discovered by Vitest, with invalid relocated relative imports.
+  Preserved its bytes as `backfill-probe.test.ts.txt`; did not alter test configuration
+  or exclude source coverage. Its intended failing scenario is now permanently
+  covered by the new suite. Fresh `pnpm test` and independent clean source both pass.
+- Frozen install emitted the existing ignored-dependency-build-script warning;
+  actual build/workerd/D1 gates passed without setup/config changes.
+
+Local evidence logs: `.hoplite/artifacts/t09-backfill-p1/{reproduction,initial-fix,
+expanded,focused,full-first-attempt,full,d1,clean-full,clean-d1,clean-d1-apply}.log`.
+Historical diagnostic paths below reflect the prior checkpoint; the probe is now
+archived as text, not the sole regression source.
+
+Remaining P0: **NONE identified in this scope**. Targeted manual PATCH P1: **FIXED**.
+Remaining P1: **v2 FEFO synthetic mapping compatibility**, as proven above.
+Remaining relevant P2 blockers: **NONE additional identified**.
+Final verdict: **NOT READY FOR MAIN**. Next action is separate authorization for
+that FEFO/schema compatibility follow-up, not merge/deploy/remote D1/T10.
+
+---
+
+## Historical PATCH-parity authority and verdict — superseded by df73bc0
 
 | Field | Value |
 | --- | --- |

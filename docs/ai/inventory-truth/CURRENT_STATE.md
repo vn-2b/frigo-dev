@@ -1,6 +1,17 @@
 # Inventory Truth current state
 
-## Current authoritative final targeted PATCH — 2026-09-11
+## Current authoritative backfill compatibility — 2026-09-11
+
+`vn-2e/frigo-dev` / `hoplite/kydonia-2785bb72`.
+Final application freeze **`df73bc035c2938b6fd082c57f6bca89a82d8e443`** is published/fetched.
+Real backfilled PATCH now passes: persisted `legacy_item_id` plus the exact same-household
+adoption effect authenticates synthetic identity, with all live parity checks retained.
+619 focused/nine files; 2,910 full/107; 42 local-D1; static/build/migration/schema
+PASS, repeated from a clean exact-SHA checkout. `t09/FINAL_PATCH_VERIFICATION.md`.
+**NOT READY FOR MAIN**: unchanged v2 FEFO SQL still excludes synthetic mappings;
+its preflight stays fail-closed pending separate schema authorization.
+
+## Historical PATCH parity state — superseded by df73bc0
 
 `vn-2e/frigo-dev`, `hoplite/kydonia-2785bb72`; final application freeze
 `e796f695bdb4228853992cdedc4e3cecf3437adb` is published/fetched.

@@ -1,6 +1,18 @@
 # T09 verification (append-only evidence)
 
-## Current final targeted PATCH verification — 2026-09-11
+## Current backfill compatibility verification — 2026-09-11
+
+Final application freeze **`df73bc035c2938b6fd082c57f6bca89a82d8e443`**, published/fetched
+on `hoplite/kydonia-2785bb72`. Backfilled manual PATCH P1 reproduced/fixed; all required
+tenant and genuine-drift checks retained. 619 focused/nine files (48.34s), 2,910
+full/107 (168.05s), 42 real-D1 (5.10s), static/build/migration/schema/diff PASS.
+Clean detached exact remote SHA: frozen install; 2,910/107 (163.39s); lint/typecheck/
+build/28 local migrations/schema; 42 real-D1 (5.17s); empty git status, all PASS.
+Scoped independent review: 179/four files PASS. NO GITHUB CI STATUS.
+**NOT READY FOR MAIN**: shared v2 FEFO still has equal-ID SQL authority; that
+separate P1 remains fail-closed. Full evidence: `FINAL_PATCH_VERIFICATION.md`.
+
+## Historical final targeted PATCH verification — superseded by df73bc0
 
 Final application freeze **`e796f695bdb4228853992cdedc4e3cecf3437adb`**, published/fetched
 from `hoplite/kydonia-2785bb72` in `vn-2e/frigo-dev`. Both storage replay and category

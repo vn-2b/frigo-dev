@@ -1,6 +1,27 @@
 # T09 continuation — 2026-09-11
 
-## Current authoritative continuation — final targeted PATCH
+## Current authoritative continuation — backfill compatibility
+
+Repository `vn-2e/frigo-dev`; branch `hoplite/kydonia-2785bb72`.
+Start/docs: `f06289b8d440071b213604c360b8839dbbf350cb`.
+Historical GLM: `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f`.
+Historical Astra replay: `27427383d61930ea1b67ccbc1d69bb1cc069f931`.
+Historical PATCH parity: `e796f695bdb4228853992cdedc4e3cecf3437adb`.
+**Final backfill compatibility application freeze: `df73bc035c2938b6fd082c57f6bca89a82d8e443`**.
+Published/fetched equality PASS. Docs HEAD is the following docs-only branch tip;
+the final operator report supplies its exact SHA (not self-embedded in its own commit).
+Main unchanged at `d1b06732f8a80db4e77986df31ff28d9f04641fa`.
+Startup 27 ahead/0 behind; application 28/0; following docs checkpoint 29/0.
+All gates PASS: 619 focused/nine files, 2,910 full/107, 42 local-D1, static/build/
+schema/migrations; repeated full and local-D1 gates from clean fetched source.
+No uncommitted application work. Settings SHA-256 unchanged:
+`6d8f5b45041a5f41bfa6463a5f88fe1e0f5602822ecb403a5d949961f00bbee7`.
+**NOT READY FOR MAIN**: targeted backfilled PATCH P1 fixed, but v2 FEFO's shared
+equal-ID SQL boundary remains incompatible with backfilled stock. Next: separately
+authorize that additive compatibility/schema work; no guard bypass or 0029 was made.
+Exact commands, failures and clean-checkout proof: `FINAL_PATCH_VERIFICATION.md`.
+
+## Historical PATCH parity continuation — superseded by df73bc0
 
 Repository: `vn-2e/frigo-dev`; branch: `hoplite/kydonia-2785bb72`.
 Start: `6999b64aff0786827637b0a85f2de28c196ca288`.

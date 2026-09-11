@@ -1,6 +1,21 @@
 # Frigo current state — isolated T09 development
 
-## Current authoritative state — final targeted PATCH, 2026-09-11
+## Current authoritative state — backfill compatibility, 2026-09-11
+
+Repository `vn-2e/frigo-dev`, branch `hoplite/kydonia-2785bb72`.
+Final backfill compatibility application freeze: **`df73bc035c2938b6fd082c57f6bca89a82d8e443`**.
+The inherited backfilled PATCH P1 is reproduced and fixed without migrations:
+synthetic lot IDs are authenticated by the immutable mapping and exact household
+adoption witness. Projection CAS, event IDs, replay and composition retain both identities.
+Fresh PASS: 619 focused/nine files; 2,910 full/107; 42 isolated real local-D1;
+all lint/typecheck/build/migration/local-schema/diff gates. Exact fetched SHA also
+passed frozen install, full 2,910/107, all gates and 42 D1 tests in a clean worktree.
+**NOT READY FOR MAIN**: the bounded shared-caller check found v2 FEFO still rejects
+synthetic mappings in unchanged 0027 SQL. Its fail-closed boundary is preserved;
+further compatibility needs separately authorized schema work, not a guard bypass.
+Exact evidence and next action: `inventory-truth/t09/FINAL_PATCH_VERIFICATION.md`.
+
+## Historical PATCH parity checkpoint — superseded by df73bc0
 
 Repository `vn-2e/frigo-dev`, branch `hoplite/kydonia-2785bb72`.
 New final application freeze: `e796f695bdb4228853992cdedc4e3cecf3437adb` (published/fetched equality).

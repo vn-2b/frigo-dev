@@ -1,6 +1,15 @@
 # T09 — Inventory Lot Engine & Event Authority
 
-## Current authoritative final targeted PATCH packet
+## Current authoritative backfill compatibility packet
+
+`vn-2e/frigo-dev` / `hoplite/kydonia-2785bb72`.
+Final application freeze: **`df73bc035c2938b6fd082c57f6bca89a82d8e443`**.
+Backfilled PATCH P1 is fixed with exact receipt-backed identity and full clean-source
+verification. See [FINAL_PATCH_VERIFICATION.md](FINAL_PATCH_VERIFICATION.md).
+**NOT READY FOR MAIN**: the bounded shared-caller check confirms v2 FEFO SQL still
+excludes synthetic mappings. No migration/merge/deploy/T10 is authorized here.
+
+## Historical targeted PATCH packet — superseded by df73bc0
 
 `vn-2e/frigo-dev` / `hoplite/kydonia-2785bb72`.
 Final application freeze: **`e796f695bdb4228853992cdedc4e3cecf3437adb`**.

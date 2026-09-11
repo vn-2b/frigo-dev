@@ -1,6 +1,19 @@
 # T09 review index
 
-## Current authoritative final review packet — 2026-09-11
+## Current authoritative backfill compatibility packet — 2026-09-11
+
+Repository `vn-2e/frigo-dev`; branch `hoplite/kydonia-2785bb72`.
+**Final application freeze: `df73bc035c2938b6fd082c57f6bca89a82d8e443`** (published/fetched).
+Historical lineage: GLM `9bf9ac0` → Astra replay `2742738` → PATCH parity `e796f69`
+→ docs `f06289b` → backfill compatibility `df73bc0` → this docs-only checkpoint.
+Docs HEAD: resolve the fetched branch tip; exact SHA is in the final operator report.
+Read `FINAL_PATCH_VERIFICATION.md` first: reproduced/fixed backfilled PATCH P1;
+exact durable identity proof; 619 focused, 2,910 full, 42 real-D1; complete clean
+detached-source gates PASS. Scoped independent review: 179/four files PASS.
+**NOT READY FOR MAIN**: unchanged v2 FEFO's equal-ID SQL restriction remains P1;
+no unrelated migration or writer redesign authorized/performed.
+
+## Historical PATCH parity review packet — superseded by df73bc0
 
 Repository `vn-2e/frigo-dev`; branch `hoplite/kydonia-2785bb72`.
 **Final application freeze: `e796f695bdb4228853992cdedc4e3cecf3437adb`.**

@@ -1,6 +1,21 @@
 # T09 change manifest
 
-## Current final PATCH application — e796f695bdb4228853992cdedc4e3cecf3437adb
+## Current backfill compatibility application — df73bc035c2938b6fd082c57f6bca89a82d8e443
+
+- `packages/db/src/inventory-lot-commands.ts`: bounded exact adoption mapping witness;
+  preserve live parity; use projection identity in lot CAS and event insertion;
+  authenticate replay mapping; advance mapped projection in composition. Retain the
+  separately constrained v2 FEFO equal-ID boundary explicitly.
+- `tests/integration/inventory-backfilled-patch.test.ts`: 43 permanent real-adoption
+  cases, including T08-prepopulated adoption, PATCH matrix, rollback/replay, tenant
+  and drift attacks, shared v1 commands and unchanged FEFO fail-closed behavior.
+- `tests/helpers/inventory-lot-d1-worker.ts`: test-only authorized adoption endpoint.
+- `tests/integration/inventory-lot-d1.test.mjs`: two actual D1 synthetic-mapping
+  category-only/combined cases; total 42 tests.
+- No application route, adoption executor, schema/migration, auth, other writer,
+  production config or settings-overlay changes. Full evidence: `FINAL_PATCH_VERIFICATION.md`.
+
+## Historical PATCH parity application — e796f695bdb4228853992cdedc4e3cecf3437adb
 
 - `src/worker/routes/inventory.ts`: compare the complete normalized PATCH fingerprint
   including presence and version; hash bounded per-operation keys; validate both

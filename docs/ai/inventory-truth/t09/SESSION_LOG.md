@@ -1,5 +1,23 @@
 # T09 session log (append-only)
 
+## 2026-09-11 — receipt-backed backfill compatibility
+
+Verified f06289b docs HEAD, e796f69/2742738/9bf9ac0 ancestors, unchanged main d1b0673,
+27 ahead/0 behind, settings hash preserved. Added permanent real-adoption regressions
+before source fix; both paths failed with 500 DRIFT_DETECTED. Proved FK/immutable
+mapping and exact adoption effects are authority, and v1 SQL already supports both IDs.
+Fixed parity admission plus CAS/event/replay/composition equal-ID assumptions in one
+application file. No migration/adoption executor/route changes. Scoped shared-caller
+check preserves the v2 FEFO SQL restriction and records it as the remaining P1.
+Application df73bc035c2938b6fd082c57f6bca89a82d8e443 published/fetched, then clean
+detached full verification PASS. 619 focused/nine files; 2,910 full/107; 42 D1;
+all lint/typecheck/build/migration/schema gates PASS. Independent scoped 179/four PASS.
+One full attempt discovered the prior ignored diagnostic as an executable test;
+archived it as text, retaining its bytes and replacing its role with 43 permanent
+regressions. No test configuration/coverage was weakened. Exact chronology and
+clean runtimes: FINAL_PATCH_VERIFICATION.md. Status NOT READY FOR MAIN; next step
+is separately authorized v2 FEFO compatibility/schema work. No merge/deploy/T10.
+
 ## 2026-09-11 — final targeted PATCH parity fix
 
 Started at verified `6999b64aff0786827637b0a85f2de28c196ca288`, 25 ahead/0 behind

@@ -1,6 +1,16 @@
 # Frigo task board
 
-## Current authoritative T09 board — 2026-09-11
+## Current authoritative T09 board — backfill compatibility, 2026-09-11
+
+- Backfilled manual PATCH P1: REPRODUCED → FIXED → VERIFIED, no migration.
+- Final application freeze: `df73bc035c2938b6fd082c57f6bca89a82d8e443`, published/fetched.
+- 619 focused/nine files; 2,910 full/107; 42 real local-D1; all static/build/schema
+  gates PASS. Exact fetched-source clean checkout repeats full suite and every gate PASS.
+- **NOT READY FOR MAIN**: shared v2 FEFO equal-ID SQL restriction remains P1.
+- Next: separately authorize FEFO compatibility/schema work. No T10/merge/deploy.
+  Full receipt: `inventory-truth/t09/FINAL_PATCH_VERIFICATION.md`.
+
+## Historical PATCH parity board — superseded by df73bc0
 
 - Final targeted PATCH fixes A/storage and B/category: REPRODUCED, FIXED, VERIFIED.
 - Published application freeze: `e796f695bdb4228853992cdedc4e3cecf3437adb`.

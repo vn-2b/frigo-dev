@@ -1,6 +1,19 @@
 # Inventory Truth verification
 
-## T09 current verification
+## T09 current backfill compatibility verification — 2026-09-11
+
+Final application freeze `df73bc035c2938b6fd082c57f6bca89a82d8e443` published/fetched
+on `hoplite/kydonia-2785bb72` in `vn-2e/frigo-dev`.
+619 focused/nine files (48.34s); 2,910 full/107 (168.05s); 42 actual local-D1
+(5.10s), zero failures/skips. Lint/typecheck/build/28-migration smoke/local schema/diff PASS.
+Clean exact-SHA worktree: frozen install; 2,910/107 (163.39s), static/build/migration
+and local schema gates; 42 local-D1 (5.17s); empty status. Scoped independent review:
+179 tests/four files PASS, no additional finding. No GitHub CI status.
+The targeted backfilled PATCH P1 is fixed. Shared v2 FEFO still requires equal IDs
+in unchanged SQL, so NOT READY FOR MAIN. Full commands/failure chronology:
+`t09/FINAL_PATCH_VERIFICATION.md`.
+
+## Historical T09 verification (superseded)
 
 E published/fetched at `9bd1e6bc000cd2e94121469babb1a5eb63a5047f` on the
 authorized successor; equality/ancestry PASS. Final E: **1,172 focused / 11 files**,
