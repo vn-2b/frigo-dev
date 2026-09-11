@@ -1,5 +1,26 @@
 # T09 session log (append-only)
 
+## 2026-09-11 — canonical transfer recovery and F safety checkpoint
+
+Verified `vn-2d/frigo-dev`, fetched all enumerated branches/tag, proved consecutive
+main→T08→A–E→interrupted F ancestry and exact required heads; fsck PASS. Main
+d1b0673 unchanged; interrupted continuation 66858c5 was 18 ahead / 0 behind.
+The prior continuation is read-only; one existing successor `hoplite/kos-2a686759`
+started exactly at 66858c5. Initial settings overlay preserved in named stash;
+baseline 2,685 tests and all static/build/migration gates PASS.
+
+Recovery docs 2b138cc were published/fetched before implementation. Application
+aa43e069edbff7843e9eb7532ff386b27be96a17 now publishes pure adoption preparation,
+legacy mapped-authority fences, scan/shopping snapshot fences, and robust scan/
+shopping retry recovery. Final 1,347 focused / 2,808 full tests and all static/
+build/local migration gates PASS, including 38 actual D1 tests. Two scoped review
+P2 findings corrected and re-reviewed. Separate fetched-source clean tree: 1,347
+tests and typecheck PASS. Full command/failure chronology: VERIFICATION.md.
+
+F remains active. Next: atomic adoption receipt/marker, functional adapters,
+retained scan intent/result, then G/H. No freeze or final review readiness. Main,
+prior continuation, frozen D, production/staging, remote D1 and PayOS untouched.
+
 ## 2026-09-10 — initial publication and review packet
 
 Repository identity initially blocked: prompt said Tungjpstore/frigo-dev; origin

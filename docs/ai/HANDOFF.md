@@ -12,9 +12,28 @@ T09D Frozen Base HEAD: 811f7e8463303e010199741d66f88ab8a817212d
 Canonical Writable Continuation: hoplite/kos-2a686759
 Verified Successor Base / Interrupted F SHA: 66858c5296b38715e4bfca77fca5eefe5adadf5a
 Last Verified Published Prior Continuation SHA: 66858c5296b38715e4bfca77fca5eefe5adadf5a
-Last Verified Application SHA: 66858c5296b38715e4bfca77fca5eefe5adadf5a
+Last Verified Application SHA: aa43e069edbff7843e9eb7532ff386b27be96a17
 T09E Application SHA: 9bd1e6bc000cd2e94121469babb1a5eb63a5047f
 Application Freeze: NOT FROZEN
+
+Current Published Application SHA: aa43e069edbff7843e9eb7532ff386b27be96a17
+Current Published Branch: hoplite/kos-2a686759
+Current Scope: pure adoption preparation; mapped-authority legacy writer fences;
+scan/shopping stock-revision fences; original scan retry identity; shopping
+fingerprint/lease/committed-response recovery. DEC-012 unchanged.
+Fresh Checks: 1,347 tests / 19 focused files; 2,808 / 103 full; 38 actual local-D1
+tests; lint; typecheck; build; 27-migration replay; diff and protected paths PASS.
+Scoped Review: two P2 findings corrected and independently re-reviewed; no remaining
+P1/P2 within this partial increment, not a final T09 independent-review verdict.
+Remaining: atomic adoption executor/activation marker and v3 evidence; functional
+mapped-household adapters; original scan confirmation intent/result replay; full
+G races/tenancy; H freeze/complete review. No new schema or active adoption yet.
+Exact Next Action: implement additive, narrowly dispatched v3 ADOPT authority and
+persist the pure plan in one fenced transaction, including empty-household marker;
+extend writer admission before activation, then implement all functional adapters.
+See F_ADOPTION_PLAN.md and VERIFICATION.md for exact constraints/failures.
+
+## Recovery baseline and pre-transfer chronology
 
 Transfer recovery: all canonical branches/tag fetched; required objects, full
 consecutive ancestry and fsck PASS. Main unchanged at d1b0673; interrupted F was

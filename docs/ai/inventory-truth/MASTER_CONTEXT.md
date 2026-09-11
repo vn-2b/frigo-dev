@@ -1,5 +1,13 @@
 # Inventory Truth Layer — repository authority
 
+Current application checkpoint: **aa43e069edbff7843e9eb7532ff386b27be96a17**,
+published/fetched in **vn-2d/frigo-dev**, branch **hoplite/kos-2a686759**.
+Transfer/ancestry PASS. F pure adoption preparation and writer/retry safety have
+1,347 focused / 2,808 full tests and all static/build/local migration gates PASS.
+Actual adoption and functional adapters remain next; G/H are not started. See
+`t09/CONTINUATION.md` and `t09/F_ADOPTION_PLAN.md`. Earlier repository references
+and the following pre-transfer E checkpoint are historical provenance only.
+
 Current checkpoint (2026-09-11): published E application
 `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`; successor fetch/equality and frozen-D
 ancestry PASS. F is active, G/H pending. Final E proof: 1,172 focused / 2,659 full

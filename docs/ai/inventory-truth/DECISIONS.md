@@ -1,5 +1,41 @@
 # Inventory Truth architecture decisions
 
+## DEC-013 — Recovery-stage writer safety and explicit adoption preparation
+
+Canonical repository after transfer: `vn-2d/frigo-dev`; prior owners are historical
+provenance. The verified interrupted F HEAD is `66858c5`; the single writable
+successor is `hoplite/kos-2a686759`. Exact integrity proof is in t09/CONTINUATION.md.
+
+Until functional lot adapters exist, manual add/edit/discard, scan confirmation,
+shopping import and cooking reject inside their transaction if any household lot
+is already mapped. They return `INVENTORY_AUTHORITY_REQUIRED`, not successful
+projection-only mutations. Unlinked T08 backfill is not activation. Ordinary legacy
+households retain their workflows. This is temporary SAFE-DEFERRED behavior for
+mapped households, **not completed F writer migration**.
+
+Scan/shopping preparation captures household inventory revision before stock reads
+and rechecks it before transaction effects while the scan READY / shopping lease
+predicate still permits those effects. Completed winners retain read-only replay.
+Failed shopping leases remain retryable; stock, reviewed drafts, run completion and
+success events must roll back together. Server-scan transport recovery retries the
+original confirmation path/body/owner, never differently keyed manual additions.
+Local offline drafts retain the existing manual-add flow. Shopping acquisition
+rereads revalidate fingerprints; post-COMMIT recovery checks completed receipts first.
+
+Pure adoption preparation is bounded to 32 effects and 1,000 rows per snapshot
+collection, including derived collections. It preserves synthetic lot IDs,
+LEGACY_BACKFILL/source/raw evidence, full projection metadata and kg/l display
+units. Mapping preparation advances initial lot version 1→2 independently of the
+unchanged projection/legacy version. ACTIVE-zero snapshots require explicit
+CONSUMED/DISCARDED evidence and reason. Empty-household output explicitly requires
+durable activation evidence. The planner does not authorize, write or activate.
+
+The executor must supply an authorized complete snapshot, source/membership/revision
+fences, immutable receipt-backed activation (including empty households), and atomic
+snapshot/mapping/event/activation writes. Extend writer fences to the marker before
+enabling adoption. Historical v1/v2 validators and migrations 0023–0027 remain
+unchanged in this preparation increment. F/G/H remain incomplete; DEC-012 is intact.
+
 ## DEC-012 — Fail closed before guest inventory transfer
 
 The T09F audit reconfirms separate `UPDATE OR IGNORE` ownership rewrites followed

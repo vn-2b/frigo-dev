@@ -1,5 +1,24 @@
 # T09 change manifest
 
+## Transferred-repository F safety application aa43e06 (partial F)
+
+- `packages/domain/src/inventory-adoption.ts`: pure bounded adoption preparation;
+  no executor or activation.
+- `packages/db/src/inventory-writer-fence.ts`: mapped-authority refusal and
+  optional source-conditioned whole-stock revision fence in the writer batch.
+- Worker `routes/{inventory,scans,week,recipes}.ts`: scoped fence integration;
+  shopping acquisition fingerprint and durable response/lease replay recovery.
+- `src/web/services/scans.ts`: original confirmation recovery after fetch/body
+  transport failure; no shared HTTP, payment or authentication change.
+- New `tests/unit/inventory-adoption.test.ts`, integration
+  `{inventory-writer-fence,scan-response-loss,shopping-command-race}.test.ts`;
+  extended local-D1 worker/test, sync and command-route fake coverage.
+- Current authority, state, plan, writer map and evidence documents updated;
+  old repository names preserved as historical provenance. No migration, dependency,
+  production configuration or native v1/v2 executor changes in this checkpoint.
+
+No actual adoption or functional mapped-household adapter yet; F/G/H incomplete.
+
 ## F safety checkpoint after published E (not full F completion)
 
 - `src/worker/routes/auth.ts`: remove guest-only non-atomic ownership/cache

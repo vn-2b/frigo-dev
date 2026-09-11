@@ -1,5 +1,16 @@
 # T09 — Inventory Lot Engine & Event Authority
 
+**Current canonical repository: vn-2d/frigo-dev.** Writable continuation:
+`hoplite/kos-2a686759`, directly from verified interrupted `66858c5`.
+Published application: `aa43e069edbff7843e9eb7532ff386b27be96a17`.
+F safety/preparation gates PASS: 1,347 focused / 2,808 full tests, all static/build/
+local migration gates. Adoption is not activated; functional adapters and G/H
+remain incomplete. [CONTINUATION.md](CONTINUATION.md) is current authority and
+[F_ADOPTION_PLAN.md](F_ADOPTION_PLAN.md) is the next implementation contract.
+The previous repository references and chronology below are historical provenance.
+
+## Historical pre-transfer state
+
 **Current:** E published/fetched at `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`,
 equality/ancestry PASS; 1,172 focused / 2,659 full tests and all E gates PASS.
 F in progress per [F_ADOPTION_PLAN.md](F_ADOPTION_PLAN.md), G/H pending. No freeze

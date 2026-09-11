@@ -1,5 +1,88 @@
 # T09 verification (append-only evidence)
 
+## Transferred-repository F recovery checkpoint — 2026-09-11
+
+Application: `aa43e069edbff7843e9eb7532ff386b27be96a17`, published/fetched on
+`hoplite/kos-2a686759` in canonical `vn-2d/frigo-dev`. Recovery documentation
+`2b138cc567cb81eef9bab16e24d6dbd60b296814` was published before source changes.
+Exact fetched equality and `66858c5` ancestry passed. Required prior continuation,
+frozen D and main remained `66858c5`, `811f7e8`, `d1b0673` respectively. Application
+ahead/behind current main: 20/0. Full transfer proof and baseline: CONTINUATION.md.
+
+Implemented: pure adoption preflight/plan, full projection/source preservation,
+32-effect and 1,000-row limits, independent mapping/legacy versions, explicit
+terminal-zero evidence, detached deterministic outputs and empty activation intent.
+No adoption persistence or activation. Legacy manual/scan/shopping/cook batches now
+refuse mapped authority atomically. Scan/shopping capture/recheck stock revision
+while their source predicate allows writes. Shopping validates raced first claims,
+preserves expired-lease winner replay and recovers post-COMMIT results. Server-scan
+recovery retains original path/body/owner after fetch/body transport loss without
+inventing manual additions or cached stock. DEC-012 unchanged.
+
+Executed at this application tree:
+
+```sh
+pnpm exec vitest run tests/unit/inventory-lot-commands.test.ts tests/unit/inventory-truth.test.ts tests/unit/inventory-fefo.test.ts tests/unit/inventory-adoption.test.ts tests/integration/inventory tests/integration/scan-response-loss.test.ts tests/integration/shopping-command-race.test.ts tests/unit/sync.test.ts tests/unit/command-route-integrity.test.ts tests/integration/week-core-flow.test.ts
+pnpm test
+pnpm lint
+pnpm typecheck
+pnpm check:migrations
+pnpm build
+git diff --check
+git diff --exit-code 66858c5296b38715e4bfca77fca5eefe5adadf5a -- migrations src/worker/routes/auth.ts src/worker/routes/billing.ts src/worker/routes/payments.ts .hoplite/settings.json pnpm-lock.yaml .github wrangler.jsonc
+```
+
+- Combined focused: **1,347 / 19 files PASS**, 04:15:49 UTC, 134.83s.
+- Full: **2,808 / 103 files PASS**, 04:16:19 UTC, 189.92s.
+- All listed static/build/migration/diff gates PASS; 27 migrations unchanged.
+- Includes **38 actual isolated local-D1 tests** (35 prior + 3 fence cases),
+  70 adoption-planner cases, 13 writer-fence HTTP/race cases and 8 shopping
+  claim/lease/response-loss cases across legacy and dual Week modes.
+- Scoped independent review: two P2 findings repaired and re-reviewed; **144 tests
+  / six files**, typecheck and diff check PASS on re-review. No remaining P1/P2
+  in this partial increment. This is not a final T09 independent-review verdict.
+- Logs: ignored `.hoplite/artifacts/t09-recovery/` (`focused-final.log`,
+  `full-final.log`, `static-final.log`, earlier failure logs).
+
+Failures and corrections (retained, not hidden):
+
+1. First new writer test run: 4/11 failed due to invalid new fixtures (missing scan
+   user, wrong cooking quantity field/parameterization, wrong shopping table name).
+   Corrected to actual contracts; no product assertion relaxed.
+2. First full recovery run: 4 failed / 2,704 passed, 101 files. The command-route
+   fake selected the newly prepended abort-fence INSERT as a successful effect
+   event. Fixed fake statement handling and added an assertion for the real stable
+   effect ID; all replay/conflict assertions retained. Real SQLite replay passed.
+3. First expanded D1 run: 2 failed / 49 passed because new populated tests preceded
+   existing empty-database assertions. Moved new cases after the original baseline;
+   original assertions unchanged. Rerun: 51/51 across D1 and HTTP fence files.
+4. Adoption boundary tests initially exposed three planner failures; added derived
+   collection bounds and duplicate catalog-ID guards. Final adoption suite: 70 PASS.
+5. Independent review reproduced stale shopping lease / lost committed-response
+   misclassification. Source-predicate admission and durable replay recovery fixed
+   both; executable regression coverage includes both Week modes.
+6. Review reproduced a scan response-body disconnect after headers/commit. Scoped
+   confirmation transport handling now covers TypeError/AbortError; malformed JSON,
+   HTTP failures, owner changes and cache-write exceptions do not queue recovery.
+7. A child accidentally used unfiltered `pnpm test -- …` during planner work and
+   canceled it. No result is claimed for that canceled command.
+
+Still incomplete: v3 atomic adoption/activation, functional mapped-household writer
+adapters, retained scan confirmation intent/result validation (2→9 retry currently
+falsely replays), membership/source matrix, contextual cook policy, G and H. No
+freeze, readiness, production/staging/remote-D1/PayOS/main/T10 claim or operation.
+
+### F safety checkpoint clean fetched-source proof
+
+`git worktree add --detach .hoplite/artifacts/t09-recovery/remote-checkout origin/hoplite/kos-2a686759`
+resolved exact `aa43e069edbff7843e9eb7532ff386b27be96a17`, after a trusted fetch.
+Inside that separate tree, `pnpm install --offline --frozen-lockfile`,
+`pnpm typecheck`, and the exact combined focused command above all PASS:
+**1,347 tests / 19 files**, 04:21:15 UTC, 92.13s. `git status --porcelain` was
+empty and `git rev-parse HEAD` matched the fetched application. Logs:
+`remote-install.log`, `remote-typecheck.log`, `remote-focused.log` in recovery
+artifacts. This is fresh checkpoint verification, not a final H freeze.
+
 ## F guest-safety final prepublication gates
 
 Current F safety application tree: `pnpm test` **PASS 2,685 / 99 files**,

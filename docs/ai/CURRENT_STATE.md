@@ -2,6 +2,20 @@
 
 ## Current T09 continuation — 2026-09-11
 
+Latest verified/published application: `aa43e069edbff7843e9eb7532ff386b27be96a17`.
+Same task, A–E COMPLETE; F IN_PROGRESS; G/H NOT_STARTED. F now has pure adoption
+preparation, in-transaction legacy writer refusal for mapped households, scan/
+shopping stock-revision fences, shopping claim/lease/response-loss recovery, and
+server-scan confirmation recovery without duplicate manual additions. DEC-012 is
+unchanged. No adoption activation or functional mapped-household adapters yet.
+Fresh gates: **1,347 focused / 19 files**, **2,808 full / 103 files**, 38 actual
+isolated local-D1 tests within those gates, lint/typecheck/27-migration smoke/build
+and diff/protected-path checks PASS. Two scoped independent-review P2 findings
+were fixed/retested; no remaining P1/P2 in this partial increment. Full F still
+requires retained scan-intent validation, atomic adoption and all writer adapters.
+Next: additive v3 atomic adoption authority, then functional adapters, G and H.
+Detailed evidence/failures: `inventory-truth/t09/VERIFICATION.md`.
+
 Canonical repository: **vn-2d/frigo-dev**. Writable successor:
 **hoplite/kos-2a686759**, directly from verified interrupted F
 `66858c5296b38715e4bfca77fca5eefe5adadf5a` on read-only prior continuation
@@ -10,7 +24,7 @@ files, typecheck/lint/27-migration smoke/build PASS. At takeover: 18 ahead / 0
 behind unchanged origin/main. Exact authority/evidence: `inventory-truth/t09/CONTINUATION.md`.
 Earlier repository references are historical provenance only.
 
-Pre-transfer continuation was based exactly on frozen T09D remote
+The following pre-transfer chronology is historical. Continuation was based on frozen T09D remote
 811f7e8463303e010199741d66f88ab8a817212d. Successor documentation checkpoint
 8bf32ed4e41ed3341215c6376e0c13ef13043616 was published/fetched before E code.
 A–E complete; E published as `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`.

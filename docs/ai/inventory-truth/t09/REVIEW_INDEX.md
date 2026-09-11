@@ -1,5 +1,17 @@
 # T09 review index
 
+## Canonical recovery review boundary
+
+Repository **vn-2d/frigo-dev**; branch **hoplite/kos-2a686759**. Published application
+`aa43e069edbff7843e9eb7532ff386b27be96a17` has scoped independent review and fresh
+1,347 focused / 2,808 full tests, static/build/local migration gates PASS. Two P2
+recovery findings were corrected/retested. This is only F safety/adoption preparation;
+atomic adoption, functional adapters, scan intent replay and G/H remain incomplete.
+No application freeze or final independent-review readiness. CONTINUATION.md and
+F_ADOPTION_PLAN.md govern current work. Earlier owner names are historical provenance.
+
+## Historical pre-transfer review packet
+
 ## Current published checkpoint
 
 E application: `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`, published/fetched on

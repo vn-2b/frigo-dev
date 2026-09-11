@@ -1,5 +1,38 @@
 # T09F adoption and writer integration — implementation plan
 
+## Current recovery increment — 2026-09-11
+
+Canonical repository `vn-2d/frigo-dev`, successor `hoplite/kos-2a686759` directly
+from interrupted `66858c5`; transfer/ancestry and baseline PASS. Authority and
+publication receipts: CONTINUATION.md. Earlier owners are historical provenance.
+
+Implemented preparation/safety, not full adoption:
+
+- Pure `planInventoryAdoption` with full projection evidence, 32/1,000 bounds,
+  missing-snapshot ordering, preserved identities/units/versions and explicit
+  terminal-zero evidence. No executor, activation, receipt or route cutover yet.
+- Legacy route families fence mapped authority inside their stock transaction;
+  scan/shopping also fence stock revision. Mapped households are SAFE-DEFERRED
+  until functional adapters exist, not silently mutated via the legacy projection.
+- Server-scan transport loss retains confirmation identity; local-only drafts
+  retain their manual flow. Shopping first-claim, lease and response-loss recovery
+  preserve exact command identity and completion-last behavior.
+
+Exact next implementation: additive, narrowly dispatched v3 adoption/compatibility
+receipt authority without weakening v1/v2; persist the adoption plan in one authorized
+fenced batch with immutable activation evidence, including empty households. Do not
+execute planner output as separate inserts/mappings or activate before extending
+writer admission. Then replace mapped-household refusals with functional adapters.
+
+Outstanding reproduced invariant: confirming 2 eggs, then retrying the same scan
+with 9 eggs, returns 200 replay while retaining 2. Original confirmation intent and
+result must be retained and checked in all three confirmed-state branches; never
+derive historical identity from today's stock or newly hydrated scan rows. Also
+cover queued changed review, membership revocation, and contextual/name-based cook
+demands. G/H cannot be declared complete from these partial safety tests.
+
+## Original remaining F contract (unchanged)
+
 E code `9bd1e6bc000cd2e94121469babb1a5eb63a5047f` was published/fetched on
 `hoplite/orchemenos-e002591e`; local/remote equality and exact frozen-D ancestry
 passed before F work. This file records remaining implementation, not acceptance.

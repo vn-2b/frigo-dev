@@ -1,5 +1,16 @@
 # Inventory Truth task board
 
+## Canonical recovery checkpoint
+
+Repository **vn-2d/frigo-dev**, branch **hoplite/kos-2a686759**. Published application
+`aa43e069edbff7843e9eb7532ff386b27be96a17`: adoption preparation and writer/retry
+safety, not full F. A–E COMPLETE; F IN_PROGRESS; G/H NOT_STARTED. Fresh 1,347
+focused / 2,808 full tests and all static/build/migration gates PASS. Next: atomic
+v3 adoption authority and functional writer adapters; then G/H. Current authority:
+`t09/CONTINUATION.md`. Previous repository names below are historical provenance.
+
+## Historical pre-transfer board
+
 ## Current checkpoint — 2026-09-11
 
 A–E complete. E `9bd1e6bc000cd2e94121469babb1a5eb63a5047f` is published/fetched

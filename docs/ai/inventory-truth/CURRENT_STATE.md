@@ -1,5 +1,18 @@
 # Inventory Truth current state
 
+## Canonical recovery checkpoint
+
+Repository **vn-2d/frigo-dev**, writable successor **hoplite/kos-2a686759**.
+Application `aa43e069edbff7843e9eb7532ff386b27be96a17` published/fetched with
+equality and interrupted-F ancestry PASS. Fresh 1,347 focused / 2,808 full tests,
+static/build/27-migration gates PASS. Pure adoption planning and legacy writer/retry
+safety are implemented; atomic adoption and functional adapters remain F work.
+A–E COMPLETE, F IN_PROGRESS, G/H NOT_STARTED; no freeze/readiness. Current authority:
+`t09/CONTINUATION.md`. Previous repository names/statuses below are historical
+provenance only. Next: v3 atomic adoption, adapters, G, H.
+
+## Historical pre-transfer state
+
 ## Published E / active F — 2026-09-11
 
 E published/fetched: `9bd1e6bc000cd2e94121469babb1a5eb63a5047f` on the authorized

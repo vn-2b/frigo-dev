@@ -2,6 +2,20 @@
 
 ## Current transferred-repository authority
 
+Published safety/preparation application: `aa43e069edbff7843e9eb7532ff386b27be96a17`.
+Recovery docs `2b138cc567cb81eef9bab16e24d6dbd60b296814` were published/fetched
+before source changes. Both checkpoints have exact fetched equality and preserved
+interrupted-F ancestry. Main, prior continuation and frozen D remained unchanged on
+the post-publication fetch. At the application checkpoint: 20 ahead / 0 behind main.
+Fresh application gates: 1,347 focused / 19 files, 2,808 full / 103 files, all
+static/build/27-migration gates PASS. Scope and next action: F_ADOPTION_PLAN.md.
+Only pure adoption preparation and writer/retry safety are implemented; actual
+adoption and functional adapters remain next. No F/G/H completion claim.
+Separate fetched-source worktree at `aa43e069edbff7843e9eb7532ff386b27be96a17`:
+offline frozen install, typecheck and the same 1,347-test combined gate PASS;
+source tree CLEAN before completion (92.13s focused run, 04:21:15 UTC).
+This is checkpoint recovery proof, not H's final application freeze.
+
 Canonical repository: **vn-2d/frigo-dev**.
 Remote: `https://github.com/vn-2d/frigo-dev.git`.
 Current writable continuation: **hoplite/kos-2a686759**, the one platform-created

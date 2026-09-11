@@ -1,5 +1,21 @@
 # T09 writer map
 
+## Current recovery safety classification
+
+Canonical repository `vn-2d/frigo-dev`; writable successor `hoplite/kos-2a686759`.
+Manual CREATE/PATCH/DELETE, scan confirmation, Week shopping import and cooking
+now fence mapped authority inside the stock transaction. They remain compatible
+for unactivated legacy households and are **SAFE-DEFERRED for mapped households**
+with explicit 409 `INVENTORY_AUTHORITY_REQUIRED`. This is not functional adoption
+or completed migration. Scan/shopping additionally fence stock revision; shopping
+retains lease/replay behavior and server-scan recovery retains confirmation identity.
+Pure adoption planning has no live database writer. DEC-012 remains SAFE-DEFERRED.
+Backfill stays insert-only; fixture/query-constant classifications stay NOT LIVE.
+F_ADOPTION_PLAN.md records every remaining adapter requirement. The audit below
+describes the pre-integration source and is retained as historical discovery.
+
+## Original audit
+
 T09A exhaustive repository audit complete. F guest transfer is SAFE-DEFERRED;
 other required live writer classifications remain PENDING.
 this is not a completion claim. Paths below are relative to `src/worker/` unless
