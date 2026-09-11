@@ -157,7 +157,10 @@ class InventoryDatabase extends FakeDatabase {
   async batch(statements: FakeStatement[]): Promise<D1Result[]> {
     this.batches.push(statements);
     const update = statements.find((statement) => statement.sql.includes('UPDATE inventory_items'));
-    const event = statements.find((statement) => statement.sql.includes('INSERT INTO inventory_events'));
+    const fence = statements.find((statement) => statement.sql.includes("'T09_WRITER_FENCE'"));
+    const event = statements.find((statement) =>
+      statement !== fence && statement.sql.includes('INSERT INTO inventory_events')
+    );
     if (!update || !event) throw new Error('Expected an inventory update and event in one batch');
 
     const expectedVersion = Number(update.params.at(-1));
@@ -185,7 +188,7 @@ class InventoryDatabase extends FakeDatabase {
 
     return statements.map((statement) => ({
       success: true,
-      meta: { changes: statement === update || statement === event ? changed : 1 },
+      meta: { changes: statement === fence ? 0 : statement === update || statement === event ? changed : 1 },
     }));
   }
 }
@@ -245,6 +248,9 @@ describe('inventory command integrity', () => {
     });
     expect(db.batches).toHaveLength(1);
     expect(db.events.size).toBe(1);
+    expect([...db.events.values()]).toEqual([
+      expect.objectContaining({ id: expect.stringMatching(/^evt_update_/), metadata: expect.any(String) }),
+    ]);
   });
 
   it('rejects reuse of a PATCH key with a different command payload', async () => {

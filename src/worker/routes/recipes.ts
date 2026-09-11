@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { InventoryWriterAuthorityError, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
 import { Env, AuthContext } from '../types';
 import { ALL_RECIPES, rankRecipes, evaluateRecipeMatch, CuisineType } from '@frigo/recipes';
 import { areUnitsCompatible, convertUnit, findCanonicalIngredient, StandardUnit } from '@frigo/domain';
@@ -507,7 +508,7 @@ recipeRoutes.post('/recipes/:id/cook/complete', tenancyGuard, async (c) => {
       );
     }
 
-    const batchResults = await db.batch(batchStatements);
+    const batchResults = await runLegacyInventoryBatch(db, auth.householdId, batchStatements);
     assertBatchSucceeded(batchResults);
     if (kv) await kv.delete(`inv_${auth.householdId}`).catch(() => {});
 
@@ -588,6 +589,7 @@ recipeRoutes.post('/recipes/:id/cook/complete', tenancyGuard, async (c) => {
         // cannot reach D1; an unavailable read is not evidence of low stock.
       }
     }
+    if (err instanceof InventoryWriterAuthorityError) return c.json({ error: err.message, code: err.code }, 409);
     console.error('D1 complete cooking transaction failed:', err);
     return c.json({ error: 'Lỗi hoàn tất nấu món trong cơ sở dữ liệu', code: 'DATABASE_ERROR' }, 500);
   }

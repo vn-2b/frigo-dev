@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../../src/web/services/api';
 import { flush, getPendingOps, pendingCount, pushOp, PendingOp } from '../../src/web/lib/sync';
+import { privateCacheKey } from '../../src/web/lib/private-session';
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -119,7 +120,7 @@ describe('offline outbox and scan persistence contract', () => {
       id: 'manual-1', rawName: 'Trứng gà', estimatedQuantity: 6, unit: 'piece', storage: 'fridge',
     };
     const result = await api.confirmScan(scan.id, [reviewedItem]);
-    expect(result.pendingSync).toBe(true);
+    expect(result).toMatchObject({ pendingSync: true });
 
     const ops = getPendingOps();
     expect(ops).toHaveLength(1);
@@ -129,6 +130,127 @@ describe('offline outbox and scan persistence contract', () => {
     const body = JSON.parse(ops[0].body || '{}');
     expect(body.id).toContain('offline_scan_offline_');
     expect(body.dataSource).toBe('scan');
+  });
+
+  it.each(['scan_server_1', 'receipt_server_1'])('queues the original server confirmation for %s without inventing stock', async (scanId) => {
+    storage.setItem('frigo_user_id', 'user-a');
+    storage.setItem('frigo_household_id', 'house-a');
+    const cacheKey = privateCacheKey('inventory');
+    const inventory = [{ id: 'existing-eggs', name: 'Trứng gà', quantity: 2, unit: 'piece' }];
+    storage.setItem(cacheKey, JSON.stringify(inventory));
+    const before = storage.getItem(cacheKey);
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('response lost'));
+    vi.stubGlobal('fetch', fetchMock);
+    const items = [{
+      id: 'scan-item-1', rawName: 'Trứng gà', estimatedQuantity: 6,
+      unit: 'piece', category: 'egg', storage: 'fridge', expiryDate: '2026-09-20',
+    }];
+
+    const result = await api.confirmScan(scanId, items);
+    const [originalUrl, originalInit] = fetchMock.mock.calls[0];
+    expect(originalUrl).toBe(`/api/v1/scans/${scanId}/confirm`);
+    expect(result).toEqual({ success: true, pendingSync: true, items: inventory });
+    expect(storage.getItem(cacheKey)).toBe(before);
+    const firstQueue = getPendingOps();
+    expect(firstQueue).toEqual([expect.objectContaining({
+      path: `/scans/${scanId}/confirm`, method: 'POST', body: originalInit.body,
+      userId: 'user-a', householdId: 'house-a',
+    })]);
+    expect(JSON.parse(firstQueue[0].body!)).toEqual({ items });
+
+    await api.confirmScan(scanId, items);
+    expect(getPendingOps()).toEqual(firstQueue);
+    expect(storage.getItem(cacheKey)).toBe(before);
+  });
+
+  it('retains the serialized server confirmation if the caller changes its draft while awaiting the response', async () => {
+    storage.setItem('frigo_user_id', 'user-a');
+    storage.setItem('frigo_household_id', 'house-a');
+    const items = [{ id: 'scan-item-1', rawName: 'Trứng gà', estimatedQuantity: 6, unit: 'piece' }];
+    const body = JSON.stringify({ items });
+    let rejectResponse!: (error: Error) => void;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((_resolve, reject) => { rejectResponse = reject; })));
+
+    const confirmation = api.confirmScan('scan-server', items);
+    items[0].estimatedQuantity = 60;
+    rejectResponse(new TypeError('response lost'));
+    await confirmation;
+
+    expect(getPendingOps()).toEqual([expect.objectContaining({
+      path: '/scans/scan-server/confirm', body, userId: 'user-a', householdId: 'house-a',
+    })]);
+  });
+
+  it.each([
+    { userId: 'user-b', householdId: 'house-a' },
+    { userId: 'user-a', householdId: 'house-b' },
+  ])('does not replay a server confirmation after switching to $userId/$householdId', async (nextScope) => {
+    storage.setItem('frigo_user_id', 'user-a');
+    storage.setItem('frigo_household_id', 'house-a');
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('offline'));
+    vi.stubGlobal('fetch', fetchMock);
+    await api.confirmScan('scan-server', [{ id: 'scan-item-1' }]);
+    const before = getPendingOps();
+    expect(before[0].path).toBe('/scans/scan-server/confirm');
+    storage.setItem('frigo_user_id', nextScope.userId);
+    storage.setItem('frigo_household_id', nextScope.householdId);
+    fetchMock.mockClear();
+
+    expect(await api.retryPendingWrites()).toEqual({ attempted: 0, remaining: 1 });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getPendingOps()).toEqual(before);
+  });
+
+  it('does not enqueue a lost server confirmation under an owner who replaced the in-flight session', async () => {
+    storage.setItem('frigo_user_id', 'user-a');
+    storage.setItem('frigo_household_id', 'house-a');
+    let rejectResponse!: (error: Error) => void;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((_resolve, reject) => { rejectResponse = reject; })));
+
+    const confirmation = api.confirmScan('scan-server', [{ id: 'scan-item-1' }]);
+    storage.setItem('frigo_user_id', 'user-b');
+    storage.setItem('frigo_household_id', 'house-b');
+    rejectResponse(new TypeError('response lost'));
+
+    await expect(confirmation).rejects.toMatchObject({ kind: 'auth' });
+    expect(getPendingOps()).toEqual([]);
+  });
+
+  it.each([409, 422, 500])('does not turn a server confirmation HTTP %s into an offline import', async (status) => {
+    storage.setItem('frigo_user_id', 'user-a');
+    storage.setItem('frigo_household_id', 'house-a');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"error":"rejected"}', { status })));
+
+    await expect(api.confirmScan('scan-server', [{ id: 'scan-item-1' }]))
+      .rejects.toMatchObject({ kind: 'http', status });
+    expect(getPendingOps()).toEqual([]);
+    expect(storage.getItem(privateCacheKey('inventory'))).toBeNull();
+  });
+
+  it('preserves local-only receipt drafts as stable manual inventory additions', async () => {
+    storage.setItem('frigo_user_id', 'guest-1');
+    storage.setItem('frigo_household_id', 'hh_guest_1');
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('offline'));
+    vi.stubGlobal('fetch', fetchMock);
+    const receipt = await api.scanReceipt('image-data');
+    expect(receipt.id).toMatch(/^receipt_offline_/);
+    expect(receipt.items).toEqual([]);
+    fetchMock.mockClear();
+    const item = { id: 'draft-eggs', rawName: 'Trứng gà', estimatedQuantity: 6, unit: 'piece' };
+
+    const result = await api.confirmScan(receipt.id, [item]);
+    expect(result).toMatchObject({ success: true, pendingSync: true, importedItemsCount: 1 });
+    const queued = getPendingOps();
+    expect(queued).toEqual([expect.objectContaining({
+      path: '/inventory', method: 'POST', userId: 'guest-1', householdId: 'hh_guest_1',
+    })]);
+    expect(JSON.parse(queued[0].body!)).toMatchObject({
+      id: `offline_${receipt.id}_draft-eggs`, name: 'Trứng gà', quantity: 6, unit: 'piece', dataSource: 'receipt',
+    });
+    await api.confirmScan(receipt.id, [item]);
+    expect(getPendingOps()).toEqual(queued);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(JSON.parse(storage.getItem(privateCacheKey('inventory'))!)).toHaveLength(1);
   });
 
   it('keeps queued operations scoped when the active account changes before retry', async () => {

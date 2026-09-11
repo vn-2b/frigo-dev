@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { InventoryWriterAuthorityError, InventoryWriterSnapshotError, readLegacyInventoryRevision, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
 import { z } from 'zod';
 import { Env, AuthContext, WeekSchemaMode } from '../types';
 import {
@@ -709,6 +710,7 @@ async function claimShoppingCommand(
   }
 
   if (!row) throw new Error('Shopping command ledger row was not created');
+  if (row.request_fingerprint !== requestFingerprint) return { kind: 'conflict' };
   if (row.status === 'completed') {
     let payload: Record<string, unknown>;
     try {
@@ -748,7 +750,7 @@ function shoppingLeaseExistsSql(): string {
 async function readShoppingCommand(db: any, commandId: string, householdId: string): Promise<any | null> {
   return (await db
     .prepare(
-      `SELECT id, status, response_json, lock_token
+      `SELECT id, status, request_fingerprint, response_json, lock_token
        FROM shopping_import_commands
        WHERE id = ? AND household_id = ?
        LIMIT 1`
@@ -1382,6 +1384,7 @@ weekRoutes.post('/week/plans/:id/shopping/complete', async (c) => {
 
     // Fetch all matching rows in one query. A failed read aborts the command
     // rather than silently creating duplicate stock.
+    const inventoryRevision = await readLegacyInventoryRevision(db, auth.householdId);
     const seenNames = canonicalItemsToImport.map((item) => item.name.trim().toLowerCase());
     const namePlaceholders = seenNames.map(() => 'LOWER(?)').join(',');
     const ingredientPlaceholders = canonicalItemsToImport.map(() => '?').join(',');
@@ -1562,7 +1565,8 @@ weekRoutes.post('/week/plans/:id/shopping/complete', async (c) => {
       true
     );
 
-    const results = await db.batch(batchStatements);
+    const results = await runLegacyInventoryBatch(db, auth.householdId, batchStatements, inventoryRevision,
+      { sql: leaseSql, bindings: [claim.commandId, auth.householdId, planId, claim.lockToken] });
     assertBatchSucceeded(results);
     const commandStatementIndex = requiredStatementIndexes[requiredStatementIndexes.length - 1];
     const missingRequiredRow = requiredStatementIndexes
@@ -1643,8 +1647,28 @@ weekRoutes.post('/week/plans/:id/shopping/complete', async (c) => {
     if (kv) await kv.delete(`inv_${auth.householdId}`).catch(() => {});
     return c.json(response);
   } catch (err) {
-    console.error('Failed saving shopping import to DB:', err);
+    try {
+      const durable = await readShoppingCommand(db, claim.commandId, auth.householdId);
+      if (durable?.status === 'completed') {
+        if (durable.request_fingerprint !== requestFingerprint) {
+          return c.json({ error: 'Idempotency-Key đã được dùng cho dữ liệu khác', code: 'IDEMPOTENCY_CONFLICT' }, 409);
+        }
+        let payload: Record<string, unknown> | null;
+        try { payload = JSON.parse(durable.response_json || 'null') as Record<string, unknown> | null; }
+        catch { return c.json({ error: 'Kết quả nhập hàng đã lưu bị hỏng', code: 'DATA_INTEGRITY_ERROR' }, 503); }
+        if (!payload || payload.success !== true || !Number.isSafeInteger(payload.importedItemsCount)) {
+          return c.json({ error: 'Kết quả nhập hàng đã lưu bị hỏng', code: 'DATA_INTEGRITY_ERROR' }, 503);
+        }
+        return c.json({ ...payload, idempotentReplay: true });
+      }
+    } catch {
+      // Preserve the original failure if durable recovery cannot be read.
+    }
     await markShoppingCommandFailed(db, claim.commandId, claim.lockToken).catch(() => {});
+    if (err instanceof InventoryWriterAuthorityError || err instanceof InventoryWriterSnapshotError) {
+      return c.json({ error: err.message, code: err.code }, 409);
+    }
+    console.error('Failed saving shopping import to DB:', err);
     if (err instanceof ShoppingImportUnitError) {
       return c.json(
         { error: 'Đơn vị mặt hàng không tương thích với nguyên liệu hiện có', code: 'UNIT_MISMATCH' },

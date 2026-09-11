@@ -437,3 +437,48 @@ describe('T09E actual local D1 multi-effect authority', () => {
       .toMatchObject({ status: 200, results: [{ results: [] }, { results: [{ quick_check: 'ok' }] }] });
   });
 });
+
+describe('T09F actual local D1 legacy writer fences', () => {
+  it('rejects a projection-only writer with byte-identical native authority', async () => {
+    const { scope, input, facts } = await raceFixture('USE');
+    const before = await facts();
+    const response = await requestCommand('legacy', { householdId: scope.householdId, statements: [
+      { sql: 'UPDATE inventory_items SET quantity = 99, version = version + 1 WHERE id = ?', values: [input.lotId] },
+      { sql: "UPDATE households SET name = 'must not complete' WHERE id = ?", values: [scope.householdId] },
+    ] });
+    expect(response).toMatchObject({ status: 409, error: expect.stringContaining('requires an atomic lot adapter') });
+    expect(await facts()).toEqual(before);
+  });
+
+  it('preserves legacy result positions and emits no successful fence event', async () => {
+    const { scope, facts } = await raceFixture('CREATE');
+    const before = await facts();
+    const response = await requestCommand('legacy', { householdId: scope.householdId,
+      expectedInventoryVersion: before[0][0].inventory_version, statements: [
+        { sql: `INSERT INTO inventory_items(id,household_id,name,quantity,unit)
+          VALUES (?, ?, 'Legacy eggs', 2, 'piece') RETURNING id`, values: [`legacy-${scope.householdId}`, scope.householdId] },
+        { sql: 'SELECT quantity FROM inventory_items WHERE household_id = ?', values: [scope.householdId] },
+      ] });
+    expect(response.status).toBe(200);
+    expect(response.results).toHaveLength(2);
+    expect(response.results[0].results).toEqual([{ id: `legacy-${scope.householdId}` }]);
+    expect(response.results[1].results).toEqual([{ quantity: 2 }]);
+    expect((await facts())[4]).toEqual([]);
+  });
+
+  it('aborts every prepared effect when another stock writer wins first', async () => {
+    const { scope, facts } = await raceFixture('CREATE');
+    const initial = await facts();
+    expect(await batch([{ sql: `INSERT INTO inventory_items(id,household_id,name,quantity,unit)
+      VALUES (?, ?, 'Concurrent eggs', 3, 'piece')`, values: [`winner-${scope.householdId}`, scope.householdId] }]))
+      .toMatchObject({ status: 200 });
+    const winner = await facts();
+    const response = await requestCommand('legacy', { householdId: scope.householdId,
+      expectedInventoryVersion: initial[0][0].inventory_version, statements: [
+        { sql: 'UPDATE inventory_items SET quantity = 77 WHERE household_id = ?', values: [scope.householdId] },
+        { sql: "UPDATE households SET name = 'must not complete' WHERE id = ?", values: [scope.householdId] },
+      ] });
+    expect(response).toMatchObject({ status: 409, error: expect.stringContaining('Inventory changed') });
+    expect(await facts()).toEqual(winner);
+  });
+});

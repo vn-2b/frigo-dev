@@ -1,5 +1,6 @@
 import type { D1DatabaseBinding, D1PreparedStatement } from '../../packages/db/src';
 import { executeInventoryFefoCommand, executeInventoryLotCommand, type InventoryLotCommandScope } from '../../packages/db/src/inventory-lot-commands';
+import { runLegacyInventoryBatch } from '../../packages/db/src/inventory-writer-fence';
 
 interface CommandRequest { scope: InventoryLotCommandScope; key: string; input: unknown; now: string }
 const run = (db: D1DatabaseBinding, command: CommandRequest) =>
@@ -61,6 +62,14 @@ export default {
       if (new URL(request.url).pathname === '/race') {
         const body = await request.json() as { contender: CommandRequest; winner: CommandRequest };
         return Response.json(await controlledRace(env.DB, body.contender, body.winner));
+      }
+      if (new URL(request.url).pathname === '/legacy') {
+        const body = await request.json() as {
+          householdId: string; expectedInventoryVersion?: number;
+          statements: { sql: string; values?: unknown[] }[];
+        };
+        const statements = body.statements.map(({ sql, values = [] }) => env.DB.prepare(sql).bind(...values));
+        return Response.json({ results: await runLegacyInventoryBatch(env.DB, body.householdId, statements, body.expectedInventoryVersion) });
       }
       const body = await request.json() as { statements: { sql: string; values?: unknown[] }[] };
       const results = await env.DB.batch(body.statements.map(({ sql, values = [] }) => env.DB.prepare(sql).bind(...values)));

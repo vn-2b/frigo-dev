@@ -1,4 +1,5 @@
 import { Context, Hono } from 'hono';
+import { InventoryWriterAuthorityError, InventoryWriterSnapshotError, readLegacyInventoryRevision, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
 import { Env, AuthContext } from '../types';
 import { AIRouter } from '@frigo/ai';
 import { SQL } from '@frigo/db';
@@ -894,6 +895,7 @@ scanRoutes.post('/scans/:id/confirm', async (c) => {
       metadata: string;
     }> = [];
 
+    const inventoryRevision = await readLegacyInventoryRevision(db, auth.householdId);
     let groupIndex = 0;
     for (const group of groups.values()) {
       const first = group.items[0];
@@ -1129,7 +1131,8 @@ scanRoutes.post('/scans/:id/confirm', async (c) => {
 
     // D1 batch executes the state transition, projection, and audit events as
     // one transaction. A failed event insert therefore rolls back the status.
-    const batchResults = await db.batch(batchStatements);
+    const batchResults = await runLegacyInventoryBatch(db, auth.householdId, batchStatements, inventoryRevision,
+      { sql: readyScanPredicate, bindings: [id, auth.householdId] });
     assertBatchSucceeded(batchResults);
     const statusResult = batchResults?.[batchResults.length - 1] as any;
     if (statusResult?.meta?.changes !== 1) {
@@ -1191,6 +1194,9 @@ scanRoutes.post('/scans/:id/confirm', async (c) => {
       }
     } catch {
       // Fall through to the database error response.
+    }
+    if (err instanceof InventoryWriterAuthorityError || err instanceof InventoryWriterSnapshotError) {
+      return c.json({ error: err.message, code: err.code }, 409);
     }
     console.error('D1 confirmScan items insert failed:', err);
     return c.json({ error: 'Lỗi xác nhận đưa nguyên liệu vào tủ lạnh', code: 'DATABASE_ERROR' }, 500);

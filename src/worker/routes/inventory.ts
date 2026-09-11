@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { Env, AuthContext } from '../types';
 import { SQL } from '@frigo/db';
+import { InventoryWriterAuthorityError, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
 import {
   areUnitsCompatible,
   computeFreshness,
@@ -355,7 +356,7 @@ inventoryRoutes.post('/inventory', async (c) => {
     }
 
     // Atomic insert of item and inventory audit event
-    const batchResults = await db.batch([
+    const batchResults = await runLegacyInventoryBatch(db, auth.householdId, [
       db.prepare(SQL.INSERT_INVENTORY_ITEM.replace(/^INSERT /, 'INSERT OR IGNORE ')).bind(
         newItem.id,
         newItem.householdId,
@@ -414,6 +415,7 @@ inventoryRoutes.post('/inventory', async (c) => {
       idempotentReplay ? 200 : 201
     );
   } catch (err: any) {
+    if (err instanceof InventoryWriterAuthorityError) return c.json({ error: err.message, code: err.code }, 409);
     console.error('D1 INSERT_INVENTORY_ITEM error:', err);
     return c.json({ error: 'Không thể thêm nguyên liệu vào cơ sở dữ liệu', code: 'DATABASE_ERROR' }, 500);
   }
@@ -527,7 +529,7 @@ inventoryRoutes.patch('/inventory/:id', async (c) => {
     const freshness = expiryDate ? computeFreshness(expiryDate, undefined, canonical?.defaultShelfLifeDays || 7) : existing.freshness;
     const ingredientId = body.name !== undefined ? canonical?.id || null : existing.ingredient_id || canonical?.id || null;
 
-    const batchResults = await db.batch([
+    const batchResults = await runLegacyInventoryBatch(db, auth.householdId, [
       db
         .prepare(
           `UPDATE inventory_items
@@ -627,6 +629,7 @@ inventoryRoutes.patch('/inventory/:id', async (c) => {
         // Fall through to the original database error.
       }
     }
+    if (err instanceof InventoryWriterAuthorityError) return c.json({ error: err.message, code: err.code }, 409);
     console.error('D1 UPDATE_INVENTORY_ITEM failed:', err);
     return c.json({ error: 'Lỗi cập nhật nguyên liệu trong cơ sở dữ liệu', code: 'DATABASE_ERROR' }, 500);
   }
@@ -700,7 +703,7 @@ inventoryRoutes.delete('/inventory/:id', async (c) => {
     // Keep the projection row so inventory events never point at a deleted
     // item. A zero-quantity row is also useful for freshness/history views and
     // can be rebuilt or permanently purged by a future retention job.
-    const batchResults = await db.batch([
+    const batchResults = await runLegacyInventoryBatch(db, auth.householdId, [
       db
         .prepare(
           `UPDATE inventory_items
@@ -771,6 +774,7 @@ inventoryRoutes.delete('/inventory/:id', async (c) => {
         // Fall through to the original database error.
       }
     }
+    if (err instanceof InventoryWriterAuthorityError) return c.json({ error: err.message, code: err.code }, 409);
     console.error('D1 DELETE_INVENTORY_ITEM failed:', err);
     return c.json({ error: 'Lỗi xóa nguyên liệu', code: 'DATABASE_ERROR' }, 500);
   }

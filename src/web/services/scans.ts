@@ -130,17 +130,25 @@ export const scansApi = {
 
     const path = `/scans/${scanId}/confirm`;
     const init = { method: 'POST', body: JSON.stringify({ items }) };
+    let res: Record<string, unknown> | null;
     try {
-      const res = await fetchJson<any>(path, init);
-      assertCurrent();
-      if (res && res.items) {
-        localStorage.setItem(privateCacheKey('inventory', hhId), JSON.stringify(res.items));
-      }
-      return res;
+      res = await fetchJson<Record<string, unknown> | null>(path, init);
     } catch (err) {
       assertCurrent();
-      if (!isOffline(err)) throw err;
-      return queueOfflineScanConfirmation(scanId, items);
+      const bodyTransportFailure = err instanceof TypeError || (err instanceof Error && err.name === 'AbortError');
+      if (!isOffline(err) && !bodyTransportFailure) throw err;
+      // Confirmation may commit before fetch or its response body fails.
+      queueWrite(path, init.method, init.body, 'Xác nhận bản quét khi có kết nối', `scan-confirm:${scanId}`);
+      return {
+        success: true,
+        pendingSync: true,
+        items: readCachedInventory(hhId),
+      };
     }
+    assertCurrent();
+    if (res && res.items) {
+      localStorage.setItem(privateCacheKey('inventory', hhId), JSON.stringify(res.items));
+    }
+    return res;
   },
 };
