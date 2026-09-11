@@ -2,8 +2,13 @@
 
 ## T09 continuation — 2026-09-11
 
-Same T09 task, writable successor `hoplite/orchemenos-e002591e` from frozen D
-base `811f7e8463303e010199741d66f88ab8a817212d`, repository green-1a/frigo-dev.
+Same T09 task, canonical repository **vn-2d/frigo-dev**. Writable successor
+**hoplite/kos-2a686759** directly from interrupted F `66858c5`; previous
+continuation `hoplite/orchemenos-e002591e` is read-only. Transfer/ancestry and
+fresh 2,685-test / 99-file baseline plus all static/build/migration gates PASS.
+A–E COMPLETE; F IN_PROGRESS; G/H NOT_STARTED. Current authority:
+`inventory-truth/t09/CONTINUATION.md`. Previous owners are historical provenance.
+Frozen D base remains `811f7e8463303e010199741d66f88ab8a817212d`.
 A–E complete; E atomic multi-effect FEFO published/fetched at
 `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`, equality/ancestry PASS. F–H not complete.
 Successor docs 8bf32ed4e41ed3341215c6376e0c13ef13043616

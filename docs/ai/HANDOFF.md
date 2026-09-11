@@ -6,14 +6,26 @@ Program: Inventory Truth Layer
 Task: T09 — unchanged continuation
 Phase: A–E complete; F in progress; G–H pending
 Status: IN_PROGRESS
-Canonical Repository: green-1a/frigo-dev
+Canonical Repository: vn-2d/frigo-dev
 T09D Frozen Base Branch: hoplite/euhesperides-d77023a5
 T09D Frozen Base HEAD: 811f7e8463303e010199741d66f88ab8a817212d
-Canonical Writable Continuation: hoplite/orchemenos-e002591e
-Last Verified Published Continuation SHA: 9bd1e6bc000cd2e94121469babb1a5eb63a5047f
-Last Verified Application SHA: 9bd1e6bc000cd2e94121469babb1a5eb63a5047f
+Canonical Writable Continuation: hoplite/kos-2a686759
+Verified Successor Base / Interrupted F SHA: 66858c5296b38715e4bfca77fca5eefe5adadf5a
+Last Verified Published Prior Continuation SHA: 66858c5296b38715e4bfca77fca5eefe5adadf5a
+Last Verified Application SHA: 66858c5296b38715e4bfca77fca5eefe5adadf5a
 T09E Application SHA: 9bd1e6bc000cd2e94121469babb1a5eb63a5047f
 Application Freeze: NOT FROZEN
+
+Transfer recovery: all canonical branches/tag fetched; required objects, full
+consecutive ancestry and fsck PASS. Main unchanged at d1b0673; interrupted F was
+18 ahead / 0 behind. Prior continuation is the read-only configured base;
+unchanged-head publication rejected without mutation. One existing successor
+starts exactly at 66858c5. Fresh baseline: 2,685 tests / 99 files and typecheck,
+lint, 27-migration smoke, build PASS. Pre-existing settings overlay preserved in
+stash `t09-transfer-preexisting-hoplite-settings-overlay`. Exact Next Action:
+publish recovery docs, then explicit adoption/all-writer integration per
+F_ADOPTION_PLAN.md; continue G/H only after real F acceptance. Previous repository
+owners and the pre-transfer receipts below are historical provenance only.
 
 Reason: Hoplite base branches are read-only; user authorized writable successor.
 Ancestry and successor publication-first PASS at 8bf32ed4e41ed3341215c6376e0c13ef13043616.

@@ -8,7 +8,13 @@ below are historical; canonical branch/production exclusions remain unchanged.
 
 ## Current continuation authority — 2026-09-11
 
-See `t09/CONTINUATION.md`: current repository `green-1a/frigo-dev`, frozen T09D
+See `t09/CONTINUATION.md`: canonical repository **vn-2d/frigo-dev**, current
+writable continuation **hoplite/kos-2a686759**, directly at verified interrupted
+F `66858c5`. Transfer/ancestry and 2,685-test/static/build/migration baseline PASS.
+Previous repository names are historical provenance only. The prior continuation
+`hoplite/orchemenos-e002591e` is read-only; no second successor is needed.
+
+Historical pre-transfer authority: frozen T09D
 base `hoplite/euhesperides-d77023a5` at `811f7e8463303e010199741d66f88ab8a817212d`,
 user-authorized writable successor `hoplite/orchemenos-e002591e`. Same T09 task;
 this supersedes earlier same-branch-only constraints. Publish successor only.

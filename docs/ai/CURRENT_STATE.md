@@ -2,8 +2,15 @@
 
 ## Current T09 continuation — 2026-09-11
 
-Canonical repository: green-1a/frigo-dev. Writable successor:
-hoplite/orchemenos-e002591e, based exactly on frozen T09D remote
+Canonical repository: **vn-2d/frigo-dev**. Writable successor:
+**hoplite/kos-2a686759**, directly from verified interrupted F
+`66858c5296b38715e4bfca77fca5eefe5adadf5a` on read-only prior continuation
+`hoplite/orchemenos-e002591e`. Transfer/ancestry PASS; baseline 2,685 tests / 99
+files, typecheck/lint/27-migration smoke/build PASS. At takeover: 18 ahead / 0
+behind unchanged origin/main. Exact authority/evidence: `inventory-truth/t09/CONTINUATION.md`.
+Earlier repository references are historical provenance only.
+
+Pre-transfer continuation was based exactly on frozen T09D remote
 811f7e8463303e010199741d66f88ab8a817212d. Successor documentation checkpoint
 8bf32ed4e41ed3341215c6376e0c13ef13043616 was published/fetched before E code.
 A–E complete; E published as `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`.

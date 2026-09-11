@@ -1,8 +1,11 @@
 # T09 — Inventory Lot Engine & Event Authority
 
-Current continuation authority (2026-09-11): `green-1a/frigo-dev`, writable
-`hoplite/orchemenos-e002591e` from frozen D base
-`811f7e8463303e010199741d66f88ab8a817212d`. See
+Current continuation authority (2026-09-11): **vn-2d/frigo-dev**, writable
+**hoplite/kos-2a686759** directly from verified interrupted F
+`66858c5296b38715e4bfca77fca5eefe5adadf5a` on read-only prior continuation
+`hoplite/orchemenos-e002591e`. Frozen D remains
+`811f7e8463303e010199741d66f88ab8a817212d`. Previous repository names are
+historical provenance only. Transfer integrity and fresh baseline PASS. See
 `../inventory-truth/t09/CONTINUATION.md`; the phase contract below is unchanged.
 A–E complete; E published/fetched as `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`
 with equality/ancestry PASS. F in progress; G/H pending. Only the successor may

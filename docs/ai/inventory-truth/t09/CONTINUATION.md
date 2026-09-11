@@ -1,5 +1,45 @@
 # T09 continuation — 2026-09-11
 
+## Current transferred-repository authority
+
+Canonical repository: **vn-2d/frigo-dev**.
+Remote: `https://github.com/vn-2d/frigo-dev.git`.
+Current writable continuation: **hoplite/kos-2a686759**, the one platform-created
+successor directly at verified interrupted HEAD
+`66858c5296b38715e4bfca77fca5eefe5adadf5a`. No successor was created from main.
+The previous continuation `hoplite/orchemenos-e002591e` remains at that exact SHA;
+an unchanged-head publication probe was rejected because it is the configured
+read-only base. No remote change resulted. Never push that base or frozen D.
+
+Transfer integrity and ancestry: **PASS**. All 20 enumerated remote branches and
+the remote tag were fetched from the canonical repository. `git fsck --full
+--no-dangling` passed. Consecutive `git merge-base --is-ancestor` checks passed:
+main `d1b06732f8a80db4e77986df31ff28d9f04641fa` → T08 `8f8788c` →
+A `c212ded` → B `5d10bc5` → C `13133b3` → D application `b036b25` →
+frozen D `811f7e8463303e010199741d66f88ab8a817212d` →
+E `9bd1e6bc000cd2e94121469babb1a5eb63a5047f` → interrupted F `66858c5`.
+Fetched T08/frozen-D/previous-continuation branch heads equal those anchors.
+Current `origin/main` equals the main anchor; freshly calculated continuation
+ahead/behind = **18/0**. The full graph is retained in ignored recovery artifacts.
+
+Fresh baseline at interrupted HEAD: Node 24.19.0, pnpm 10.26.0;
+`pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test` (**2,685/99 files**),
+`pnpm lint`, `pnpm check:migrations` (27 migrations), `pnpm build`: **PASS**.
+Full test duration 173.12s. No source/lockfile change. Initial dirty settings
+overlay is preserved in stash `t09-transfer-preexisting-hoplite-settings-overlay`;
+the restored repository-owned setup path installed sqlite3 and frozen dependencies.
+Working tree was clean at baseline. Logs: `.hoplite/artifacts/t09-recovery/`.
+
+Recovered state: A–E COMPLETE; F IN_PROGRESS; G/H NOT_STARTED. DEC-012 remains
+SAFE-DEFERRED. Next: explicit adoption and every writer's atomic authority boundary
+per F_ADOPTION_PLAN.md, then G and H. No freeze/readiness/completion claim.
+No main merge, production/staging, remote D1, PayOS or T10 work is authorized.
+
+Previous repository identifiers below are **historical provenance only**, not
+current authority. The chronological records below predate the repository transfer.
+
+## Historical pre-transfer continuation
+
 Latest published E application: `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`.
 Successor fetch/equality and exact frozen-D ancestry PASS. A–E complete; F active,
 G/H pending. Final E tests 1,172 focused / 2,659 full PASS; see VERIFICATION.md.
