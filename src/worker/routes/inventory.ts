@@ -6,7 +6,7 @@ import { InventoryWriterAuthorityError, readInventoryAuthorityMode, runLegacyInv
 import { executeInventoryAdoption } from '../../../packages/db/src/inventory-adoption-executor';
 import {
   composeInventoryLotCommands, prepareInventoryLotCommand, readAdoptedLotSnapshot,
-  recoverComposedLotCommands, replayLotCommandReceipt, type LotCommandSpec,
+  readLotCommandReceipt, recoverComposedLotCommands, replayLotCommandReceipt, type LotCommandSpec,
 } from '../../../packages/db/src/inventory-lot-commands';
 import { LotCommandError } from '../../../packages/domain/src/inventory-lot-commands';
 import {
@@ -142,6 +142,32 @@ async function adoptedItemResponse(c: any, db: any, kv: any, auth: AuthContext,
   );
 }
 
+async function replayAdoptedManualUpdate(c: any, db: any, auth: AuthContext, itemId: string,
+  idempotencyKey: string | null, body: Record<string, unknown>) {
+  if (!idempotencyKey) return null;
+  const receipt = await readLotCommandReceipt(db, { householdId: auth.householdId, actorId: auth.userId },
+    `manual-update:${itemId}:${idempotencyKey}:correct`);
+  if (!receipt) return null;
+  const { command, execution } = receipt;
+  const before = execution.result.effects[0]?.before;
+  // A receipt key cannot turn an altered or stale request into a successful
+  // replay. Compare only caller-controlled PATCH fields to the retained command.
+  const matches = command.type === 'CORRECT'
+    && command.lotId === execution.result.lotId
+    && before?.legacyVersion === body.version
+    && (body.quantity === undefined || command.changes.quantity === Number(body.quantity))
+    && (body.unit === undefined || command.changes.unit === body.unit)
+    && (body.name === undefined || command.changes.rawName === String(body.name).trim())
+    && (body.expiryDate === undefined || command.changes.expiryAt === body.expiryDate
+      || command.changes.estimatedExpiryAt === body.expiryDate);
+  if (!matches) {
+    return c.json({ error: 'Idempotency-Key đã được dùng cho một lệnh cập nhật khác', code: 'IDEMPOTENCY_CONFLICT' }, 409);
+  }
+  const persisted = await db.prepare(SQL.GET_INVENTORY_ITEM).bind(itemId, auth.householdId).first();
+  if (!persisted) throw new LotCommandError('CORRUPT_RECEIPT');
+  return c.json({ success: true, idempotentReplay: true, item: mapInventoryRow(persisted) });
+}
+
 function lotFailureResponse(c: any, error: LotCommandError) {
   const failure = inventoryAuthorityFailure(error);
   return c.json({ error: error.message, code: failure.code }, failure.status);
@@ -150,7 +176,7 @@ function lotFailureResponse(c: any, error: LotCommandError) {
 async function adoptManualInventoryUpdate(c: any, db: any, kv: any, auth: AuthContext, input: {
   id: string; expectedVersion: number; storedVersion: number; rawName: string;
   ingredientId: string | null; quantity: number; unit: string; storage: string;
-  expiryDate: string | null; expirySubmitted: boolean;
+  expiryDate: string | null; expirySubmitted: boolean; idempotencyKey: string | null;
 }) {
   const scope = { householdId: auth.householdId, actorId: auth.userId };
   const conflict = () => c.json({
@@ -182,7 +208,7 @@ async function adoptManualInventoryUpdate(c: any, db: any, kv: any, auth: AuthCo
     // A combined edit and move is one atomic commit: composition advances the
     // shared snapshot so the MOVE plans against the corrected lot version.
     const specs: LotCommandSpec[] = [{
-      clientKey: `manual-update:${input.id}:correct`,
+      clientKey: `manual-update:${input.id}:${input.idempotencyKey ?? crypto.randomUUID()}:correct`,
       input: {
         type: 'CORRECT', lotId: mapped.lot.id, expectedVersion: mapped.lot.version,
         changes, reason: 'Cập nhật nguyên liệu',
@@ -194,7 +220,7 @@ async function adoptManualInventoryUpdate(c: any, db: any, kv: any, auth: AuthCo
     if (!targetLocation) throw new LotCommandError('DRIFT_DETECTED');
     if (targetLocation.id !== mapped.lot.storageLocationId) {
       specs.push({
-        clientKey: `manual-update:${input.id}:move`,
+        clientKey: `manual-update:${input.id}:${input.idempotencyKey ?? crypto.randomUUID()}:move`,
         input: {
           type: 'MOVE', lotId: mapped.lot.id, expectedVersion: mapped.lot.version,
           storageLocationId: targetLocation.id,
@@ -676,6 +702,10 @@ inventoryRoutes.patch('/inventory/:id', async (c) => {
     const canonical = findCanonicalIngredient(body.name || existing.name);
     const storedVersion = Number.isInteger(Number(existing.version)) ? Number(existing.version) : 1;
     const expectedVersion = Number(body.version);
+    if (await readInventoryAuthorityMode(db, auth.householdId) === 'native') {
+      const replay = await replayAdoptedManualUpdate(c, db, auth, id, idempotencyKey, body as Record<string, unknown>);
+      if (replay) return replay;
+    }
     if (expectedVersion !== storedVersion) {
       return c.json(
         {
@@ -729,6 +759,7 @@ inventoryRoutes.patch('/inventory/:id', async (c) => {
         storage,
         expiryDate,
         expirySubmitted: body.expiryDate !== undefined,
+        idempotencyKey,
       });
     }
 

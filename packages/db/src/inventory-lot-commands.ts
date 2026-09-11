@@ -26,6 +26,10 @@ export interface InventoryLotCommandResult {
   effects: SingleLotCommandPlan[];
 }
 export interface InventoryLotCommandExecution { result: InventoryLotCommandResult; replayed: boolean }
+export interface StoredLotCommandReceipt {
+  command: InventoryLotCommand;
+  execution: InventoryLotCommandExecution;
+}
 
 interface IngredientRow { id: string; category: string }
 interface ProjectionRow extends LegacyInventoryRow {
@@ -473,6 +477,13 @@ export async function prepareInventoryLotCommand(db: D1DatabaseBinding, scope: I
 // after response loss returns the committed result without re-deriving state.
 export async function replayLotCommandReceipt(db: D1DatabaseBinding, scope: InventoryLotCommandScope,
   clientKey: string): Promise<InventoryLotCommandExecution | undefined> {
+  return (await readLotCommandReceipt(db, scope, clientKey))?.execution;
+}
+
+// Adapters that retain a legacy request contract may need the original command
+// to verify an idempotency-key retry before a stale legacy version is rejected.
+export async function readLotCommandReceipt(db: D1DatabaseBinding, scope: InventoryLotCommandScope,
+  clientKey: string): Promise<StoredLotCommandReceipt | undefined> {
   const key = ClientKey.safeParse(clientKey);
   if (!key.success) return undefined;
   const receipt = await readReceipt(db, scope, key.data);
@@ -480,7 +491,7 @@ export async function replayLotCommandReceipt(db: D1DatabaseBinding, scope: Inve
   const stored = InventoryLotCommandSchema.safeParse(
     (JSON.parse(receipt.fingerprint) as { command?: unknown }).command);
   if (!stored.success) throw new LotCommandError('CORRUPT_RECEIPT');
-  return replay(receipt, receipt.fingerprint, scope, key.data, stored.data);
+  return { command: stored.data, execution: replay(receipt, receipt.fingerprint, scope, key.data, stored.data) };
 }
 
 // Adapter boundary: one authoritative read plus the adoption evidence check,

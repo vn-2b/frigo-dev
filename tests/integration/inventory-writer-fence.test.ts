@@ -68,6 +68,23 @@ function deferred() {
 }
 
 describe('T09F legacy writer activation fences', () => {
+  it('replays an adopted PATCH after response loss without weakening new-command CAS', async () => {
+    await native();
+    const body = { quantity: 4, version: 1 };
+    const headers = { 'Idempotency-Key': 'adopted-patch-replay-key' };
+    expect(await request('PATCH', '/inventory/native-fence-household', body, headers))
+      .toMatchObject({ status: 200, json: { success: true } });
+    const afterCommit = facts();
+    expect(await request('PATCH', '/inventory/native-fence-household', body, headers))
+      .toMatchObject({ status: 200, json: { success: true, idempotentReplay: true } });
+    expect(facts()).toEqual(afterCommit);
+    expect(await request('PATCH', '/inventory/native-fence-household', { quantity: 3, version: 1 }, headers))
+      .toMatchObject({ status: 409, json: { code: 'IDEMPOTENCY_CONFLICT' } });
+    // A distinct idempotency key and current version remains a new command.
+    expect(await request('PATCH', '/inventory/native-fence-household', { quantity: 3, version: 2 },
+      { 'Idempotency-Key': 'adopted-patch-next-key' })).toMatchObject({ status: 200, json: { success: true } });
+  });
+
   it.each(['create', 'edit', 'discard'] as const)('serves manual %s through the lot authority once active', async (operation) => {
     await native();
     const result = operation === 'create' ? await request('POST', '/inventory', manualBody)
