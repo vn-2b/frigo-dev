@@ -1,5 +1,13 @@
 # Frigo task board
 
+## T09 continuation — 2026-09-11
+
+Same T09 task, writable successor `hoplite/orchemenos-e002591e` from frozen D
+base `811f7e8463303e010199741d66f88ab8a817212d`, repository green-1a/frigo-dev.
+A–D complete; E–H pending. Fresh 1,031 tests/typecheck PASS. Next: documentation
+publication/equality proof, then E multi-effect FEFO. See
+`inventory-truth/t09/CONTINUATION.md`; no main/production/PayOS/T10 work.
+
 ## T09 — active isolated development (2026-09-10)
 
 IN_PROGRESS in vn-2b/frigo-dev on hoplite/euhesperides-d77023a5, exact T08 base

@@ -108,3 +108,16 @@ files and both TypeScript projects, then verified clean after dependency symlink
 removal. Full verification is in VERIFICATION.md. This following docs-only
 checkpoint finalizes the milestone handoff. T09 stays IN_PROGRESS, next T09E;
 no unresolved D check failure, no PR/deployment/main/remote D1/PayOS operation.
+
+## 2026-09-11 — writable continuation recovery
+
+Fresh remote T09D base 811f7e8463303e010199741d66f88ab8a817212d verified via broker
+and provider evidence in green-1a/frigo-dev. Application remains b036b25; only
+published documentation follows it. Initial base publication was denied because
+Hoplite protects its configured base. User then explicitly authorized generated
+successor hoplite/orchemenos-e002591e. Switched to that already-existing branch
+at exact base HEAD; merge-base equality PASS. No history rewrite or base push.
+Pre-existing settings overlay preserved in named stash; CONTINUATION.md records it.
+Frozen install, 835+196 focused tests (all eight intended files) and typecheck PASS.
+No application change. Publish/fetch this docs-only checkpoint before E source;
+subsequent receipt will record its exact SHA. Main/legacy/remote D1/PayOS untouched.

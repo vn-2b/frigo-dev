@@ -1,5 +1,27 @@
 # Frigo AI Handoff — isolated T09 development
 
+## Current continuation handoff — 2026-09-11
+
+Program: Inventory Truth Layer
+Task: T09 — unchanged continuation
+Phase: A–D complete; E–H pending
+Status: IN_PROGRESS
+Canonical Repository: green-1a/frigo-dev
+T09D Frozen Base Branch: hoplite/euhesperides-d77023a5
+T09D Frozen Base HEAD: 811f7e8463303e010199741d66f88ab8a817212d
+Canonical Writable Continuation: hoplite/orchemenos-e002591e
+Last Verified Application SHA: b036b257a8ad775dd6f1a445dcfdcce38a6babf1
+Application Freeze: NOT FROZEN
+
+Reason: Hoplite base branches are read-only; user authorized writable successor.
+Ancestry PASS. Fresh 1,031/1,031 focused tests and typecheck PASS; exact commands
+and initially misnamed test filter corrected by separate run are in
+`inventory-truth/t09/CONTINUATION.md`. No source changes. Existing settings overlay
+preserved in named stash. Initial base publication denial is not an application
+failure; no further base push permitted. Next: publish/fetch/equality-check this
+successor checkpoint, then implement/review atomic multi-effect FEFO authority.
+No main/legacy/production/staging/remote D1/PayOS/T10 changes.
+
 ## Current T09 handoff — 2026-09-10
 
 Program: Inventory Truth Layer

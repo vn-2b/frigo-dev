@@ -1,5 +1,12 @@
 # Inventory Truth Layer — repository authority
 
+## Current continuation authority — 2026-09-11
+
+See `t09/CONTINUATION.md`: current repository `green-1a/frigo-dev`, frozen T09D
+base `hoplite/euhesperides-d77023a5` at `811f7e8463303e010199741d66f88ab8a817212d`,
+user-authorized writable successor `hoplite/orchemenos-e002591e`. Same T09 task;
+this supersedes earlier same-branch-only constraints. Publish successor only.
+
 ## Current T09 authority (supersedes historical T08 branch/repository restrictions)
 
 User confirmed `vn-2b/frigo-dev` on 2026-09-10; the original T09 owner was outdated.

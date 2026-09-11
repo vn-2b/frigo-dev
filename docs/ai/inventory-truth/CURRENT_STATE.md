@@ -1,5 +1,15 @@
 # Inventory Truth current state
 
+## T09 continuation takeover — 2026-09-11
+
+Current repository: green-1a/frigo-dev. Writable continuation:
+hoplite/orchemenos-e002591e. Frozen T09D base: hoplite/euhesperides-d77023a5 at
+811f7e8463303e010199741d66f88ab8a817212d. Last verified application: b036b257a8ad775dd6f1a445dcfdcce38a6babf1.
+Ancestry PASS; fresh 1,031 tests and typecheck PASS. A–D complete; E–H pending.
+Publication-first successor checkpoint is required before source edits. Exact
+commands, preserved settings overlay, resolved branch-policy blocker and next
+action: `t09/CONTINUATION.md`. IN_PROGRESS, not frozen/review-ready.
+
 ## T09 development authority — 2026-09-10
 
 Program: Inventory Truth Layer

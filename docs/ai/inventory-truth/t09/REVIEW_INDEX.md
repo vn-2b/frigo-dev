@@ -1,12 +1,15 @@
 # T09 review index
 
-Repository: vn-2b/frigo-dev
-Remote T09 Branch: hoplite/euhesperides-d77023a5
+Repository: green-1a/frigo-dev (current remote/provider evidence)
+Remote T09 Branch: hoplite/orchemenos-e002591e
+T09D Frozen Base Branch: hoplite/euhesperides-d77023a5
+T09D Frozen Base HEAD: 811f7e8463303e010199741d66f88ab8a817212d
+Branch succession: CONTINUATION.md (user-authorized read-only-base recovery)
 T08 Base Branch: hoplite/xanthos-7d942897
 T08 Base SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
 T09 Application Freeze SHA: NOT FROZEN — T09D native authority checkpoint; E–H pending
 Latest Docs HEAD: resolve `git rev-parse HEAD`; this document cannot contain its own commit SHA
-Last Verified Remote HEAD: b036b257a8ad775dd6f1a445dcfdcce38a6babf1
+Last Verified Frozen Base Remote HEAD: 811f7e8463303e010199741d66f88ab8a817212d
 T09D Code Checkpoint: b036b257a8ad775dd6f1a445dcfdcce38a6babf1
 T09C Code Checkpoint: 13133b3aad214f2dbe7bdfb0c6ad9a70483d32de
 Status: IN_PROGRESS, not ready for independent review
@@ -47,7 +50,8 @@ race rollback; production-track isolation.
 
 ## Takeover
 
-Use repository-bound fetch for `hoplite/euhesperides-d77023a5`; check out the
-remote tip and fast-forward only. Inspect status, HEAD, base ancestry and diff.
+Use repository-bound fetch for both the frozen base and writable successor in
+CONTINUATION.md; continue only on `hoplite/orchemenos-e002591e` after publication
+verification. Never push the frozen base. Inspect status, HEAD, base ancestry and diff.
 Read the packet before editing; print TAKEOVER CONFIRMED with phase, completed
 work, failures and exact next action. Never merge/rebase main or legacy Frigo.

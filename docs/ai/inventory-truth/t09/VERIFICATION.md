@@ -176,3 +176,13 @@ D is complete as a published native-authority milestone. This following
 documentation-only receipt records its SHA and does not alter the verified code.
 Latest docs HEAD resolves through Git; no final T09 application-freeze SHA or
 READY FOR INDEPENDENT REVIEW claim is made. Next implementation phase: T09E FEFO.
+
+## 2026-09-11 — continuation baseline
+
+Current remote identity green-1a/frigo-dev; frozen D base 811f7e8463303e010199741d66f88ab8a817212d.
+User-authorized writable successor hoplite/orchemenos-e002591e has exact base
+ancestry. Fresh checks: frozen install PASS, 835+196 tests / eight files PASS
+(including 25 actual isolated D1 tests), typecheck PASS. Exact commands and
+correction of the initially misnamed event-authority filter: CONTINUATION.md.
+No application changes or fresh full-suite/CI claims. Docs-only publication proof
+must precede E implementation; base publication denial is preserved in that file.

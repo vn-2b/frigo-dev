@@ -1,5 +1,12 @@
 # Inventory Truth task board
 
+## Current continuation — 2026-09-11
+
+Canonical writable successor: `hoplite/orchemenos-e002591e` in `green-1a/frigo-dev`.
+Frozen base and exact ancestry: `t09/CONTINUATION.md`. A–D remain complete;
+E–H below remain open. Fresh baseline: 1,031 tests and typecheck PASS.
+Next: successor publication proof, then atomic multi-effect FEFO; no T10.
+
 ## T09 — IN_PROGRESS (vn-2b/frigo-dev)
 
 - [x] Publish authorized T09 branch at exact T08 HEAD; fetch/equality verified.

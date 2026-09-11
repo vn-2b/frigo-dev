@@ -1,5 +1,16 @@
 # Frigo current state — isolated T09 development
 
+## Current T09 continuation — 2026-09-11
+
+Canonical repository: green-1a/frigo-dev. Writable successor:
+hoplite/orchemenos-e002591e, based exactly on frozen T09D remote
+811f7e8463303e010199741d66f88ab8a817212d. A–D complete; E–H pending, IN_PROGRESS.
+Fresh baseline: 1,031 tests and typecheck PASS. No application changes yet.
+Next: publish/fetch successor documentation checkpoint before multi-effect FEFO.
+See `inventory-truth/t09/CONTINUATION.md` for exact branch authority, checks,
+publication restriction and preserved pre-existing settings overlay. All protected
+surfaces untouched; no application freeze or independent-review readiness.
+
 ## T09 IN_PROGRESS — 2026-09-10
 
 Program: Inventory Truth Layer. Canonical repository: vn-2b/frigo-dev (user
