@@ -504,3 +504,46 @@ describe('T09 targeted manual PATCH on real local D1', () => {
     expect(await facts()).toEqual(committed);
   });
 });
+
+describe('T09 receipt-backed synthetic mappings on real local D1', () => {
+  it.each([false, true])('writes and replays real adopted backfill with MOVE=%s', async (move) => {
+    const { scope, input, now, facts } = await raceFixture('CREATE');
+    const itemId = `legacy-${scope.householdId}`;
+    expect(await batch([{ sql: `INSERT INTO inventory_items(id,household_id,ingredient_id,name,quantity,unit,category,storage)
+      VALUES (?, ?, 'RICE', 'Rice', 2000, 'g', 'grain', 'pantry')`, values: [itemId, scope.householdId] }]))
+      .toMatchObject({ status: 200 });
+    const adoption = await requestCommand('adopt', { scope, now });
+    expect(adoption, adoption.error).toMatchObject({ status: 200, result: { mappedLotCount: 1 } });
+    const lotId = adoption.result.effects[0].lotId;
+    expect(lotId).toBe(`t08-legacy:${itemId}`);
+    expect(lotId).not.toBe(itemId);
+    const locations = await batch([{ sql: "SELECT id FROM storage_locations WHERE household_id = ? AND type = 'FREEZER' AND is_default = 1",
+      values: [scope.householdId] }]);
+    const moveKey = move ? 'adopted-move' : null;
+    const intent = { requestFingerprint: JSON.stringify({ itemId, version: 1, category: 'vegetable', storage: move ? 'freezer' : undefined }),
+      category: 'vegetable', freshness: 'fresh', moveClientKey: moveKey };
+    const specs = [{ clientKey: 'adopted-correct', input: { type: 'CORRECT', lotId, expectedVersion: 2,
+      changes: { quantity: move ? 500 : 2000, unit: 'g', ...(move ? { expiryAt: '2026-09-30', expiryKind: 'KNOWN' } : {}) },
+      reason: 'Real adopted PATCH' }, manualPatch: intent }];
+    if (move) specs.push({ clientKey: moveKey, input: { type: 'MOVE', lotId, expectedVersion: 3,
+      storageLocationId: locations.results[0].results[0].id }, useCurrentLotVersion: { lotId },
+      manualPatch: { ...intent, moveClientKey: null } });
+    const first = await requestCommand('patch-compose', { scope, specs, now });
+    expect(first, first.error).toMatchObject({ status: 200 });
+    const committed = await facts();
+    expect(committed[1]).toHaveLength(1);
+    expect(committed[2]).toHaveLength(1);
+    expect(committed[1][0]).toMatchObject({ id: lotId, legacy_item_id: itemId, quantity_milli: move ? 500000 : 2000000,
+      version: move ? 4 : 3, legacy_version: move ? 3 : 2 });
+    expect(committed[2][0]).toMatchObject({ id: itemId, category: 'vegetable', storage: move ? 'freezer' : 'pantry',
+      quantity: move ? 500 : 2000, expiry_date: move ? '2026-09-30' : null });
+    expect(committed[3]).toHaveLength(move ? 2 : 1);
+    expect(committed[4]).toHaveLength(move ? 2 : 1);
+    expect(committed[4].every((event) => event.inventory_item_id === itemId)).toBe(true);
+    expect(first.receipts.at(-1).manualPatch.projectionAfter.id).toBe(itemId);
+    expect(await requestCommand('patch-compose', { scope, specs, now: '2026-09-11T12:00:00Z' })).toEqual(first);
+    expect(await facts()).toEqual(committed);
+    // The fixture's unrelated native ID must never become a duplicate projection.
+    expect(committed[2].some((row) => row.id === input.lotId)).toBe(false);
+  });
+});

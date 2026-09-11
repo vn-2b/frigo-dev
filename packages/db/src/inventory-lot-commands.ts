@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { InventoryAdoptionProjectionSchema } from '../../domain/src/inventory-adoption';
+import { InventoryAdoptionProjectionSchema, MAX_INVENTORY_ADOPTION_EFFECTS } from '../../domain/src/inventory-adoption';
 import type { D1DatabaseBinding, D1PreparedStatement, D1Result } from './index';
 import {
   InventoryLotCommandSchema, LotCommandError, planSingleLotCommand,
   type InventoryLotCommand, type SingleLotCommandPlan,
 } from '../../domain/src/inventory-lot-commands';
 import {
-  InventoryLotSchema, StorageLocationSchema, toLotQuantity,
+  InventoryLotSchema, StorageLocationSchema, legacyLotId, toLotQuantity,
   type InventoryLot, type LegacyInventoryRow, type StorageLocation,
 } from '../../domain/src/inventory-truth';
 import {
@@ -48,6 +48,7 @@ interface MappedLot { lot: InventoryLot; legacyItemId: string | null }
 interface MappedLotSnapshot {
   inventoryVersion: number;
   activationCommandId: string | null;
+  adoptedMappings: AdoptedMapping[];
   householdCreatedAt: string;
   householdUpdatedAt: string;
   lots: MappedLot[];
@@ -67,6 +68,59 @@ interface ReceiptRow {
   id: string; household_id: string; actor_id: string; client_key: string;
   command_type: string; created_at: string; fingerprint: string; result_json: string;
   events: ReceiptEventRow[];
+  adoptedMappings: AdoptedMapping[];
+}
+const AdoptionMappingEvidence = z.object({
+  schemaVersion: z.literal(3), commandType: z.literal('ADOPT'), householdId: Identity, actorId: Identity,
+  sourceInventoryVersion: z.number().int().safe().positive(), mappedLotCount: z.number().int().nonnegative(),
+  effects: z.array(z.object({
+    lotId: Identity, legacyItemId: Identity, before: InventoryLotSchema, after: InventoryLotSchema,
+    projectionAfter: InventoryAdoptionProjectionSchema,
+  })).max(MAX_INVENTORY_ADOPTION_EFFECTS),
+});
+type AdoptedMapping = z.infer<typeof AdoptionMappingEvidence>['effects'][number];
+interface AdoptionAuthorityRow {
+  id: string; household_id: string; actor_id: string; source_inventory_version: number; result_json: string;
+}
+
+function adoptionAuthorityStatement(db: D1DatabaseBinding, householdId: string) {
+  return db.prepare(`SELECT id, household_id, actor_id, source_inventory_version,
+    ${boundedAuthorityJson('result_json')} AS result_json
+    FROM inventory_adoption_receipts WHERE household_id = ?`).bind(householdId);
+}
+
+function readAdoptedMappings(row: AdoptionAuthorityRow | undefined, householdId: string): AdoptedMapping[] {
+  if (!row) return [];
+  try {
+    const result = AdoptionMappingEvidence.parse(JSON.parse(row.result_json));
+    if (row.household_id !== householdId || result.householdId !== householdId
+      || result.actorId !== row.actor_id || result.sourceInventoryVersion !== row.source_inventory_version
+      || result.mappedLotCount !== result.effects.length
+      || new Set(result.effects.map((effect) => effect.lotId)).size !== result.effects.length
+      || new Set(result.effects.map((effect) => effect.legacyItemId)).size !== result.effects.length
+      || result.effects.some(({ lotId, legacyItemId, before, after, projectionAfter }) =>
+        lotId !== legacyLotId(legacyItemId) || before.id !== lotId || after.id !== lotId
+        || before.householdId !== householdId || after.householdId !== householdId || before.createdAt !== after.createdAt
+        || before.sourceType !== 'LEGACY_BACKFILL' || after.sourceType !== 'LEGACY_BACKFILL'
+        || before.sourceId !== legacyItemId || after.sourceId !== legacyItemId
+        || projectionAfter.id !== legacyItemId || projectionAfter.household_id !== householdId
+        || before.quantityMilli !== after.quantityMilli || after.version !== before.version + 1
+        || after.legacyVersion !== before.legacyVersion || after.legacyVersion !== projectionAfter.version)) {
+      throw new Error('Invalid adoption mapping evidence');
+    }
+    return result.effects;
+  } catch {
+    throw new LotCommandError('CORRUPT_RECEIPT');
+  }
+}
+
+function authoritativeMapping(lot: InventoryLot, legacyItemId: string, mappings: AdoptedMapping[]): boolean {
+  if (lot.sourceType !== 'LEGACY_BACKFILL') return lot.id === legacyItemId;
+  const evidence = mappings.find((entry) => entry.lotId === lot.id && entry.legacyItemId === legacyItemId);
+  return evidence !== undefined && lot.sourceId === legacyItemId && lot.householdId === evidence.after.householdId
+    && lot.createdAt === evidence.after.createdAt && lot.version >= evidence.after.version
+    && lot.legacyVersion !== null && evidence.after.legacyVersion !== null
+    && lot.version - evidence.after.version === lot.legacyVersion - evidence.after.legacyVersion;
 }
 const ReceiptResult = z.object({
   commandId: Identity,
@@ -117,7 +171,7 @@ export async function readMappedLotSnapshot(db: D1DatabaseBinding, input: Invent
   const results = await readBatch(db, [
     db.prepare(`SELECT inventory_version AS inventoryVersion, created_at AS createdAt, updated_at AS updatedAt
       FROM households WHERE id = ? AND ${MEMBERSHIP}`).bind(scope.householdId, scope.actorId),
-    db.prepare(`SELECT id FROM inventory_adoption_receipts WHERE household_id = ?`).bind(scope.householdId),
+    adoptionAuthorityStatement(db, scope.householdId),
     db.prepare(`SELECT id, household_id, ingredient_id, name, quantity, unit, storage, expiry_date,
       opened_at, expiry_kind, expiry_source, version, created_at, updated_at, added_date, category,
       data_source, freshness FROM inventory_items WHERE household_id = ? ORDER BY id${bound}`).bind(scope.householdId),
@@ -148,6 +202,7 @@ export async function readMappedLotSnapshot(db: D1DatabaseBinding, input: Invent
     return {
       inventoryVersion,
       activationCommandId: (results[1].results[0] as { id: string } | undefined)?.id ?? null,
+      adoptedMappings: readAdoptedMappings(results[1].results[0] as AdoptionAuthorityRow | undefined, scope.householdId),
       householdCreatedAt: authorization.createdAt,
       householdUpdatedAt: authorization.updatedAt,
       legacyRows: results[2].results as ProjectionRow[],
@@ -207,10 +262,12 @@ async function readReceipt(db: D1DatabaseBinding, scope: InventoryLotCommandScop
       e.unit, e.reason, ${metadata}, e.created_at FROM inventory_events e
       JOIN inventory_commands c ON c.id = e.command_id WHERE c.household_id = ? AND c.client_key = ? ORDER BY e.id${bounded ? ` LIMIT ${MAX_FEFO_EFFECTS + 1}` : ''}`)
       .bind(scope.householdId, key),
+    adoptionAuthorityStatement(db, scope.householdId),
   ]);
   readAuthorization(results[0]);
   const row = results[1].results[0] as Omit<ReceiptRow, 'events'> | undefined;
-  return row ? { ...row, events: results[2].results as ReceiptEventRow[] } : undefined;
+  return row ? { ...row, events: results[2].results as ReceiptEventRow[],
+    adoptedMappings: readAdoptedMappings(results[3].results[0] as AdoptionAuthorityRow | undefined, scope.householdId) } : undefined;
 }
 function eventMetadata(scope: InventoryLotCommandScope, key: string, fingerprint: string,
   result: InventoryLotCommandResult, plan: SingleLotCommandPlan, now: string) {
@@ -279,7 +336,8 @@ function replay(receipt: ReceiptRow, fingerprint: string, scope: InventoryLotCom
         }
       }
       const event = receipt.events[0];
-      valid(event.household_id === scope.householdId && event.command_id === receipt.id && event.inventory_item_id === after.id
+      valid(event.household_id === scope.householdId && event.command_id === receipt.id
+        && authoritativeMapping(after, event.inventory_item_id, receipt.adoptedMappings)
         && event.event_type === legacyEventType(command) && event.quantity_delta === exactLegacyQuantity(deltaMilli, after.canonicalUnit)
         && event.unit === after.canonicalUnit && event.created_at === receipt.created_at
         && event.reason === ('reason' in command ? command.reason ?? null : null)
@@ -310,8 +368,7 @@ export function expiryProjection(lot: InventoryLot) {
 }
 function requireParity(mapped: MappedLot, snapshot: MappedLotSnapshot, householdId: string): ProjectionRow {
   const { lot, legacyItemId } = mapped;
-  // Mapped LEGACY_BACKFILL provenance is legitimate after receipt-backed adoption;
-  // the executor admission check owns that evidence, not this row comparison.
+  // The immutable mapping and adoption witness, not equal IDs, bind backfilled stock.
   if (legacyItemId === null) throw new LotCommandError('ADOPTION_REQUIRED');
   const row = snapshot.legacyRows.find((row) => row.id === legacyItemId);
   const location = snapshot.locations.find((location) => location.id === lot.storageLocationId);
@@ -325,7 +382,8 @@ function requireParity(mapped: MappedLot, snapshot: MappedLotSnapshot, household
     quantityMatches = row !== undefined && displayUnit === lot.canonicalUnit
       && toLotQuantity(row.quantity, row.unit).quantityMilli === lot.quantityMilli;
   } catch { /* Invalid compatibility stock is drift, never a repair request. */ }
-  if (!row || lot.id !== legacyItemId || lot.householdId !== householdId || row.household_id !== householdId
+  if (!row || !authoritativeMapping(lot, legacyItemId, snapshot.adoptedMappings)
+    || lot.householdId !== householdId || row.household_id !== householdId
     || row.ingredient_id !== lot.ingredientId || row.name !== lot.rawName || !quantityMatches
     || location?.householdId !== householdId || location.type.toLowerCase() !== row.storage
     || !Number.isSafeInteger(row.version) || row.version < 1 || lot.legacyVersion !== row.version
@@ -379,7 +437,7 @@ function projectionWrites(db: D1DatabaseBinding, plan: SingleLotCommandPlan, row
     .bind(...values, after.id, after.householdId, after.createdAt, after.createdAt,
       after.sourceType === 'SCAN' || after.sourceType === 'RECEIPT' ? 'scan' : after.sourceType === 'SHOPPING' ? 'shopping' : 'manual');
 }
-function lotWrite(db: D1DatabaseBinding, plan: SingleLotCommandPlan): D1PreparedStatement {
+function lotWrite(db: D1DatabaseBinding, plan: SingleLotCommandPlan, legacyItemId = plan.after.id): D1PreparedStatement {
   const { before, after: lot } = plan;
   const values = [lot.ingredientId, lot.rawName, lot.quantityMilli, lot.canonicalUnit, lot.storageLocationId, lot.state,
     lot.purchasedAt, lot.openedAt, lot.expiryAt, lot.estimatedExpiryAt, lot.expiryKind, lot.version, lot.updatedAt,
@@ -388,7 +446,7 @@ function lotWrite(db: D1DatabaseBinding, plan: SingleLotCommandPlan): D1Prepared
     canonical_unit = ?, storage_location_id = ?, state = ?, purchased_at = ?, opened_at = ?, expiry_at = ?,
     estimated_expiry_at = ?, expiry_kind = ?, version = ?, updated_at = ?, currency = ?, amount_minor = ?, minor_digits = ?,
     legacy_version = ? WHERE id = ? AND household_id = ? AND version = ? AND legacy_item_id = ? RETURNING id, version`)
-    .bind(...values, lot.id, lot.householdId, before.version, lot.id);
+    .bind(...values, lot.id, lot.householdId, before.version, legacyItemId);
   return db.prepare(`INSERT INTO inventory_lots (ingredient_id, raw_name, quantity_milli, canonical_unit,
     storage_location_id, state, purchased_at, opened_at, expiry_at, estimated_expiry_at, expiry_kind, version,
     updated_at, currency, amount_minor, minor_digits, legacy_version, id, household_id, source_type, source_id,
@@ -490,11 +548,11 @@ export async function prepareInventoryLotCommand(db: D1DatabaseBinding, scope: I
   }
   if (plan.changed) {
     statements.push(projectionWrites(db, plan, row, snapshot, now, manualPatch), writeGuard(db, scope, 'unit'),
-      lotWrite(db, plan), writeGuard(db, scope, 'event_type'));
+      lotWrite(db, plan, row?.id), writeGuard(db, scope, 'event_type'));
     const metadata = eventMetadata(scope, key.data, fingerprint, result, plan, now);
     statements.push(db.prepare(`INSERT INTO inventory_events
       (id, household_id, inventory_item_id, event_type, quantity_delta, unit, reason, metadata, created_at, command_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(crypto.randomUUID(), scope.householdId, plan.after.id,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(crypto.randomUUID(), scope.householdId, row?.id ?? plan.after.id,
       legacyEventType(command),
       exactLegacyQuantity(plan.deltaMilli, plan.after.canonicalUnit), plan.after.canonicalUnit,
       'reason' in command ? command.reason ?? null : null, JSON.stringify(metadata), now, result.commandId),
@@ -756,6 +814,8 @@ export async function prepareInventoryFefoCommand(db: D1DatabaseBinding, scope: 
   const effects = plans.map((plan, ordinal): FefoPlan => {
     const mapped = snapshot.lots.find(({ lot }) => lot.id === plan.after.id)!;
     const row = requireParity(mapped, snapshot, scope.householdId);
+    // Retained v2 SQL authority still requires equal IDs; only v1 supports adopted mappings.
+    if (mapped.legacyItemId !== mapped.lot.id) throw new LotCommandError('DRIFT_DETECTED');
     if (row.version === Number.MAX_SAFE_INTEGER) throw new LotCommandError('VERSION_OVERFLOW');
     rows.push(row);
     const after = { ...plan.after, legacyVersion: row.version + 1 };
@@ -857,7 +917,7 @@ function advanceSnapshotWithResult(snapshot: MappedLotSnapshot, result: AnyLotCo
     const before = effect.before;
     const mapped = snapshot.lots.find((entry) => entry.lot.id === after.id);
     if (mapped) mapped.lot = after;
-    const row = snapshot.legacyRows.find((candidate) => candidate.id === after.id);
+    const row = snapshot.legacyRows.find((candidate) => candidate.id === (mapped?.legacyItemId ?? after.id));
     const location = snapshot.locations.find((candidate) => candidate.id === after.storageLocationId);
     const storage = location?.type === 'FRIDGE' ? 'fridge' as const
       : location?.type === 'FREEZER' ? 'freezer' as const

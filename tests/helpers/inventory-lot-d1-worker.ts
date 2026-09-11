@@ -2,6 +2,7 @@ import type { D1DatabaseBinding, D1PreparedStatement } from '../../packages/db/s
 import { composeInventoryLotCommands, executeInventoryFefoCommand, executeInventoryLotCommand, readLotCommandReceipt,
   type InventoryLotCommandScope, type LotCommandSpec } from '../../packages/db/src/inventory-lot-commands';
 import { runLegacyInventoryBatch } from '../../packages/db/src/inventory-writer-fence';
+import { executeInventoryAdoption } from '../../packages/db/src/inventory-adoption-executor';
 
 interface CommandRequest { scope: InventoryLotCommandScope; key: string; input: unknown; now: string }
 const run = (db: D1DatabaseBinding, command: CommandRequest) =>
@@ -57,6 +58,10 @@ export default {
   async fetch(request: Request, env: { DB: D1DatabaseBinding; TEST_TOKEN: string }): Promise<Response> {
     if (request.headers.get('x-test-token') !== env.TEST_TOKEN) return new Response('Forbidden', { status: 403 });
     try {
+      if (new URL(request.url).pathname === '/adopt') {
+        const body = await request.json() as { scope: InventoryLotCommandScope; now: string };
+        return Response.json(await executeInventoryAdoption(env.DB, body.scope, {}, body.now));
+      }
       if (new URL(request.url).pathname === '/patch-compose') {
         const body = await request.json() as { scope: InventoryLotCommandScope; specs: LotCommandSpec[]; now: string };
         const composed = await composeInventoryLotCommands(env.DB, body.scope, body.specs, body.now);
