@@ -28,7 +28,8 @@ required_migrations(name) AS (
     ('0026_inventory_event_poststate.sql'),
     ('0027_inventory_fefo_authority.sql'),
     ('0028_inventory_adoption_authority.sql'),
-    ('0029_inventory_fefo_backfill_compatibility.sql')
+    ('0029_inventory_fefo_backfill_compatibility.sql'),
+    ('0030_inventory_observation_reconciliation.sql')
 ),
 required_tables(name) AS (
   VALUES
@@ -39,6 +40,8 @@ required_tables(name) AS (
     ('inventory_commands'),
     ('inventory_lots'),
     ('storage_locations'),
+    ('inventory_observations'),
+    ('inventory_reconciliation_decisions'),
     ('scans'),
     ('meal_plans'),
     ('shopping_import_commands'),
@@ -149,6 +152,14 @@ required_triggers(name) AS (
     ('trg_inventory_commands_fefo_authority_insert'),
     ('trg_inventory_commands_fefo_envelope_insert'),
     ('trg_inventory_events_command_fefo_authority_insert'),
+    ('trg_inventory_observations_immutable_update'),
+    ('trg_inventory_observations_immutable_delete'),
+    ('trg_inventory_observations_lot_household_insert'),
+    ('trg_inventory_observations_lot_household_update'),
+    ('trg_inventory_observations_projection_household_insert'),
+    ('trg_inventory_reconciliation_decisions_observation_guard'),
+    ('trg_inventory_reconciliation_decisions_immutable_update'),
+    ('trg_inventory_reconciliation_decisions_immutable_delete'),
     ('trg_inventory_events_command_update'),
     ('trg_inventory_events_command_replace'),
     ('trg_inventory_events_command_delete'),

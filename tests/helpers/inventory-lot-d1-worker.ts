@@ -3,6 +3,10 @@ import { composeInventoryLotCommands, executeInventoryFefoCommand, executeInvent
   type InventoryLotCommandScope, type LotCommandSpec } from '../../packages/db/src/inventory-lot-commands';
 import { runLegacyInventoryBatch } from '../../packages/db/src/inventory-writer-fence';
 import { executeInventoryAdoption } from '../../packages/db/src/inventory-adoption-executor';
+import { confirmReconciliationDecision,
+  type ReconciliationDecisionInput, type ReconciliationDecisionScope } from '../../packages/db/src/inventory-reconciliation';
+import { recordInventoryObservation, type InventoryObservationScope } from '../../packages/db/src/inventory-observations';
+import type { InventoryObservationInput } from '../../packages/domain/src/inventory-observations';
 
 interface CommandRequest { scope: InventoryLotCommandScope; key: string; input: unknown; now: string }
 const run = (db: D1DatabaseBinding, command: CommandRequest) =>
@@ -68,6 +72,14 @@ export default {
         if (composed.statements.length) await env.DB.batch(composed.statements);
         const receipts = await Promise.all(body.specs.map(({ clientKey }) => readLotCommandReceipt(env.DB, body.scope, clientKey)));
         return Response.json({ receipts });
+      }
+      if (new URL(request.url).pathname === '/observe') {
+        const body = await request.json() as { scope: InventoryObservationScope; input: InventoryObservationInput; now: string };
+        return Response.json(await recordInventoryObservation(env.DB, body.scope, body.input, body.now));
+      }
+      if (new URL(request.url).pathname === '/reconcile') {
+        const body = await request.json() as { scope: ReconciliationDecisionScope; decision: ReconciliationDecisionInput; now: string };
+        return Response.json(await confirmReconciliationDecision(env.DB, body.scope, body.decision, body.now));
       }
       if (new URL(request.url).pathname === '/command') {
         return Response.json(await run(env.DB, await request.json() as CommandRequest));
