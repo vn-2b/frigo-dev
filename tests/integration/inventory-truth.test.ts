@@ -24,10 +24,10 @@ describe('T08 inventory truth persistence and legacy backfill', () => {
   };
   afterEach(() => { for (const db of databases.splice(0)) db.close(); });
 
-  it('replays all 27 migrations on a fresh database with no automatic lot cutover', () => {
+  it('replays all 28 migrations on a fresh database with no automatic lot cutover', () => {
     const db = database();
-    expect(db.migrations).toHaveLength(27);
-    expect(db.migrations.at(-1)).toBe('0027_inventory_fefo_authority.sql');
+    expect(db.migrations).toHaveLength(28);
+    expect(db.migrations.at(-1)).toBe('0028_inventory_adoption_authority.sql');
     expect(db.query('SELECT * FROM inventory_lots')).toEqual([]);
     expect(db.query('SELECT * FROM storage_locations')).toEqual([]);
     expect(db.query('PRAGMA foreign_key_check')).toEqual([]);
@@ -43,10 +43,15 @@ describe('T08 inventory truth persistence and legacy backfill', () => {
     const events = db.query('SELECT * FROM inventory_events ORDER BY id');
     const ingredients = db.query('SELECT * FROM ingredients ORDER BY id');
     db.seed(migration);
+    for (const file of readdirSync('migrations').filter((file) => /^\d+.*\.sql$/.test(file) && file >= '0024').sort()) {
+      db.seed(readFileSync(`migrations/${file}`, 'utf8'));
+    }
     const result = await backfillLegacyInventory(db, HOUSEHOLD);
     expect(result).toMatchObject({ insertedLotCount: 8, skippedLotCount: 0, parity: { ok: true, issues: [] } });
     expect(db.query('SELECT * FROM inventory_items ORDER BY id')).toEqual(inventory);
-    expect(db.query('SELECT * FROM inventory_events ORDER BY id')).toEqual(events);
+    // 0024 adds the nullable command linkage without touching event history.
+    expect(db.query('SELECT * FROM inventory_events ORDER BY id'))
+      .toEqual(events.map((event) => ({ ...event, command_id: null })));
     expect(db.query('SELECT * FROM ingredients ORDER BY id')).toEqual(ingredients);
     expect(db.query('PRAGMA foreign_key_check')).toEqual([]);
   });

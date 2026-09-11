@@ -80,6 +80,11 @@ export class InventoryTruthBackfillError extends Error {
 
 export async function backfillLegacyInventory(db: D1DatabaseBinding, householdId: string) {
   const household = HouseholdId.parse(householdId);
+  const adopted = await db.prepare('SELECT id FROM inventory_adoption_receipts WHERE household_id = ?')
+    .bind(household).first<{ id: string }>();
+  // An adopted household owns its lot truth; re-running insert-only backfill
+  // would create unmapped snapshots no writer could adopt afterwards.
+  if (adopted) throw new Error('Inventory truth household is already adopted');
   const source = await db.batch([
     db.prepare('SELECT id, created_at, updated_at FROM households WHERE id = ?').bind(household),
     db.prepare(LEGACY_SELECT).bind(household),

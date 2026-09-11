@@ -28,10 +28,15 @@ export interface InventoryLotCommandResult {
 export interface InventoryLotCommandExecution { result: InventoryLotCommandResult; replayed: boolean }
 
 interface IngredientRow { id: string; category: string }
-interface ProjectionRow extends LegacyInventoryRow { category: string; data_source: string; freshness: string }
+interface ProjectionRow extends LegacyInventoryRow {
+  added_date: string; category: string; data_source: string; freshness: string;
+}
 interface MappedLot { lot: InventoryLot; legacyItemId: string | null }
 interface MappedLotSnapshot {
   inventoryVersion: number;
+  activationCommandId: string | null;
+  householdCreatedAt: string;
+  householdUpdatedAt: string;
   lots: MappedLot[];
   legacyRows: ProjectionRow[];
   locations: StorageLocation[];
@@ -61,9 +66,9 @@ const ReceiptResult = z.object({
   }).strict()).max(1),
 }).strict();
 
-const MEMBERSHIP = `EXISTS (SELECT 1 FROM household_members m JOIN users u ON u.id = m.user_id
+export const MEMBERSHIP = `EXISTS (SELECT 1 FROM household_members m JOIN users u ON u.id = m.user_id
   WHERE m.household_id = households.id AND u.id = ?)`;
-function authorizedHousehold(db: D1DatabaseBinding, scope: InventoryLotCommandScope) {
+export function authorizedHousehold(db: D1DatabaseBinding, scope: InventoryLotCommandScope) {
   return db.prepare(`SELECT inventory_version AS inventoryVersion FROM households WHERE id = ? AND ${MEMBERSHIP}`)
     .bind(scope.householdId, scope.actorId);
 }
@@ -75,7 +80,7 @@ async function readBatch(db: D1DatabaseBinding, statements: D1PreparedStatement[
     const results = await db.batch(statements);
     assertResults(results);
     return results;
-  } catch {
+  } catch (error) {
     throw new LotCommandError('PERSISTENCE_FAILED');
   }
 }
@@ -93,14 +98,16 @@ function parseScope(input: InventoryLotCommandScope): InventoryLotCommandScope {
 
 // All planning inputs share one D1 transaction; no interleaved per-row reads.
 export async function readMappedLotSnapshot(db: D1DatabaseBinding, input: InventoryLotCommandScope,
-  fefoIngredientId?: string): Promise<MappedLotSnapshot> {
+  fefoIngredientId?: string, bounded = false): Promise<MappedLotSnapshot> {
   const scope = parseScope(input);
-  const limit = fefoIngredientId === undefined ? '' : ` LIMIT ${MAX_FEFO_SNAPSHOT_LOTS + 1}`;
+  const bound = fefoIngredientId !== undefined || bounded ? ` LIMIT ${MAX_FEFO_SNAPSHOT_LOTS + 1}` : '';
   const results = await readBatch(db, [
-    authorizedHousehold(db, scope),
+    db.prepare(`SELECT inventory_version AS inventoryVersion, created_at AS createdAt, updated_at AS updatedAt
+      FROM households WHERE id = ? AND ${MEMBERSHIP}`).bind(scope.householdId, scope.actorId),
+    db.prepare(`SELECT id FROM inventory_adoption_receipts WHERE household_id = ?`).bind(scope.householdId),
     db.prepare(`SELECT id, household_id, ingredient_id, name, quantity, unit, storage, expiry_date,
-      opened_at, expiry_kind, expiry_source, version, created_at, updated_at, category, data_source, freshness
-      FROM inventory_items WHERE household_id = ? ORDER BY id${limit}`).bind(scope.householdId),
+      opened_at, expiry_kind, expiry_source, version, created_at, updated_at, added_date, category,
+      data_source, freshness FROM inventory_items WHERE household_id = ? ORDER BY id${bound}`).bind(scope.householdId),
     db.prepare(`SELECT id, household_id AS householdId, ingredient_id AS ingredientId, raw_name AS rawName,
       quantity_milli AS quantityMilli, canonical_unit AS canonicalUnit, storage_location_id AS storageLocationId,
       state, purchased_at AS purchasedAt, opened_at AS openedAt, expiry_at AS expiryAt,
@@ -109,40 +116,48 @@ export async function readMappedLotSnapshot(db: D1DatabaseBinding, input: Invent
       currency, amount_minor AS amountMinor, minor_digits AS minorDigits, legacy_expiry_at AS legacyExpiryAt,
       legacy_expiry_kind AS legacyExpiryKind, legacy_expiry_source AS legacyExpirySource,
       legacy_opened_at AS legacyOpenedAt, legacy_version AS legacyVersion, legacy_item_id AS legacyItemId
-      FROM inventory_lots WHERE household_id = ? ORDER BY id${limit}`).bind(scope.householdId),
+      FROM inventory_lots WHERE household_id = ? ORDER BY id${bound}`).bind(scope.householdId),
     db.prepare(`SELECT id, household_id AS householdId, type, name, sort_order AS sortOrder,
       is_default AS isDefault, created_at AS createdAt, updated_at AS updatedAt
-      FROM storage_locations WHERE household_id = ? ORDER BY sort_order, id${limit}`).bind(scope.householdId),
+      FROM storage_locations WHERE household_id = ? ORDER BY sort_order, id${bound}`).bind(scope.householdId),
     fefoIngredientId === undefined ? db.prepare('SELECT id, category FROM ingredients ORDER BY id')
       : db.prepare('SELECT id, category FROM ingredients WHERE id = ?').bind(fefoIngredientId),
   ]);
+  const authorization = results[0].results[0] as
+    { inventoryVersion: number; createdAt: string; updatedAt: string } | undefined;
+  if (!authorization) throw new LotCommandError('FORBIDDEN');
   const inventoryVersion = readAuthorization(results[0]);
-  if (fefoIngredientId !== undefined && results.slice(1, 4).some(({ results: rows }) => rows.length > MAX_FEFO_SNAPSHOT_LOTS)) {
+  if ((fefoIngredientId !== undefined || bounded)
+    && results.slice(2, 5).some(({ results: rows }) => rows.length > MAX_FEFO_SNAPSHOT_LOTS)) {
     throw new LotCommandError('FEFO_LIMIT_EXCEEDED');
   }
   try {
     return {
       inventoryVersion,
-      legacyRows: results[1].results as ProjectionRow[],
-      lots: (results[2].results as LotRow[]).map((row) => {
+      activationCommandId: (results[1].results[0] as { id: string } | undefined)?.id ?? null,
+      householdCreatedAt: authorization.createdAt,
+      householdUpdatedAt: authorization.updatedAt,
+      legacyRows: results[2].results as ProjectionRow[],
+      lots: (results[3].results as LotRow[]).map((row) => {
         const { currency, amountMinor, minorDigits, legacyItemId, ...lot } = row;
         return { legacyItemId, lot: InventoryLotSchema.parse({
           ...lot, purchasePrice: currency === null && amountMinor === null && minorDigits === null
             ? null : { currency, amountMinor, minorDigits },
         }) };
       }),
-      locations: (results[3].results as LocationRow[]).map((row) => {
+      locations: (results[4].results as LocationRow[]).map((row) => {
         if (row.isDefault !== 0 && row.isDefault !== 1) throw new Error('Invalid location');
         return StorageLocationSchema.parse({ ...row, isDefault: row.isDefault === 1 });
       }),
-      ingredients: results[4].results as IngredientRow[],
+      ingredients: results[5].results as IngredientRow[],
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof LotCommandError) throw error;
     throw new LotCommandError('DRIFT_DETECTED');
   }
 }
 
-function sortedJson(value: unknown): string {
+export function sortedJson(value: unknown): string {
   const sort = (item: unknown): unknown => {
     if (Array.isArray(item)) return item.map(sort);
     if (item !== null && typeof item === 'object') return Object.fromEntries(
@@ -214,7 +229,7 @@ function replay(receipt: ReceiptRow, fingerprint: string, scope: InventoryLotCom
     for (const plan of result.effects) {
       const { before, after, deltaMilli } = plan;
       valid(after.id === result.lotId && after.householdId === scope.householdId && after.version === result.version
-        && after.updatedAt === receipt.created_at && after.sourceType !== 'LEGACY_BACKFILL'
+        && after.updatedAt === receipt.created_at
         && (after.state === 'ACTIVE' ? after.quantityMilli > 0 : after.quantityMilli === 0)
         && deltaMilli === after.quantityMilli - (before?.quantityMilli ?? 0));
       if (command.type === 'CREATE') {
@@ -270,7 +285,7 @@ function exactLegacyQuantity(milli: number, unit: InventoryLot['canonicalUnit'])
   } catch { /* Reject lossy REAL compatibility projections. */ }
   throw new LotCommandError('UNREPRESENTABLE_QUANTITY');
 }
-function expiryProjection(lot: InventoryLot) {
+export function expiryProjection(lot: InventoryLot) {
   return {
     expiry_date: lot.expiryAt ?? lot.estimatedExpiryAt,
     expiry_kind: lot.expiryKind === 'BEST_BEFORE' ? 'best_before' : lot.expiryKind === 'USE_BY' ? 'use_by'
@@ -282,14 +297,19 @@ function expiryProjection(lot: InventoryLot) {
 }
 function requireParity(mapped: MappedLot, snapshot: MappedLotSnapshot, householdId: string): ProjectionRow {
   const { lot, legacyItemId } = mapped;
-  if (legacyItemId === null || lot.sourceType === 'LEGACY_BACKFILL') throw new LotCommandError('ADOPTION_REQUIRED');
+  // Mapped LEGACY_BACKFILL provenance is legitimate after receipt-backed adoption;
+  // the executor admission check owns that evidence, not this row comparison.
+  if (legacyItemId === null) throw new LotCommandError('ADOPTION_REQUIRED');
   const row = snapshot.legacyRows.find((row) => row.id === legacyItemId);
   const location = snapshot.locations.find((location) => location.id === lot.storageLocationId);
   const expiry = expiryProjection(lot);
   const historicalUnknown = lot.expiryKind === 'UNKNOWN' && row?.expiry_date === lot.legacyExpiryAt;
+  // Adopted households keep legacy kg/l display units; only those exact
+  // aliases reconcile to the lot's canonical unit. Anything else is drift.
   let quantityMatches = false;
   try {
-    quantityMatches = row !== undefined && row.unit === lot.canonicalUnit
+    const displayUnit = row?.unit === 'kg' ? 'g' : row?.unit === 'l' ? 'ml' : row?.unit;
+    quantityMatches = row !== undefined && displayUnit === lot.canonicalUnit
       && toLotQuantity(row.quantity, row.unit).quantityMilli === lot.quantityMilli;
   } catch { /* Invalid compatibility stock is drift, never a repair request. */ }
   if (!row || lot.id !== legacyItemId || lot.householdId !== householdId || row.household_id !== householdId
@@ -365,76 +385,155 @@ function lotWrite(db: D1DatabaseBinding, plan: SingleLotCommandPlan): D1Prepared
       lot.legacyExpiryAt, lot.legacyExpiryKind, lot.legacyExpirySource, lot.legacyOpenedAt);
 }
 
-// Internal phase-C boundary only; legacy writer integration precedes route exposure.
-export async function executeInventoryLotCommand(db: D1DatabaseBinding, inputScope: InventoryLotCommandScope,
-  clientKey: string, input: unknown, now = new Date().toISOString()): Promise<InventoryLotCommandExecution> {
-  const scope = parseScope(inputScope);
-  const authorization = await readBatch(db, [authorizedHousehold(db, scope)]);
-  readAuthorization(authorization[0]);
+export type PreparedLotCommand =
+  | { kind: 'replay'; clientKey: string; command: InventoryLotCommand; fingerprint: string;
+      execution: InventoryLotCommandExecution }
+  | { kind: 'prepared'; clientKey: string; command: InventoryLotCommand; fingerprint: string;
+      result: InventoryLotCommandResult; statements: D1PreparedStatement[] };
+
+// Adoption evidence: every legacy row must be mapped, and backfill provenance
+// requires receipt-backed activation before native commands may run.
+function assertAdoptionAdmission(snapshot: MappedLotSnapshot): void {
+  const representedRows = new Set(snapshot.lots.map(({ legacyItemId }) => legacyItemId));
+  if (snapshot.lots.some(({ legacyItemId }) => legacyItemId === null)
+    || snapshot.legacyRows.some(({ id }) => !representedRows.has(id))) {
+    throw new LotCommandError('ADOPTION_REQUIRED');
+  }
+  if (snapshot.activationCommandId === null
+    && snapshot.lots.some(({ lot }) => lot.sourceType === 'LEGACY_BACKFILL')) {
+    throw new LotCommandError('ADOPTION_REQUIRED');
+  }
+}
+
+function requireParsableLotCommand(clientKey: string, input: unknown): void {
+  if (!ClientKey.safeParse(clientKey).success || !InventoryLotCommandSchema.safeParse(input).success) {
+    throw new LotCommandError('INVALID_COMMAND');
+  }
+}
+
+// Plans one canonical command against the given snapshot without executing.
+export async function prepareInventoryLotCommand(db: D1DatabaseBinding, scope: InventoryLotCommandScope,
+  clientKey: string, input: unknown, now: string, snapshot: MappedLotSnapshot,
+  skipHouseholdVersionCas = false): Promise<PreparedLotCommand> {
   const key = ClientKey.safeParse(clientKey);
   const parsed = InventoryLotCommandSchema.safeParse(input);
   if (!key.success || !parsed.success) throw new LotCommandError('INVALID_COMMAND');
   const command = parsed.data;
   const fingerprint = sortedJson({ ...scope, command });
   const prior = await readReceipt(db, scope, key.data);
-  if (prior) return replay(prior, fingerprint, scope, key.data, command);
-  try {
-    const snapshot = await readMappedLotSnapshot(db, scope);
-    const representedRows = new Set(snapshot.lots.map(({ legacyItemId }) => legacyItemId));
-    if (snapshot.lots.some(({ lot, legacyItemId }) => legacyItemId === null || lot.sourceType === 'LEGACY_BACKFILL')
-      || snapshot.legacyRows.some(({ id }) => !representedRows.has(id))) {
-      throw new LotCommandError('ADOPTION_REQUIRED');
-    }
-    const mapped = snapshot.lots.find(({ lot }) => lot.id === command.lotId);
-    const row = mapped && command.type !== 'CREATE' ? requireParity(mapped, snapshot, scope.householdId) : null;
-    if (command.type === 'CREATE' && snapshot.legacyRows.some((row) => row.id === command.lotId)) throw new LotCommandError('LOT_EXISTS');
-    const plan = planSingleLotCommand(command, mapped?.lot ?? null, {
-      householdId: scope.householdId, now, locations: snapshot.locations, ingredientIds: snapshot.ingredients.map(({ id }) => id),
-    });
-    if (plan.changed) {
-      if (row?.version === Number.MAX_SAFE_INTEGER) throw new LotCommandError('VERSION_OVERFLOW');
-      plan.after = { ...plan.after, legacyVersion: row ? row.version + 1 : 1 };
-      exactLegacyQuantity(plan.after.quantityMilli, plan.after.canonicalUnit);
-      exactLegacyQuantity(plan.deltaMilli, plan.after.canonicalUnit);
-    }
-    const result: InventoryLotCommandResult = {
-      commandId: crypto.randomUUID(), commandType: command.type, lotId: command.lotId,
-      version: plan.after.version, effects: plan.changed ? [plan] : [],
-    };
-    const statements = [
-      db.prepare(`INSERT INTO inventory_commands (id, household_id, actor_id, client_key, fingerprint, command_type, result_json, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).bind(result.commandId, scope.householdId, scope.actorId, key.data,
-        fingerprint, command.type, JSON.stringify(result), now),
-      writeGuard(db, scope, 'inventory_item_id'),
+  if (prior) {
+    return { kind: 'replay', clientKey: key.data, command, fingerprint, execution: replay(prior, fingerprint, scope, key.data, command) };
+  }
+  const mapped = snapshot.lots.find(({ lot }) => lot.id === command.lotId);
+  const row = mapped && command.type !== 'CREATE' ? requireParity(mapped, snapshot, scope.householdId) : null;
+  if (command.type === 'CREATE' && snapshot.legacyRows.some((row) => row.id === command.lotId)) throw new LotCommandError('LOT_EXISTS');
+  const plan = planSingleLotCommand(command, mapped?.lot ?? null, {
+    householdId: scope.householdId, now, locations: snapshot.locations, ingredientIds: snapshot.ingredients.map(({ id }) => id),
+  });
+  if (plan.changed) {
+    if (row?.version === Number.MAX_SAFE_INTEGER) throw new LotCommandError('VERSION_OVERFLOW');
+    plan.after = { ...plan.after, legacyVersion: row ? row.version + 1 : 1 };
+    exactLegacyQuantity(plan.after.quantityMilli, plan.after.canonicalUnit);
+    exactLegacyQuantity(plan.deltaMilli, plan.after.canonicalUnit);
+  }
+  const result: InventoryLotCommandResult = {
+    commandId: crypto.randomUUID(), commandType: command.type, lotId: command.lotId,
+    version: plan.after.version, effects: plan.changed ? [plan] : [],
+  };
+  const statements = [
+    db.prepare(`INSERT INTO inventory_commands (id, household_id, actor_id, client_key, fingerprint, command_type, result_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).bind(result.commandId, scope.householdId, scope.actorId, key.data,
+      fingerprint, command.type, JSON.stringify(result), now),
+    writeGuard(db, scope, 'inventory_item_id'),
+  ];
+  if (!skipHouseholdVersionCas) {
+    statements.push(
       db.prepare(`UPDATE households SET inventory_version = inventory_version WHERE id = ? AND inventory_version = ? AND ${MEMBERSHIP}`)
         .bind(scope.householdId, snapshot.inventoryVersion, scope.actorId),
       writeGuard(db, scope, 'quantity_delta'),
-    ];
-    if (plan.changed) {
-      statements.push(projectionWrites(db, plan, row, snapshot, now), writeGuard(db, scope, 'unit'),
-        lotWrite(db, plan), writeGuard(db, scope, 'event_type'));
-      const metadata = eventMetadata(scope, key.data, fingerprint, result, plan, now);
-      statements.push(db.prepare(`INSERT INTO inventory_events
-        (id, household_id, inventory_item_id, event_type, quantity_delta, unit, reason, metadata, created_at, command_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(crypto.randomUUID(), scope.householdId, plan.after.id,
-        legacyEventType(command),
-        exactLegacyQuantity(plan.deltaMilli, plan.after.canonicalUnit), plan.after.canonicalUnit,
-        'reason' in command ? command.reason ?? null : null, JSON.stringify(metadata), now, result.commandId),
-      writeGuard(db, scope, 'inventory_item_id'));
-    }
-    assertResults(await db.batch(statements));
-    return { result, replayed: false };
-  } catch (error) {
+    );
+  }
+  if (plan.changed) {
+    statements.push(projectionWrites(db, plan, row, snapshot, now), writeGuard(db, scope, 'unit'),
+      lotWrite(db, plan), writeGuard(db, scope, 'event_type'));
+    const metadata = eventMetadata(scope, key.data, fingerprint, result, plan, now);
+    statements.push(db.prepare(`INSERT INTO inventory_events
+      (id, household_id, inventory_item_id, event_type, quantity_delta, unit, reason, metadata, created_at, command_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(crypto.randomUUID(), scope.householdId, plan.after.id,
+      legacyEventType(command),
+      exactLegacyQuantity(plan.deltaMilli, plan.after.canonicalUnit), plan.after.canonicalUnit,
+      'reason' in command ? command.reason ?? null : null, JSON.stringify(metadata), now, result.commandId),
+    writeGuard(db, scope, 'inventory_item_id'));
+  }
+  return { kind: 'prepared', clientKey: key.data, command, fingerprint, result, statements };
+}
+
+// Adapter retry boundary: replays the committed receipt stored under this key.
+// The stored fingerprint carries the original canonical command, so a retry
+// after response loss returns the committed result without re-deriving state.
+export async function replayLotCommandReceipt(db: D1DatabaseBinding, scope: InventoryLotCommandScope,
+  clientKey: string): Promise<InventoryLotCommandExecution | undefined> {
+  const key = ClientKey.safeParse(clientKey);
+  if (!key.success) return undefined;
+  const receipt = await readReceipt(db, scope, key.data);
+  if (!receipt) return undefined;
+  const stored = InventoryLotCommandSchema.safeParse(
+    (JSON.parse(receipt.fingerprint) as { command?: unknown }).command);
+  if (!stored.success) throw new LotCommandError('CORRUPT_RECEIPT');
+  return replay(receipt, receipt.fingerprint, scope, key.data, stored.data);
+}
+
+// Adapter boundary: one authoritative read plus the adoption evidence check,
+// so route adapters cannot plan native commands against incomplete mappings.
+export async function readAdoptedLotSnapshot(db: D1DatabaseBinding,
+  inputScope: InventoryLotCommandScope): Promise<MappedLotSnapshot> {
+  const scope = parseScope(inputScope);
+  const snapshot = await readMappedLotSnapshot(db, scope, undefined, true);
+  assertAdoptionAdmission(snapshot);
+  return snapshot;
+}
+
+export function classifyLotCommandBatchFailure(error: unknown): LotCommandError {
+  if (error instanceof LotCommandError) return error;
+  const message = error instanceof Error ? error.message : '';
+  if (/NOT NULL constraint failed: inventory_events\.quantity_delta/i.test(message)) return new LotCommandError('STALE_SNAPSHOT');
+  if (/NOT NULL constraint failed: inventory_events\.(unit|event_type)/i.test(message)) return new LotCommandError('STALE_VERSION');
+  return new LotCommandError('PERSISTENCE_FAILED');
+}
+
+// After a failed batch: replay committed twins, or classify the failure.
+export async function recoverLotCommandFailure(db: D1DatabaseBinding, scope: InventoryLotCommandScope,
+  clientKey: string, input: unknown, fingerprint: string, error: unknown): Promise<InventoryLotCommandExecution> {
+  const key = ClientKey.safeParse(clientKey);
+  const parsed = InventoryLotCommandSchema.safeParse(input);
+  if (key.success && parsed.success) {
     const receipt = await readReceipt(db, scope, key.data);
-    if (receipt) return replay(receipt, fingerprint, scope, key.data, command);
-    if (error instanceof LotCommandError) throw error;
-    const message = error instanceof Error ? error.message : '';
-    if (/NOT NULL constraint failed: inventory_events\.quantity_delta/i.test(message)) throw new LotCommandError('STALE_SNAPSHOT');
-    if (/NOT NULL constraint failed: inventory_events\.(unit|event_type)/i.test(message)) throw new LotCommandError('STALE_VERSION');
-    throw new LotCommandError('PERSISTENCE_FAILED');
+    if (receipt) return replay(receipt, fingerprint, scope, key.data, parsed.data);
+  }
+  throw classifyLotCommandBatchFailure(error);
+}
+
+export async function executeInventoryLotCommand(db: D1DatabaseBinding, inputScope: InventoryLotCommandScope,
+  clientKey: string, input: unknown, now = new Date().toISOString()): Promise<InventoryLotCommandExecution> {
+  const scope = parseScope(inputScope);
+  readAuthorization((await readBatch(db, [authorizedHousehold(db, scope)]))[0]);
+  // Preserve INVALID_COMMAND precedence over snapshot reads and admission.
+  requireParsableLotCommand(clientKey, input);
+  const snapshot = await readMappedLotSnapshot(db, scope);
+  assertAdoptionAdmission(snapshot);
+  const prepared = await prepareInventoryLotCommand(db, scope, clientKey, input, now, snapshot);
+  if (prepared.kind === 'replay') return prepared.execution;
+  try {
+    assertResults(await db.batch(prepared.statements));
+    return { result: prepared.result, replayed: false };
+  } catch (error) {
+    return recoverLotCommandFailure(db, scope, clientKey, input, prepared.fingerprint, error);
   }
 }
 
+export type InventoryFefoCommandResult = z.infer<typeof FefoReceiptResult>;
+export interface InventoryFefoCommandExecution { result: InventoryFefoCommandResult; replayed: boolean }
+type FefoPlan = InventoryFefoCommandResult['effects'][number];
 const FefoEffect = z.object({
   ordinal: z.number().int().nonnegative().max(MAX_FEFO_EFFECTS - 1),
   legacyItemId: Identity,
@@ -449,9 +548,6 @@ const FefoReceiptResult = z.object({
   canonicalUnit: z.enum(['g', 'ml', 'piece']),
   effects: z.array(FefoEffect).min(1).max(MAX_FEFO_EFFECTS),
 }).strict();
-export type InventoryFefoCommandResult = z.infer<typeof FefoReceiptResult>;
-export interface InventoryFefoCommandExecution { result: InventoryFefoCommandResult; replayed: boolean }
-type FefoPlan = InventoryFefoCommandResult['effects'][number];
 const StoredFingerprint = Scope.extend({
   command: z.union([InventoryLotCommandSchema, z.object({
     type: z.literal('USE'), mode: z.literal('FEFO'), ingredientId: Identity.refine((value) => value.length <= 200),
@@ -502,7 +598,7 @@ function replayFefo(receipt: ReceiptRow, fingerprint: string, scope: InventoryLo
       valid(effect.ordinal === ordinal && !seen.has(after.id) && effect.legacyItemId === after.id
         && before.id === after.id && before.householdId === scope.householdId
         && before.ingredientId === command.ingredientId && before.canonicalUnit === command.canonicalUnit
-        && before.sourceType !== 'LEGACY_BACKFILL' && before.state === 'ACTIVE' && before.quantityMilli > 0
+        && before.state === 'ACTIVE' && before.quantityMilli > 0
         && before.legacyVersion !== null && Number.isSafeInteger(before.legacyVersion + 1)
         && Number.isSafeInteger(before.version + 1) && remaining > 0
         && deltaMilli === -Math.min(remaining, before.quantityMilli));
@@ -564,76 +660,236 @@ function fefoCompletionFence(db: D1DatabaseBinding, scope: InventoryLotCommandSc
 }
 
 // One batch owns the logical allocation; no single-lot executor is called here.
-export async function executeInventoryFefoCommand(db: D1DatabaseBinding, inputScope: InventoryLotCommandScope,
-  clientKey: string, input: unknown, now = new Date().toISOString()): Promise<InventoryFefoCommandExecution> {
-  const scope = parseScope(inputScope);
-  readAuthorization((await readBatch(db, [authorizedHousehold(db, scope)]))[0]);
+export type PreparedFefoCommand =
+  | { kind: 'replay'; clientKey: string; command: InventoryFefoCommand; fingerprint: string;
+      execution: InventoryFefoCommandExecution }
+  | { kind: 'prepared'; clientKey: string; command: InventoryFefoCommand; fingerprint: string;
+      result: InventoryFefoCommandResult; statements: D1PreparedStatement[] };
+
+// Plans one canonical FEFO allocation against the given snapshot without executing.
+export async function prepareInventoryFefoCommand(db: D1DatabaseBinding, scope: InventoryLotCommandScope,
+  clientKey: string, input: unknown, now: string, snapshot: MappedLotSnapshot,
+  skipHouseholdVersionCas = false): Promise<PreparedFefoCommand> {
   const key = ClientKey.safeParse(clientKey);
   if (!key.success) throw new LotCommandError('INVALID_COMMAND');
   const command = parseInventoryFefoCommand(input);
   const fingerprint = sortedJson({ ...scope, command });
   const prior = await readReceipt(db, scope, key.data, true);
-  if (prior) return replayFefo(prior, fingerprint, scope, key.data, command);
-  try {
-    const snapshot = await readMappedLotSnapshot(db, scope, command.ingredientId);
-    if (command.expectedInventoryVersion !== undefined && command.expectedInventoryVersion !== snapshot.inventoryVersion) {
-      throw new LotCommandError('STALE_SNAPSHOT');
-    }
-    const representedRows = new Set(snapshot.lots.map(({ legacyItemId }) => legacyItemId));
-    if (snapshot.lots.some(({ lot, legacyItemId }) => legacyItemId === null || lot.sourceType === 'LEGACY_BACKFILL')
-      || snapshot.legacyRows.some(({ id }) => !representedRows.has(id))) throw new LotCommandError('ADOPTION_REQUIRED');
-    const plans = planInventoryFefo(command, snapshot.lots.map(({ lot }) => lot), {
-      householdId: scope.householdId, now, locations: snapshot.locations, ingredientIds: snapshot.ingredients.map(({ id }) => id),
-    });
-    const rows: ProjectionRow[] = [];
-    const effects = plans.map((plan, ordinal): FefoPlan => {
-      const mapped = snapshot.lots.find(({ lot }) => lot.id === plan.after.id)!;
-      const row = requireParity(mapped, snapshot, scope.householdId);
-      if (row.version === Number.MAX_SAFE_INTEGER) throw new LotCommandError('VERSION_OVERFLOW');
-      rows.push(row);
-      const after = { ...plan.after, legacyVersion: row.version + 1 };
-      exactLegacyQuantity(after.quantityMilli, after.canonicalUnit);
-      exactLegacyQuantity(plan.deltaMilli, after.canonicalUnit);
-      return { ...plan, before: plan.before!, after, changed: true, ordinal, legacyItemId: row.id };
-    });
-    const result = FefoReceiptResult.parse({
-      schemaVersion: 2, commandId: crypto.randomUUID(), commandType: 'USE', mode: 'FEFO',
-      ingredientId: command.ingredientId, quantityMilli: command.quantityMilli, canonicalUnit: command.canonicalUnit, effects,
-    });
-    const resultJson = JSON.stringify(result);
-    if (new TextEncoder().encode(resultJson).length > MAX_FEFO_RECEIPT_BYTES) throw new LotCommandError('FEFO_LIMIT_EXCEEDED');
-    const statements = [
+  if (prior) {
+    return { kind: 'replay', clientKey: key.data, command, fingerprint, execution: replayFefo(prior, fingerprint, scope, key.data, command) };
+  }
+  if (command.expectedInventoryVersion !== undefined && command.expectedInventoryVersion !== snapshot.inventoryVersion) {
+    throw new LotCommandError('STALE_SNAPSHOT');
+  }
+  const plans = planInventoryFefo(command, snapshot.lots.map(({ lot }) => lot), {
+    householdId: scope.householdId, now, locations: snapshot.locations, ingredientIds: snapshot.ingredients.map(({ id }) => id),
+  });
+  const rows: ProjectionRow[] = [];
+  const effects = plans.map((plan, ordinal): FefoPlan => {
+    const mapped = snapshot.lots.find(({ lot }) => lot.id === plan.after.id)!;
+    const row = requireParity(mapped, snapshot, scope.householdId);
+    if (row.version === Number.MAX_SAFE_INTEGER) throw new LotCommandError('VERSION_OVERFLOW');
+    rows.push(row);
+    const after = { ...plan.after, legacyVersion: row.version + 1 };
+    exactLegacyQuantity(after.quantityMilli, after.canonicalUnit);
+    exactLegacyQuantity(plan.deltaMilli, after.canonicalUnit);
+    return { ...plan, before: plan.before!, after, changed: true, ordinal, legacyItemId: row.id };
+  });
+  const result = FefoReceiptResult.parse({
+    schemaVersion: 2, commandId: crypto.randomUUID(), commandType: 'USE', mode: 'FEFO',
+    ingredientId: command.ingredientId, quantityMilli: command.quantityMilli, canonicalUnit: command.canonicalUnit, effects,
+  });
+  const resultJson = JSON.stringify(result);
+  if (new TextEncoder().encode(resultJson).length > MAX_FEFO_RECEIPT_BYTES) throw new LotCommandError('FEFO_LIMIT_EXCEEDED');
+  const statements = [
+    db.prepare(`INSERT INTO inventory_commands (id, household_id, actor_id, client_key, fingerprint, command_type, result_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).bind(result.commandId, scope.householdId, scope.actorId, key.data,
+      fingerprint, 'USE', resultJson, now),
+    writeGuard(db, scope, 'inventory_item_id'),
+  ];
+  if (!skipHouseholdVersionCas) {
+    statements.unshift(
       db.prepare(`UPDATE households SET inventory_version = inventory_version WHERE id = ? AND inventory_version = ? AND ${MEMBERSHIP}`)
         .bind(scope.householdId, snapshot.inventoryVersion, scope.actorId),
       writeGuard(db, scope, 'quantity_delta'),
-      db.prepare(`INSERT INTO inventory_commands (id, household_id, actor_id, client_key, fingerprint, command_type, result_json, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).bind(result.commandId, scope.householdId, scope.actorId, key.data,
-        fingerprint, 'USE', resultJson, now),
-      writeGuard(db, scope, 'inventory_item_id'),
-    ];
-    for (const effect of effects) {
-      statements.push(projectionWrites(db, effect, rows[effect.ordinal], snapshot, now), writeGuard(db, scope, 'unit'),
-        lotWrite(db, effect), writeGuard(db, scope, 'event_type'));
-    }
-    for (const effect of effects) {
-      const metadata = JSON.stringify(fefoEventMetadata(scope, key.data, fingerprint, result, effect, now));
-      if (new TextEncoder().encode(metadata).length > MAX_FEFO_RECEIPT_BYTES) throw new LotCommandError('FEFO_LIMIT_EXCEEDED');
-      statements.push(db.prepare(`INSERT INTO inventory_events
-        (id, household_id, inventory_item_id, event_type, quantity_delta, unit, reason, metadata, created_at, command_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(crypto.randomUUID(), scope.householdId, effect.legacyItemId,
-        'MANUAL_UPDATE', exactLegacyQuantity(effect.deltaMilli, effect.after.canonicalUnit), effect.after.canonicalUnit,
-        command.reason ?? null, metadata, now, result.commandId), writeGuard(db, scope, 'inventory_item_id'));
-    }
-    statements.push(fefoCompletionFence(db, scope, result), writeGuard(db, scope, 'inventory_item_id'));
-    assertResults(await db.batch(statements));
-    return { result, replayed: false };
-  } catch (error) {
+    );
+  }
+  for (const effect of effects) {
+    statements.push(projectionWrites(db, effect, rows[effect.ordinal], snapshot, now), writeGuard(db, scope, 'unit'),
+      lotWrite(db, effect), writeGuard(db, scope, 'event_type'));
+  }
+  for (const effect of effects) {
+    const metadata = JSON.stringify(fefoEventMetadata(scope, key.data, fingerprint, result, effect, now));
+    if (new TextEncoder().encode(metadata).length > MAX_FEFO_RECEIPT_BYTES) throw new LotCommandError('FEFO_LIMIT_EXCEEDED');
+    statements.push(db.prepare(`INSERT INTO inventory_events
+      (id, household_id, inventory_item_id, event_type, quantity_delta, unit, reason, metadata, created_at, command_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(crypto.randomUUID(), scope.householdId, effect.legacyItemId,
+      'MANUAL_UPDATE', exactLegacyQuantity(effect.deltaMilli, effect.after.canonicalUnit), effect.after.canonicalUnit,
+      command.reason ?? null, metadata, now, result.commandId), writeGuard(db, scope, 'inventory_item_id'));
+  }
+  statements.push(fefoCompletionFence(db, scope, result), writeGuard(db, scope, 'inventory_item_id'));
+  return { kind: 'prepared', clientKey: key.data, command, fingerprint, result, statements };
+}
+
+export async function recoverFefoCommandFailure(db: D1DatabaseBinding, scope: InventoryLotCommandScope,
+  clientKey: string, input: unknown, fingerprint: string, error: unknown): Promise<InventoryFefoCommandExecution> {
+  const key = ClientKey.safeParse(clientKey);
+  if (key.success) {
+    // Replay evidence is authoritative: its conflicts (FORBIDDEN membership,
+    // changed payload, corruption) propagate instead of masking the failure.
+    const command = parseInventoryFefoCommand(input);
     const receipt = await readReceipt(db, scope, key.data, true);
     if (receipt) return replayFefo(receipt, fingerprint, scope, key.data, command);
-    if (error instanceof LotCommandError) throw error;
-    const message = error instanceof Error ? error.message : '';
-    if (/NOT NULL constraint failed: inventory_events\.quantity_delta/i.test(message)) throw new LotCommandError('STALE_SNAPSHOT');
-    if (/NOT NULL constraint failed: inventory_events\.(unit|event_type)/i.test(message)) throw new LotCommandError('STALE_VERSION');
-    throw new LotCommandError('PERSISTENCE_FAILED');
   }
+  throw classifyLotCommandBatchFailure(error);
+}
+
+// One batch owns the logical allocation; no single-lot executor is called here.
+export async function executeInventoryFefoCommand(db: D1DatabaseBinding, inputScope: InventoryLotCommandScope,
+  clientKey: string, input: unknown, now = new Date().toISOString()): Promise<InventoryFefoCommandExecution> {
+  const scope = parseScope(inputScope);
+  readAuthorization((await readBatch(db, [authorizedHousehold(db, scope)]))[0]);
+  const snapshot = await readMappedLotSnapshot(db, scope, parseInventoryFefoCommand(input).ingredientId);
+  assertAdoptionAdmission(snapshot);
+  const prepared = await prepareInventoryFefoCommand(db, scope, clientKey, input, now, snapshot);
+  if (prepared.kind === 'replay') return prepared.execution;
+  try {
+    assertResults(await db.batch(prepared.statements));
+    return { result: prepared.result, replayed: false };
+  } catch (error) {
+    return recoverFefoCommandFailure(db, scope, clientKey, input, prepared.fingerprint, error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Composed route adapters: several canonical commands share one snapshot and
+// one atomic batch, with route-specific statements appended by the caller.
+// ---------------------------------------------------------------------------
+
+export interface LotCommandSpec {
+  clientKey: string;
+  input: unknown;
+  // Multi-command intents (edit+move) plan against the shared snapshot: the
+  // composition injects the current advanced lot version as expectedVersion.
+  useCurrentLotVersion?: { lotId: string };
+}
+export type PreparedAnyLotCommand = PreparedLotCommand | PreparedFefoCommand;
+export type AnyLotCommandResult = InventoryLotCommandResult | InventoryFefoCommandResult;
+export interface ComposedLotCommands {
+  snapshot: MappedLotSnapshot;
+  prepared: PreparedAnyLotCommand[];
+  statements: D1PreparedStatement[];
+}
+
+function advanceSnapshotWithResult(snapshot: MappedLotSnapshot, result: AnyLotCommandResult, now: string): void {
+  for (const effect of result.effects) {
+    const after = effect.after;
+    const before = effect.before;
+    const mapped = snapshot.lots.find((entry) => entry.lot.id === after.id);
+    if (mapped) mapped.lot = after;
+    const row = snapshot.legacyRows.find((candidate) => candidate.id === after.id);
+    const location = snapshot.locations.find((candidate) => candidate.id === after.storageLocationId);
+    const storage = location?.type === 'FRIDGE' ? 'fridge' as const
+      : location?.type === 'FREEZER' ? 'freezer' as const
+        : location?.type === 'PANTRY' ? 'pantry' as const : undefined;
+    if (!storage) throw new LotCommandError('DRIFT_DETECTED');
+    const unchangedExpiry = before !== null && before.expiryKind === after.expiryKind
+      && before.expiryAt === after.expiryAt && before.estimatedExpiryAt === after.estimatedExpiryAt;
+    const expiry = unchangedExpiry && row ? {
+      expiry_date: row.expiry_date, expiry_kind: row.expiry_kind, expiry_source: row.expiry_source,
+    } : expiryProjection(after);
+    const projectedFreshness = after.quantityMilli === 0 ? 'out_of_stock'
+      : row && before && before.quantityMilli > 0 && unchangedExpiry ? row.freshness
+        : freshness(expiry.expiry_date, now);
+    const openedAt = before && row && before.openedAt === after.openedAt ? row.opened_at : after.openedAt;
+    const category = snapshot.ingredients.find((ingredient) => ingredient.id === after.ingredientId)?.category ?? 'other';
+    if (row) {
+      row.ingredient_id = after.ingredientId;
+      row.name = after.rawName;
+      row.quantity = exactLegacyQuantity(after.quantityMilli, after.canonicalUnit);
+      row.unit = after.canonicalUnit;
+      row.category = category;
+      row.storage = storage;
+      row.expiry_date = expiry.expiry_date;
+      row.expiry_kind = expiry.expiry_kind;
+      row.expiry_source = expiry.expiry_source;
+      row.opened_at = openedAt;
+      row.freshness = projectedFreshness;
+      row.version = after.legacyVersion!;
+      row.updated_at = after.updatedAt;
+    } else {
+      // Mirrors the CREATE projection insert, including its canonical category.
+      snapshot.legacyRows.push({
+        id: after.id, household_id: after.householdId, ingredient_id: after.ingredientId, name: after.rawName,
+        quantity: exactLegacyQuantity(after.quantityMilli, after.canonicalUnit), unit: after.canonicalUnit,
+        category, storage, expiry_date: expiry.expiry_date, opened_at: after.openedAt,
+        expiry_kind: expiry.expiry_kind, expiry_source: expiry.expiry_source, version: after.legacyVersion!,
+        created_at: after.createdAt, updated_at: after.updatedAt, added_date: after.createdAt,
+        data_source: after.sourceType === 'SCAN' || after.sourceType === 'RECEIPT' ? 'scan'
+          : after.sourceType === 'SHOPPING' ? 'shopping' : 'manual',
+        freshness: projectedFreshness,
+      });
+    }
+  }
+}
+
+function isFefoInput(input: unknown): boolean {
+  return typeof input === 'object' && input !== null && (input as { mode?: unknown }).mode === 'FEFO';
+}
+
+// Plans several canonical commands against one shared, evolving snapshot.
+// Replayed specs contribute no statements; the caller appends its own route
+// statements and executes one atomic batch.
+export async function composeInventoryLotCommands(db: D1DatabaseBinding, scope: InventoryLotCommandScope,
+  specs: LotCommandSpec[], now: string): Promise<ComposedLotCommands> {
+  const snapshot = await readMappedLotSnapshot(db, scope, undefined, true);
+  assertAdoptionAdmission(snapshot);
+  const statements: D1PreparedStatement[] = [];
+  const prepared: PreparedAnyLotCommand[] = [];
+  let householdCasPlaced = false;
+  for (const spec of specs) {
+    let input = spec.input;
+    if (spec.useCurrentLotVersion && !isFefoInput(input)) {
+      const parsed = InventoryLotCommandSchema.safeParse(input);
+      if (!parsed.success) throw new LotCommandError('INVALID_COMMAND');
+      if (!('expectedVersion' in parsed.data) || parsed.data.lotId !== spec.useCurrentLotVersion.lotId) {
+        throw new LotCommandError('INVALID_COMMAND');
+      }
+      const current = snapshot.lots.find((entry) => entry.lot.id === spec.useCurrentLotVersion!.lotId);
+      if (!current) throw new LotCommandError('LOT_EXISTS');
+      input = { ...parsed.data, expectedVersion: current.lot.version };
+    }
+    // One shared stock snapshot: the first executed command fences the whole
+    // composed batch; later commands ride it with per-lot CAS only.
+    const result = isFefoInput(input)
+      ? await prepareInventoryFefoCommand(db, scope, spec.clientKey, input, now, snapshot, householdCasPlaced)
+      : await prepareInventoryLotCommand(db, scope, spec.clientKey, input, now, snapshot,
+          householdCasPlaced);
+    prepared.push(result);
+    if (result.kind === 'prepared') {
+      statements.push(...result.statements);
+      householdCasPlaced = true;
+      advanceSnapshotWithResult(snapshot, result.result, now);
+    }
+  }
+  return { snapshot, prepared, statements };
+}
+
+// After a composed batch failed: replay committed twins, or classify. Every
+// prepared spec must recover for the composition to be usable.
+export async function recoverComposedLotCommands(db: D1DatabaseBinding, scope: InventoryLotCommandScope,
+  composed: ComposedLotCommands, error: unknown): Promise<(InventoryLotCommandExecution | InventoryFefoCommandExecution)[]> {
+  const executions: (InventoryLotCommandExecution | InventoryFefoCommandExecution)[] = [];
+  for (const prepared of composed.prepared) {
+    if (prepared.kind === 'replay') {
+      executions.push(prepared.execution);
+      continue;
+    }
+    const receipt = await readReceipt(db, scope, prepared.clientKey);
+    if (!receipt) throw classifyLotCommandBatchFailure(error);
+    executions.push('mode' in prepared.command
+      ? replayFefo(receipt, prepared.fingerprint, scope, prepared.clientKey, prepared.command)
+      : replay(receipt, prepared.fingerprint, scope, prepared.clientKey, prepared.command));
+  }
+  return executions;
 }

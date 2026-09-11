@@ -28,17 +28,29 @@ export async function readLegacyInventoryRevision(db: D1DatabaseBinding, househo
 }
 
 // Activation can race a preflight, so the check belongs inside the writer batch.
+// An adopted household is authority-active even when it holds no mapped rows
+// (empty adoption), so the receipt is part of the fail-closed predicate.
+const ACTIVE_AUTHORITY = `(EXISTS (SELECT 1 FROM inventory_lots WHERE household_id = ?
+    AND legacy_item_id IS NOT NULL)
+  OR EXISTS (SELECT 1 FROM inventory_adoption_receipts WHERE household_id = ?))`;
+
+export async function readInventoryAuthorityMode(db: D1DatabaseBinding,
+  householdId: string): Promise<'native' | 'legacy'> {
+  const row = await db.prepare(`SELECT ${ACTIVE_AUTHORITY} AS active`).bind(householdId, householdId)
+    .first<{ active: number }>();
+  return row?.active === 1 ? 'native' : 'legacy';
+}
+
 export async function runLegacyInventoryBatch<T = unknown>(db: D1DatabaseBinding,
   householdId: string, statements: D1PreparedStatement[], expectedInventoryVersion?: number,
   sourceFence?: { sql: string; bindings: unknown[] }): Promise<D1Result<T>[]> {
   if (expectedInventoryVersion !== undefined && (!Number.isSafeInteger(expectedInventoryVersion) || expectedInventoryVersion < 1)) {
     throw new InventoryWriterSnapshotError();
   }
-  const active = `EXISTS (SELECT 1 FROM inventory_lots WHERE household_id = ? AND legacy_item_id IS NOT NULL)`;
   const fence = db.prepare(`INSERT INTO inventory_events
     (id, household_id, inventory_item_id, event_type, quantity_delta, unit)
-    SELECT ?, ?, NULL, 'T09_WRITER_FENCE', 0, 'piece' WHERE ${active}`)
-    .bind(crypto.randomUUID(), householdId, householdId);
+    SELECT ?, ?, NULL, 'T09_WRITER_FENCE', 0, 'piece' WHERE ${ACTIVE_AUTHORITY}`)
+    .bind(crypto.randomUUID(), householdId, householdId, householdId);
   const fences = [fence];
   if (expectedInventoryVersion !== undefined) fences.push(db.prepare(`INSERT INTO inventory_events
     (id, household_id, inventory_item_id, event_type, quantity_delta, unit)
@@ -52,7 +64,7 @@ export async function runLegacyInventoryBatch<T = unknown>(db: D1DatabaseBinding
     return results.slice(fences.length);
   } catch (error) {
     // Classification only; this read cannot authorize a write after rollback.
-    const row = await db.prepare(`SELECT ${active} AS active`).bind(householdId)
+    const row = await db.prepare(`SELECT ${ACTIVE_AUTHORITY} AS active`).bind(householdId, householdId)
       .first<{ active: number }>();
     if (row?.active === 1) throw new InventoryWriterAuthorityError();
     if (expectedInventoryVersion !== undefined

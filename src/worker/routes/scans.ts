@@ -1,5 +1,8 @@
 import { Context, Hono } from 'hono';
-import { InventoryWriterAuthorityError, InventoryWriterSnapshotError, readLegacyInventoryRevision, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
+import { InventoryWriterAuthorityError, InventoryWriterSnapshotError, readInventoryAuthorityMode, readLegacyInventoryRevision, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
+import { composeInventoryLotCommands, readAdoptedLotSnapshot, type LotCommandSpec } from '../../../packages/db/src/inventory-lot-commands';
+import { LotCommandError } from '../../../packages/domain/src/inventory-lot-commands';
+import { inventoryAuthorityFailure, lotExpiryFieldsFromLegacy } from '../utils/inventory-authority';
 import { Env, AuthContext } from '../types';
 import { AIRouter } from '@frigo/ai';
 import { SQL } from '@frigo/db';
@@ -18,6 +21,91 @@ import { reserveScanQuota, finalizeScanQuota } from '../services/scan-quota';
 import { sha256Hex } from '../utils/session';
 
 export const scanRoutes = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
+
+// Adopted-household scan confirmation: one atomic batch of canonical lot
+// commands plus the reviewed draft writes and the completion-last status flip.
+// Receipts are keyed per scan item so a response-loss retry replays the same
+// confirmation identity instead of double-adding stock.
+async function confirmAdoptedScan(c: Context<{ Bindings: Env; Variables: { auth: AuthContext } }>, db: any,
+  kv: any, auth: AuthContext, scanId: string, plan: {
+    selectedIds: string[];
+    batchStatements: any[];
+    updates: Map<string, { id: string; quantityDelta: number; unit: string }>;
+    inserts: Array<{ id: string; quantity: number; unit: string; expiryDate: string; ingredientId: string | null; name: string; storage: string }>;
+  }) {
+  const scope = { householdId: auth.householdId, actorId: auth.userId };
+  try {
+    const snapshot = await readAdoptedLotSnapshot(db, scope);
+    const now = new Date().toISOString();
+    const specs: LotCommandSpec[] = [];
+    for (const update of plan.updates.values()) {
+      const mapped = snapshot.lots.find((entry) => entry.legacyItemId === update.id);
+      const row = snapshot.legacyRows.find((candidate) => candidate.id === update.id);
+      if (!mapped || !row) throw new LotCommandError('ADOPTION_REQUIRED');
+      specs.push({
+        clientKey: `scan-confirm:${scanId}:${update.id}:correct`,
+        input: {
+          type: 'CORRECT', lotId: mapped.lot.id, expectedVersion: mapped.lot.version,
+          changes: { quantity: Number(row.quantity) + update.quantityDelta, unit: update.unit },
+          reason: 'Xác nhận từ nhận diện thông minh',
+          revive: mapped.lot.state !== 'ACTIVE',
+        },
+      });
+    }
+    for (const insert of plan.inserts) {
+      const location = snapshot.locations.find((entry) => entry.isDefault
+        && entry.type.toLowerCase() === insert.storage);
+      if (!location) throw new LotCommandError('DRIFT_DETECTED');
+      const expiry = lotExpiryFieldsFromLegacy(insert.expiryDate);
+      specs.push({
+        clientKey: `scan-confirm:${scanId}:${insert.id}:create`,
+        input: {
+          type: 'CREATE', lotId: insert.id, ingredientId: insert.ingredientId, rawName: insert.name,
+          quantity: insert.quantity, unit: insert.unit, storageLocationId: location.id,
+          expiryAt: expiry.expiryAt, estimatedExpiryAt: expiry.estimatedExpiryAt,
+          expiryKind: expiry.expiryKind, purchasedAt: null, openedAt: null, purchasePrice: null,
+          sourceType: 'SCAN', sourceId: scanId,
+        },
+      });
+    }
+    const composed = await composeInventoryLotCommands(db, scope, specs, now);
+    const statusStatement = db
+      .prepare(
+        `UPDATE scans SET status = 'confirmed', updated_at = datetime('now')
+         WHERE id = ? AND household_id = ? AND status = 'ready'`
+      )
+      .bind(scanId, auth.householdId);
+    const results = await db.batch([...composed.statements, ...plan.batchStatements, statusStatement]);
+    const statusResult = results[results.length - 1] as any;
+    if (statusResult?.meta?.changes !== 1) {
+      const committed = await db
+        .prepare('SELECT status FROM scans WHERE id = ? AND household_id = ?')
+        .bind(scanId, auth.householdId)
+        .first();
+      if ((committed as any)?.status === 'confirmed') {
+        const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+        return c.json({
+          success: true, idempotentReplay: true, message: 'Bản quét này đã được xác nhận trước đó',
+          inventoryCount: updatedList.length, items: updatedList,
+        });
+      }
+      throw new Error('Scan confirmation state transition did not commit');
+    }
+    if (kv) await kv.delete(`inv_${auth.householdId}`).catch(() => {});
+    const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+    return c.json({
+      success: true, message: 'Đã cập nhật nguyên liệu vào tủ lạnh thành công',
+      inventoryCount: updatedList.length, items: updatedList, confirmedItemIds: plan.selectedIds,
+    });
+  } catch (error: any) {
+    if (error instanceof LotCommandError) {
+      const failure = inventoryAuthorityFailure(error);
+      return c.json({ error: error.message, code: failure.code }, failure.status);
+    }
+    console.error('Adopted scan confirmation failed:', error);
+    return c.json({ error: 'Lỗi xác nhận đưa nguyên liệu vào tủ lạnh', code: 'DATABASE_ERROR' }, 500);
+  }
+}
 
 function assertBatchSucceeded(results: any[] | undefined): void {
   if (results?.some((result) => result && result.success === false)) {
@@ -1044,6 +1132,15 @@ scanRoutes.post('/scans/:id/confirm', async (c) => {
       }
     }
 
+    // Adopted households confirm through the lot authority: reviewed scan
+    // values and the status transition commit in the same atomic batch as the
+    // native commands, status update last.
+    if (await readInventoryAuthorityMode(db, auth.householdId) === 'native') {
+      return confirmAdoptedScan(c, db, kv, auth, id, {
+        selectedIds, batchStatements, updates, inserts,
+      });
+    }
+
     for (const update of updates.values()) {
       batchStatements.push(
         db
@@ -1139,8 +1236,8 @@ scanRoutes.post('/scans/:id/confirm', async (c) => {
       const committed = await db
         .prepare('SELECT status FROM scans WHERE id = ? AND household_id = ?')
         .bind(id, auth.householdId)
-        .first<{ status: string }>();
-      if (committed?.status === 'confirmed') {
+        .first();
+      if ((committed as any)?.status === 'confirmed') {
         const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
         return c.json({
           success: true,
@@ -1181,8 +1278,8 @@ scanRoutes.post('/scans/:id/confirm', async (c) => {
       const committed = await db
         .prepare('SELECT status FROM scans WHERE id = ? AND household_id = ?')
         .bind(id, auth.householdId)
-        .first<{ status: string }>();
-      if (committed?.status === 'confirmed') {
+        .first();
+      if ((committed as any)?.status === 'confirmed') {
         const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
         return c.json({
           success: true,

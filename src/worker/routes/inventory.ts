@@ -1,7 +1,17 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { Env, AuthContext } from '../types';
 import { SQL } from '@frigo/db';
-import { InventoryWriterAuthorityError, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
+import { InventoryWriterAuthorityError, readInventoryAuthorityMode, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
+import { executeInventoryAdoption } from '../../../packages/db/src/inventory-adoption-executor';
+import {
+  composeInventoryLotCommands, prepareInventoryLotCommand, readAdoptedLotSnapshot,
+  recoverComposedLotCommands, replayLotCommandReceipt, type LotCommandSpec,
+} from '../../../packages/db/src/inventory-lot-commands';
+import { LotCommandError } from '../../../packages/domain/src/inventory-lot-commands';
+import {
+  inventoryAuthorityFailure, lotExpiryFieldsFromLegacy,
+} from '../utils/inventory-authority';
 import {
   areUnitsCompatible,
   computeFreshness,
@@ -118,6 +128,178 @@ function inventoryCreateFingerprint(item: {
 }
 
 const storedInventoryCommandFingerprint = inventoryMutationFingerprintFromMetadata;
+
+// Adopted households keep the legacy response contract; the mutation itself
+// goes through the canonical lot authority.
+async function adoptedItemResponse(c: any, db: any, kv: any, auth: AuthContext,
+  itemId: string, replayed: boolean) {
+  const persisted = await db.prepare(SQL.GET_INVENTORY_ITEM).bind(itemId, auth.householdId).first();
+  if (!persisted) throw new Error('Adopted inventory command did not produce a durable row');
+  if (kv) await kv.delete(`inv_${auth.householdId}`).catch(() => {});
+  return c.json(
+    { success: true, ...(replayed ? { idempotentReplay: true } : {}), item: mapInventoryRow(persisted) },
+    replayed ? 200 : 201
+  );
+}
+
+function lotFailureResponse(c: any, error: LotCommandError) {
+  const failure = inventoryAuthorityFailure(error);
+  return c.json({ error: error.message, code: failure.code }, failure.status);
+}
+
+async function adoptManualInventoryUpdate(c: any, db: any, kv: any, auth: AuthContext, input: {
+  id: string; expectedVersion: number; storedVersion: number; rawName: string;
+  ingredientId: string | null; quantity: number; unit: string; storage: string;
+  expiryDate: string | null; expirySubmitted: boolean;
+}) {
+  const scope = { householdId: auth.householdId, actorId: auth.userId };
+  const conflict = () => c.json({
+    error: 'Nguyên liệu đã được cập nhật bởi thiết bị khác',
+    code: 'CONFLICT',
+    expectedVersion: input.storedVersion,
+    receivedVersion: input.expectedVersion,
+  }, 409);
+  try {
+    const snapshot = await readAdoptedLotSnapshot(db, scope);
+    const mapped = snapshot.lots.find((entry) => entry.legacyItemId === input.id);
+    if (!mapped) throw new LotCommandError('ADOPTION_REQUIRED');
+    // The PATCH If-Match contract is the projection version; native commands
+    // CAS the lot version, which tracks the projection one for mapped lots.
+    if (mapped.lot.legacyVersion !== input.expectedVersion) return conflict();
+    const now = new Date().toISOString();
+    const changes: Record<string, unknown> = {
+      quantity: input.quantity,
+      unit: input.unit,
+      rawName: input.rawName,
+      ingredientId: input.ingredientId,
+    };
+    if (input.expirySubmitted) {
+      const expiry = lotExpiryFieldsFromLegacy(input.expiryDate, mapped.lot.expiryKind);
+      changes.expiryAt = expiry.expiryAt;
+      changes.estimatedExpiryAt = expiry.estimatedExpiryAt;
+      changes.expiryKind = expiry.expiryKind;
+    }
+    // A combined edit and move is one atomic commit: composition advances the
+    // shared snapshot so the MOVE plans against the corrected lot version.
+    const specs: LotCommandSpec[] = [{
+      clientKey: `manual-update:${input.id}:correct`,
+      input: {
+        type: 'CORRECT', lotId: mapped.lot.id, expectedVersion: mapped.lot.version,
+        changes, reason: 'Cập nhật nguyên liệu',
+        revive: mapped.lot.state !== 'ACTIVE' && input.quantity > 0,
+      },
+    }];
+    const targetLocation = snapshot.locations.find((entry) => entry.isDefault
+      && entry.type.toLowerCase() === input.storage);
+    if (!targetLocation) throw new LotCommandError('DRIFT_DETECTED');
+    if (targetLocation.id !== mapped.lot.storageLocationId) {
+      specs.push({
+        clientKey: `manual-update:${input.id}:move`,
+        input: {
+          type: 'MOVE', lotId: mapped.lot.id, expectedVersion: mapped.lot.version,
+          storageLocationId: targetLocation.id,
+        },
+        useCurrentLotVersion: { lotId: mapped.lot.id },
+      });
+    }
+    const composed = await composeInventoryLotCommands(db, scope, specs, now);
+    if (composed.statements.length > 0) {
+      try {
+        await db.batch(composed.statements);
+      } catch (error) {
+        await recoverComposedLotCommands(db, scope, composed, error);
+      }
+    }
+    if (kv) await kv.delete(`inv_${auth.householdId}`).catch(() => {});
+    const persisted = await db.prepare(SQL.GET_INVENTORY_ITEM).bind(input.id, auth.householdId).first();
+    if (!persisted) throw new Error('Adopted inventory update did not produce a durable row');
+    return c.json({ success: true, item: mapInventoryRow(persisted) });
+  } catch (error: any) {
+    if (error instanceof LotCommandError) return lotFailureResponse(c, error);
+    console.error('Adopted manual update failed:', error);
+    return c.json({ error: 'Lỗi cập nhật nguyên liệu trong cơ sở dữ liệu', code: 'DATABASE_ERROR' }, 500);
+  }
+}
+
+async function adoptManualInventoryDiscard(c: any, db: any, kv: any, auth: AuthContext,
+  id: string, expectedVersion: number, storedVersion: number,
+  idempotencyKey: string | null, requestFingerprint: string) {
+  const scope = { householdId: auth.householdId, actorId: auth.userId };
+  const conflict = () => c.json({
+    error: 'Nguyên liệu đã được cập nhật bởi thiết bị khác',
+    code: 'CONFLICT',
+    expectedVersion: storedVersion,
+    receivedVersion: expectedVersion,
+  }, 409);
+  try {
+    const clientKey = idempotencyKey
+      ? `manual-discard:${id}:${idempotencyKey}` : `manual-discard:${id}`;
+    // The receipt is the durable delete evidence: a retry after response loss
+    // replays it before any version preflight can reject the stale caller.
+    const committed = await replayLotCommandReceipt(db, scope, clientKey);
+    if (committed) {
+      return c.json({ success: true, idempotentReplay: true, message: 'Nguyên liệu đã được xóa trước đó' });
+    }
+    const snapshot = await readAdoptedLotSnapshot(db, scope);
+    const mapped = snapshot.lots.find((entry) => entry.legacyItemId === id);
+    if (!mapped) throw new LotCommandError('ADOPTION_REQUIRED');
+    if (mapped.lot.legacyVersion !== expectedVersion) return conflict();
+    // A full discard of remaining stock; an already-empty row transitions to
+    // its terminal state through the explicit zero-quantity correction.
+    const command = mapped.lot.quantityMilli === 0
+      ? {
+        type: 'CORRECT' as const, lotId: mapped.lot.id, expectedVersion: mapped.lot.version,
+        changes: { quantity: 0, unit: mapped.lot.canonicalUnit }, terminalState: 'DISCARDED' as const,
+        reason: 'Người dùng xóa nguyên liệu khỏi tủ',
+      }
+      : {
+        type: 'DISCARD' as const, lotId: mapped.lot.id, expectedVersion: mapped.lot.version,
+        quantity: mapped.lot.quantityMilli / 1000, unit: mapped.lot.canonicalUnit,
+        reason: 'Người dùng xóa nguyên liệu khỏi tủ',
+      };
+    void requestFingerprint;
+    const prepared = await prepareInventoryLotCommand(db, scope, clientKey, command,
+      new Date().toISOString(), snapshot);
+    if (prepared.kind === 'replay') {
+      return c.json({ success: true, idempotentReplay: true, message: 'Nguyên liệu đã được xóa trước đó' });
+    }
+    await db.batch(prepared.statements);
+    if (kv) await kv.delete(`inv_${auth.householdId}`).catch(() => {});
+    return c.json({ success: true, message: 'Đã xóa nguyên liệu thành công' });
+  } catch (error: any) {
+    if (error instanceof LotCommandError) return lotFailureResponse(c, error);
+    console.error('Adopted manual discard failed:', error);
+    return c.json({ error: 'Lỗi xóa nguyên liệu', code: 'DATABASE_ERROR' }, 500);
+  }
+}
+
+async function adoptManualInventoryCreate(c: any, db: any, kv: any, auth: AuthContext,
+  item: { id: string; ingredientId: string | null; name: string; quantity: number; storage: string; expiryDate: string | null },
+  unit: string) {
+  const scope = { householdId: auth.householdId, actorId: auth.userId };
+  try {
+    const snapshot = await readAdoptedLotSnapshot(db, scope);
+    const location = snapshot.locations.find((entry) => entry.isDefault
+      && entry.type.toLowerCase() === item.storage);
+    if (!location) throw new LotCommandError('DRIFT_DETECTED');
+    const expiry = lotExpiryFieldsFromLegacy(item.expiryDate);
+    const command = {
+      type: 'CREATE' as const, lotId: item.id, ingredientId: item.ingredientId, rawName: item.name,
+      quantity: item.quantity, unit, storageLocationId: location.id,
+      expiryAt: expiry.expiryAt, estimatedExpiryAt: expiry.estimatedExpiryAt, expiryKind: expiry.expiryKind,
+      purchasedAt: null, openedAt: null, purchasePrice: null, sourceType: 'MANUAL' as const, sourceId: null,
+    };
+    const prepared = await prepareInventoryLotCommand(db, scope, `manual-create:${item.id}`, command,
+      new Date().toISOString(), snapshot);
+    if (prepared.kind === 'replay') return adoptedItemResponse(c, db, kv, auth, item.id, true);
+    await db.batch(prepared.statements);
+    return adoptedItemResponse(c, db, kv, auth, item.id, false);
+  } catch (error: any) {
+    if (error instanceof LotCommandError) return lotFailureResponse(c, error);
+    console.error('Adopted manual create failed:', error);
+    return c.json({ error: 'Không thể thêm nguyên liệu vào cơ sở dữ liệu', code: 'DATABASE_ERROR' }, 500);
+  }
+}
 
 function assertBatchSucceeded(results: any[] | undefined): void {
   if (results?.some((result) => result && result.success === false)) {
@@ -355,7 +537,13 @@ inventoryRoutes.post('/inventory', async (c) => {
       }
     }
 
-    // Atomic insert of item and inventory audit event
+    // Atomic insert of item and inventory audit event. Adopted households run
+    // the same user intent through the lot authority instead of the legacy
+    // projection; the native receipt keeps replay idempotent.
+    if (await readInventoryAuthorityMode(db, auth.householdId) === 'native') {
+      return adoptManualInventoryCreate(c, db, kv, auth, newItem, unit);
+    }
+
     const batchResults = await runLegacyInventoryBatch(db, auth.householdId, [
       db.prepare(SQL.INSERT_INVENTORY_ITEM.replace(/^INSERT /, 'INSERT OR IGNORE ')).bind(
         newItem.id,
@@ -528,6 +716,21 @@ inventoryRoutes.patch('/inventory/:id', async (c) => {
     const expiryDate = body.expiryDate !== undefined ? body.expiryDate : existing.expiry_date;
     const freshness = expiryDate ? computeFreshness(expiryDate, undefined, canonical?.defaultShelfLifeDays || 7) : existing.freshness;
     const ingredientId = body.name !== undefined ? canonical?.id || null : existing.ingredient_id || canonical?.id || null;
+
+    if (await readInventoryAuthorityMode(db, auth.householdId) === 'native') {
+      return adoptManualInventoryUpdate(c, db, kv, auth, {
+        id,
+        expectedVersion,
+        storedVersion,
+        rawName: name,
+        ingredientId,
+        quantity,
+        unit,
+        storage,
+        expiryDate,
+        expirySubmitted: body.expiryDate !== undefined,
+      });
+    }
 
     const batchResults = await runLegacyInventoryBatch(db, auth.householdId, [
       db
@@ -703,6 +906,11 @@ inventoryRoutes.delete('/inventory/:id', async (c) => {
     // Keep the projection row so inventory events never point at a deleted
     // item. A zero-quantity row is also useful for freshness/history views and
     // can be rebuilt or permanently purged by a future retention job.
+    if (await readInventoryAuthorityMode(db, auth.householdId) === 'native') {
+      return adoptManualInventoryDiscard(c, db, kv, auth, id, expectedVersion, storedVersion,
+        idempotencyKey, requestFingerprint);
+    }
+
     const batchResults = await runLegacyInventoryBatch(db, auth.householdId, [
       db
         .prepare(
@@ -777,5 +985,58 @@ inventoryRoutes.delete('/inventory/:id', async (c) => {
     if (err instanceof InventoryWriterAuthorityError) return c.json({ error: err.message, code: err.code }, 409);
     console.error('D1 DELETE_INVENTORY_ITEM failed:', err);
     return c.json({ error: 'Lỗi xóa nguyên liệu', code: 'DATABASE_ERROR' }, 500);
+  }
+});
+
+// POST /api/v1/inventory/adopt — explicit, receipt-backed lot-authority
+// activation for the caller's household. Idempotent per household.
+const AdoptionRequestSchema = z.object({
+  expectedInventoryVersion: z.number().int().safe().positive().optional(),
+  terminalEvidence: z.array(z.object({
+    legacyItemId: z.string().min(1),
+    state: z.enum(['CONSUMED', 'DISCARDED']),
+    reason: z.string().min(1).max(1000),
+  })).max(32).optional(),
+}).strict();
+
+inventoryRoutes.post('/inventory/adopt', async (c) => {
+  const auth = c.get('auth');
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: 'Database service unavailable', code: 'DATABASE_UNAVAILABLE' }, 503);
+  }
+  const rawBody = await c.req.json().catch(() => ({}));
+  const parseResult = AdoptionRequestSchema.safeParse(rawBody);
+  if (!parseResult.success) {
+    return c.json({ error: parseResult.error.errors[0]?.message || 'Dữ liệu nhận nạp không hợp lệ', code: 'VALIDATION_ERROR' }, 400);
+  }
+  try {
+    const execution = await executeInventoryAdoption(db,
+      { householdId: auth.householdId, actorId: auth.userId }, parseResult.data);
+    const { result } = execution;
+    return c.json({
+      success: true,
+      ...(execution.replayed ? { idempotentReplay: true } : {}),
+      adoption: {
+        householdId: result.householdId,
+        actorId: result.actorId,
+        sourceInventoryVersion: result.sourceInventoryVersion,
+        emptyHousehold: result.emptyHousehold,
+        createdLocationCount: result.createdLocationCount,
+        createdSnapshotCount: result.createdSnapshotCount,
+        mappedLotCount: result.mappedLotCount,
+        effects: result.effects.map((effect) => ({
+          lotId: effect.lotId,
+          legacyItemId: effect.legacyItemId,
+          snapshotMissing: effect.snapshotMissing,
+          state: effect.after.state,
+          terminalEvidence: effect.terminalEvidence,
+        })),
+      },
+    }, execution.replayed ? 200 : 201);
+  } catch (error: any) {
+    if (error instanceof LotCommandError) return lotFailureResponse(c, error);
+    console.error('Inventory adoption failed:', error);
+    return c.json({ error: 'Không thể nhận nạp kho vào lớp lot authority', code: 'DATABASE_ERROR' }, 500);
   }
 });

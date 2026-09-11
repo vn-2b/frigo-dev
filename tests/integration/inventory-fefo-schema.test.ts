@@ -297,6 +297,8 @@ describe('T09E SQLite FEFO authority guards', () => {
     for (const file of readdirSync('migrations').filter((name) => /^\d+.*\.sql$/.test(name) && name <= '0026_inventory_event_poststate.sql').sort()) {
       db.seed(readFileSync(`migrations/${file}`, 'utf8'));
     }
+    // Executor reads adoption evidence (additive 0028) before the 0027 upgrade.
+    db.seed(readFileSync('migrations/0028_inventory_adoption_authority.sql', 'utf8'));
     seedFixture(db);
     await create(db, 'v1-rice-early', 0.1, { expiryKind: 'USE_BY', expiryAt: '2026-09-12' });
     await create(db, 'v1-rice-later', 0.5, { expiryKind: 'USE_BY', expiryAt: '2026-09-13' });

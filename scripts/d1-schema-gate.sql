@@ -26,7 +26,8 @@ required_migrations(name) AS (
     ('0024_inventory_lot_commands.sql'),
     ('0025_inventory_event_authority.sql'),
     ('0026_inventory_event_poststate.sql'),
-    ('0027_inventory_fefo_authority.sql')
+    ('0027_inventory_fefo_authority.sql'),
+    ('0028_inventory_adoption_authority.sql')
 ),
 required_tables(name) AS (
   VALUES

@@ -56,6 +56,7 @@ describe('T09 additive schema and immutable command evidence', () => {
     for (const file of readdirSync('migrations').filter((name) => /^\d+.*\.sql$/.test(name) && name < '0025').sort()) {
       db.seed(readFileSync(`migrations/${file}`, 'utf8'));
     }
+    db.seed(readFileSync('migrations/0028_inventory_adoption_authority.sql', 'utf8'));
     await mapped(db);
     db.execute(`INSERT INTO inventory_commands
       (id, household_id, actor_id, client_key, fingerprint, command_type, result_json, created_at)
@@ -95,6 +96,7 @@ describe('T09 additive schema and immutable command evidence', () => {
     for (const file of readdirSync('migrations').filter((name) => /^\d+.*\.sql$/.test(name) && name < '0024').sort()) {
       db.seed(readFileSync(`migrations/${file}`, 'utf8'));
     }
+    db.seed(readFileSync('migrations/0028_inventory_adoption_authority.sql', 'utf8'));
     await backfillLegacyInventory(db, household);
     const items = db.query('SELECT * FROM inventory_items ORDER BY id');
     const lots = db.query('SELECT * FROM inventory_lots ORDER BY id');

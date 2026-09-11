@@ -1,5 +1,8 @@
 import { Hono } from 'hono';
-import { InventoryWriterAuthorityError, InventoryWriterSnapshotError, readLegacyInventoryRevision, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
+import { InventoryWriterAuthorityError, InventoryWriterSnapshotError, readInventoryAuthorityMode, readLegacyInventoryRevision, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
+import { composeInventoryLotCommands, readAdoptedLotSnapshot, type LotCommandSpec } from '../../../packages/db/src/inventory-lot-commands';
+import { LotCommandError } from '../../../packages/domain/src/inventory-lot-commands';
+import { inventoryAuthorityFailure } from '../utils/inventory-authority';
 import { z } from 'zod';
 import { Env, AuthContext, WeekSchemaMode } from '../types';
 import {
@@ -1350,6 +1353,14 @@ weekRoutes.post('/week/plans/:id/shopping/complete', async (c) => {
 
   const leaseSql = shoppingLeaseExistsSql();
 
+  // Adopted households import through the lot authority; the lease-guarded
+  // run/import bookkeeping stays in the same atomic batch, completion last.
+  if (await readInventoryAuthorityMode(db, auth.householdId) === 'native') {
+    return completeAdoptedShoppingImport(c, db, kv, auth, {
+      planId, claim, clientKey, canonicalItemsToImport, leaseSql,
+    });
+  }
+
   try {
     const batchStatements: any[] = [];
     const requiredStatementIndexes: number[] = [];
@@ -1787,3 +1798,133 @@ weekRoutes.patch('/week/preferences', async (c) => {
     return c.json({ error: 'Database service unavailable', code: 'DATABASE_UNAVAILABLE' }, 503);
   }
 });
+
+// Adopted-household shopping import: canonical lot commands for the stock
+// effects plus the lease-guarded run/import bookkeeping in one atomic batch,
+// with the durable command completion kept last.
+async function completeAdoptedShoppingImport(c: any, db: any, kv: any, auth: AuthContext, plan: {
+  planId: string;
+  claim: { commandId: string; lockToken: string };
+  clientKey: string;
+  canonicalItemsToImport: Array<{
+    ingredientId: string; name: string; unit: StandardUnit; category?: string;
+    recommendedPurchaseQuantity?: number; missingQuantity?: number; cannotBuy?: boolean;
+  }>;
+  leaseSql: string;
+}) {
+  const scope = { householdId: auth.householdId, actorId: auth.userId };
+  const leaseSql = plan.leaseSql;
+  const leaseBindings = [plan.claim.commandId, auth.householdId, plan.planId, plan.claim.lockToken];
+  try {
+    const snapshot = await readAdoptedLotSnapshot(db, scope);
+    const now = new Date().toISOString();
+    const specs: LotCommandSpec[] = [];
+    for (const item of plan.canonicalItemsToImport) {
+      const qty = Number(item.recommendedPurchaseQuantity || item.missingQuantity || 1);
+      const name = item.name.trim();
+      const itemUnit = item.unit;
+      const matchingRows = snapshot.legacyRows.filter((row) =>
+        row.ingredient_id === item.ingredientId
+        || (!row.ingredient_id && row.name.toLowerCase() === name.toLowerCase()));
+      const existing = matchingRows.find((row) => {
+        try {
+          return areUnitsCompatible(row.unit as StandardUnit, itemUnit);
+        } catch {
+          return false;
+        }
+      });
+      if (matchingRows.length > 0 && !existing) throw new ShoppingImportUnitError();
+      if (existing) {
+        const mapped = snapshot.lots.find((entry) => entry.legacyItemId === existing.id);
+        if (!mapped) throw new LotCommandError('ADOPTION_REQUIRED');
+        specs.push({
+          clientKey: `shop-import:${plan.claim.commandId}:${item.ingredientId}:correct`,
+          input: {
+            type: 'CORRECT', lotId: mapped.lot.id, expectedVersion: mapped.lot.version,
+            changes: { quantity: Number(existing.quantity) + convertUnit(qty, itemUnit, existing.unit as StandardUnit), unit: existing.unit },
+            reason: 'Nhập từ đi chợ thực đơn tuần',
+            revive: mapped.lot.state !== 'ACTIVE',
+          },
+        });
+      } else {
+        const location = snapshot.locations.find((entry) => entry.isDefault && entry.type === 'FRIDGE');
+        if (!location) throw new LotCommandError('DRIFT_DETECTED');
+        specs.push({
+          clientKey: `shop-import:${plan.claim.commandId}:${item.ingredientId}:create`,
+          input: {
+            type: 'CREATE', lotId: `item_shop_${plan.claim.commandId}_${item.ingredientId}`,
+            ingredientId: item.ingredientId, rawName: name, quantity: qty, unit: itemUnit,
+            storageLocationId: location.id, expiryAt: null, estimatedExpiryAt: null,
+            expiryKind: 'UNKNOWN', purchasedAt: null, openedAt: null, purchasePrice: null,
+            sourceType: 'SHOPPING', sourceId: plan.claim.commandId,
+          },
+        });
+      }
+    }
+    const composed = await composeInventoryLotCommands(db, scope, specs, now);
+
+    const batchStatements: any[] = [
+      db.prepare('INSERT OR IGNORE INTO households (id, name, created_by) VALUES (?, ?, ?)')
+        .bind(auth.householdId, 'Tủ lạnh gia đình', auth.userId),
+      db.prepare(`INSERT OR IGNORE INTO shopping_runs (id, plan_id, household_id, status, started_at)
+        SELECT ?, ?, ?, 'in_progress', datetime('now') WHERE ${leaseSql}`)
+        .bind(`run_${plan.claim.commandId}`, plan.planId, auth.householdId, ...leaseBindings),
+    ];
+    for (const item of plan.canonicalItemsToImport) {
+      const name = item.name.trim();
+      const qty = Number(item.recommendedPurchaseQuantity || item.missingQuantity || 1);
+      batchStatements.push(
+        db.prepare(`INSERT OR IGNORE INTO shopping_run_items
+          (id, run_id, ingredient_id, name, category, quantity, unit, is_checked, cannot_buy)
+          SELECT ?, ?, ?, ?, ?, ?, ?, 1, ? WHERE ${leaseSql}`)
+          .bind(`runitem_${plan.claim.commandId}_${item.ingredientId}`, `run_${plan.claim.commandId}`,
+            item.ingredientId, name, item.category || 'other', qty, item.unit,
+            item.cannotBuy ? 1 : 0, ...leaseBindings)
+      );
+    }
+    const response = {
+      success: true,
+      importedItemsCount: plan.canonicalItemsToImport.length,
+      message: `Đã nhập thành công ${plan.canonicalItemsToImport.length} nguyên liệu vào tủ lạnh!`,
+    };
+    batchStatements.push(
+      db.prepare(`UPDATE shopping_runs SET status = 'completed', completed_at = datetime('now')
+        WHERE id = ? AND plan_id = ? AND household_id = ? AND ${leaseSql}`)
+        .bind(`run_${plan.claim.commandId}`, plan.planId, auth.householdId, ...leaseBindings),
+      db.prepare(`UPDATE shopping_import_commands SET status = 'completed', imported_items_count = ?,
+        response_json = ?, completed_at = datetime('now'), updated_at = datetime('now')
+        WHERE id = ? AND household_id = ? AND plan_id = ? AND status = 'processing' AND lock_token = ?`)
+        .bind(response.importedItemsCount, JSON.stringify(response), plan.claim.commandId,
+          auth.householdId, plan.planId, plan.claim.lockToken),
+    );
+    const results = await db.batch([...composed.statements, ...batchStatements]);
+    const commandResult = results[results.length - 1] as any;
+    const runResult = results[results.length - 2] as any;
+    if (commandResult?.meta?.changes !== 1 || runResult?.meta?.changes !== 1) {
+      // The lease was fenced while this worker was building its batch; the
+      // durable command row is the only truthful completion evidence.
+      const durableCommand = await readShoppingCommand(db, plan.claim.commandId, auth.householdId);
+      if (durableCommand?.status === 'completed' && durableCommand.response_json) {
+        try {
+          const payload = JSON.parse(durableCommand.response_json) as Record<string, unknown>;
+          return c.json({ ...payload, idempotentReplay: true });
+        } catch {
+          return c.json({ error: 'Kết quả nhập hàng đã lưu bị hỏng', code: 'DATA_INTEGRITY_ERROR' }, 503);
+        }
+      }
+      throw new Error('Adopted shopping import batch did not complete its lease');
+    }
+    if (kv) await kv.delete(`inv_${auth.householdId}`).catch(() => {});
+    return c.json(response);
+  } catch (error: any) {
+    if (error instanceof ShoppingImportUnitError) {
+      return c.json({ error: 'Không thể quy đổi đơn vị nguyên liệu nhập hàng', code: 'UNIT_MISMATCH' }, 422);
+    }
+    if (error instanceof LotCommandError) {
+      const failure = inventoryAuthorityFailure(error);
+      return c.json({ error: error.message, code: failure.code }, failure.status);
+    }
+    console.error('Adopted shopping import failed:', error);
+    return c.json({ error: 'Không thể nhập hàng vào tủ lạnh', code: 'DATABASE_ERROR' }, 500);
+  }
+}

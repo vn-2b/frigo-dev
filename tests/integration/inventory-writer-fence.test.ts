@@ -68,40 +68,59 @@ function deferred() {
 }
 
 describe('T09F legacy writer activation fences', () => {
-  it.each(['create', 'edit', 'discard'] as const)('refuses manual %s without changing native authority', async (operation) => {
+  it.each(['create', 'edit', 'discard'] as const)('serves manual %s through the lot authority once active', async (operation) => {
     await native();
-    const before = facts();
     const result = operation === 'create' ? await request('POST', '/inventory', manualBody)
       : operation === 'edit' ? await request('PATCH', '/inventory/native-fence-household', { quantity: 4, version: 1 })
         : await request('DELETE', '/inventory/native-fence-household', undefined, { 'If-Match': '1' });
+    expect(result.status).toBe(operation === 'create' ? 201 : 200);
+    expect(result.json.success).toBe(true);
+    // The stock effects are native: receipt-backed commands, no legacy-only write.
+    expect(db.query("SELECT COUNT(*) AS n FROM inventory_commands WHERE household_id = ?", scope.householdId)[0].n)
+      .toBeGreaterThanOrEqual(1);
+    const nativeLot = db.query<{ quantity_milli: number; state: string; legacy_version: number }>(
+      "SELECT quantity_milli, state, legacy_version FROM inventory_lots WHERE id = 'native-fence-household'")[0];
+    expect(nativeLot.state).toBe(operation === 'discard' ? 'DISCARDED' : 'ACTIVE');
+    expect(nativeLot.legacy_version).toBe(operation === 'create' ? 1 : 2);
+  });
+
+  it('fails closed with an explicit authority error while any legacy row stays unmapped', async () => {
+    await native();
+    db.seed(`INSERT INTO inventory_items(id, household_id, ingredient_id, name, quantity, unit, storage)
+      VALUES ('unmapped-row', 'fence-household', 'RICE', 'Stray rice', 2, 'g', 'pantry')`);
+    const before = facts();
+    const result = await request('POST', '/inventory', manualBody);
     expect(result).toMatchObject({ status: 409, json: { code: 'INVENTORY_AUTHORITY_REQUIRED' } });
     expect(facts()).toEqual(before);
   });
 
-  it('rolls back reviewed scan values and confirmation with refused stock writes', async () => {
+  it('confirms scans through the authority with reviewed values and status in one batch', async () => {
     await native();
     db.seed(`INSERT INTO scans(id,user_id,household_id,status) VALUES ('fence-scan','fence-user','fence-household','ready');
       INSERT INTO scan_items(id,scan_id,raw_name,canonical_id,estimated_quantity,unit,category,storage)
       VALUES ('fence-scan-item','fence-scan','Eggs','CHICKEN_EGG',2,'piece','egg','fridge');`);
-    const before = facts();
     const result = await request('POST', '/scans/fence-scan/confirm', {
       items: [{ id: 'fence-scan-item', name: 'Reviewed eggs', quantity: 3, unit: 'piece' }],
     });
-    expect(result).toMatchObject({ status: 409, json: { code: 'INVENTORY_AUTHORITY_REQUIRED' } });
-    expect(facts()).toEqual(before);
+    expect(result).toMatchObject({ status: 200, json: { success: true, confirmedItemIds: ['fence-scan-item'] } });
+    expect(db.query("SELECT status FROM scans WHERE id = 'fence-scan'")[0]).toEqual({ status: 'confirmed' });
+    expect(db.query("SELECT is_confirmed FROM scan_items WHERE id = 'fence-scan-item'")[0])
+      .toEqual({ is_confirmed: 1 });
+    // Reviewed scans merge into the existing authoritative row like legacy behavior.
+    expect(db.query("SELECT quantity_milli FROM inventory_lots WHERE id = 'native-fence-household'")[0])
+      .toEqual({ quantity_milli: 13000 });
   });
 
   it.each([{ deductions: [] }, { deductions: [{ ingredientId: 'CHICKEN_EGG', quantityDeducted: 2, unit: 'piece' }] }])(
-    'does not complete cooking outside authority, including no-effect cooking ($deductions)', async ({ deductions }) => {
+    'completes cooking through the authority, including no-effect cooking ($deductions)', async ({ deductions }) => {
       await native();
-      const before = facts();
       const result = await request('POST', '/recipes/gl-03/cook/complete', { servings: 2, deductions },
         { 'Idempotency-Key': 'fence-cooking-key' });
-      expect(result).toMatchObject({ status: 409, json: { code: 'INVENTORY_AUTHORITY_REQUIRED' } });
-      expect(facts()).toEqual(before);
+      expect(result).toMatchObject({ status: 200, json: { success: true } });
+      expect(db.query('SELECT COUNT(*) AS n FROM cooked_meals WHERE household_id = ?', scope.householdId)[0].n).toBe(1);
     });
 
-  it('does not import shopping stock or completion rows; retains a retryable failed lease', async () => {
+  it('imports shopping stock through the authority and completes the durable command', async () => {
     await native();
     const generated = await request('POST', '/week/plans', { startDate: '2026-09-14', householdSize: 2,
       mealSlotsPreset: 'dinner_only', priorities: ['budget'], shoppingFrequency: 'once' });
@@ -111,13 +130,13 @@ describe('T09F legacy writer activation fences', () => {
     expect(shopping.status).toBe(200);
     const item = (shopping.json.items as { ingredientId: string }[])[0];
     expect(item).toBeDefined();
-    const before = facts();
     const result = await request('POST', `/week/plans/${plan.id}/shopping/complete`,
       { items: [{ ingredientId: item.ingredientId }] }, { 'Idempotency-Key': 'fence-shopping-key' });
-    expect(result).toMatchObject({ status: 409, json: { code: 'INVENTORY_AUTHORITY_REQUIRED' } });
-    expect(facts()).toEqual(before);
-    expect(db.query('SELECT status FROM shopping_import_commands WHERE household_id = ?', scope.householdId))
-      .toEqual([{ status: 'failed' }]);
+    expect(result).toMatchObject({ status: 200, json: { success: true } });
+    expect(db.query("SELECT status FROM shopping_import_commands WHERE household_id = ?", scope.householdId)[0])
+      .toEqual({ status: 'completed' });
+    expect(db.query("SELECT COUNT(*) AS n FROM inventory_lots WHERE source_type = 'SHOPPING'")[0].n)
+      .toBeGreaterThanOrEqual(1);
   });
 
   it('allows legacy stock in another household while native authority exists elsewhere', async () => {

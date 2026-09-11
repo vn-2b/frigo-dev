@@ -1,5 +1,10 @@
 import { Hono } from 'hono';
-import { InventoryWriterAuthorityError, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
+import { InventoryWriterAuthorityError, readInventoryAuthorityMode, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
+import { composeInventoryLotCommands, readAdoptedLotSnapshot, type LotCommandSpec } from '../../../packages/db/src/inventory-lot-commands';
+import { LotCommandError } from '../../../packages/domain/src/inventory-lot-commands';
+import { compareFefoLots } from '../../../packages/domain/src/inventory-fefo';
+import { toLotQuantity } from '../../../packages/domain/src/inventory-truth';
+import { inventoryAuthorityFailure } from '../utils/inventory-authority';
 import { Env, AuthContext } from '../types';
 import { ALL_RECIPES, rankRecipes, evaluateRecipeMatch, CuisineType } from '@frigo/recipes';
 import { areUnitsCompatible, convertUnit, findCanonicalIngredient, StandardUnit } from '@frigo/domain';
@@ -336,6 +341,14 @@ recipeRoutes.post('/recipes/:id/cook/complete', tenancyGuard, async (c) => {
     fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
   const allocations = new Map<string, StockAllocation>();
 
+  // Adopted households cook through the lot authority: FEFO-ordered canonical
+  // USE commands and the cooked_meals row commit in one atomic batch.
+  if (await readInventoryAuthorityMode(db, auth.householdId) === 'native') {
+    return completeAdoptedCooking(c, db, kv, auth, {
+      cookId, recipe, servings, deductions, requestFingerprint,
+    });
+  }
+
   try {
     // A replay with the same command key returns the original durable result
     // without applying inventory events a second time.
@@ -594,3 +607,125 @@ recipeRoutes.post('/recipes/:id/cook/complete', tenancyGuard, async (c) => {
     return c.json({ error: 'Lỗi hoàn tất nấu món trong cơ sở dữ liệu', code: 'DATABASE_ERROR' }, 500);
   }
 });
+
+// Adopted-household cooking: each deduction allocates deterministically
+// (FEFO order, shared remaining-stock snapshot) and commits as canonical USE
+// commands together with the cooked_meals row. Duplicate commands replay via
+// the cook receipt or the per-lot command receipts.
+async function completeAdoptedCooking(c: any, db: any, kv: any, auth: AuthContext, plan: {
+  cookId: string;
+  recipe: { id: string; slug: string; title: string; cuisine: string; cookTimeMinutes: number; servings: number; difficulty: string; steps: unknown[] };
+  servings: number;
+  deductions: Array<{ ingredientId: string; name?: string; quantityDeducted: number; unit: StandardUnit }>;
+  requestFingerprint: string;
+}) {
+  const scope = { householdId: auth.householdId, actorId: auth.userId };
+  try {
+    const snapshot = await readAdoptedLotSnapshot(db, scope);
+    const now = new Date().toISOString();
+    type PlannedUse = { lotId: string; takeMilli: number; canonicalUnit: typeof snapshot.lots[number]['lot']['canonicalUnit'] };
+    const planned = new Map<string, PlannedUse>();
+    for (const deduction of plan.deductions) {
+      if (deduction.quantityDeducted === 0) continue;
+      const lookupName = (deduction.name || deduction.ingredientId).trim();
+      const canonical = findCanonicalIngredient(lookupName);
+      const lookupId = canonical?.id || (deduction.ingredientId === 'OTHER' ? null : deduction.ingredientId);
+      const eligible = snapshot.lots
+        .filter(({ lot, legacyItemId }) => legacyItemId !== null && lot.state === 'ACTIVE' && lot.quantityMilli > 0
+          && (lookupId ? lot.ingredientId === lookupId : lot.rawName.toLowerCase() === lookupName.toLowerCase())
+          && areUnitsCompatible(deduction.unit, lot.canonicalUnit))
+        .sort((left, right) => compareFefoLots(left.lot, right.lot));
+      let remainingMilli: number;
+      try {
+        remainingMilli = toLotQuantity(deduction.quantityDeducted, deduction.unit).quantityMilli;
+      } catch {
+        return c.json({ error: `Không thể quy đổi đơn vị ${deduction.unit} cho ${lookupName}`, code: 'UNIT_MISMATCH' }, 422);
+      }
+      if (eligible.length === 0 && remainingMilli > 0) {
+        return c.json({
+          error: `Không tìm thấy nguyên liệu để trừ: ${lookupName}`,
+          code: 'INSUFFICIENT_INVENTORY', available: 0, requested: deduction.quantityDeducted, unit: deduction.unit,
+        }, 409);
+      }
+      for (const { lot } of eligible) {
+        if (remainingMilli <= 0) break;
+        const takeMilli = Math.min(remainingMilli, lot.quantityMilli);
+        const existing = planned.get(lot.id);
+        planned.set(lot.id, {
+          lotId: lot.id, canonicalUnit: lot.canonicalUnit,
+          takeMilli: (existing?.takeMilli ?? 0) + takeMilli,
+        });
+        remainingMilli -= takeMilli;
+      }
+      if (remainingMilli > 0) {
+        const available = eligible.reduce((total, { lot }) => total + lot.quantityMilli, 0);
+        return c.json({
+          error: `Số lượng ${lookupName} trong tủ không đủ để hoàn tất món ăn`,
+          code: 'INSUFFICIENT_INVENTORY', available: available / 1000,
+          requested: deduction.quantityDeducted, unit: deduction.unit,
+        }, 409);
+      }
+    }
+    const specs: LotCommandSpec[] = [];
+    for (const use of planned.values()) {
+      const lot = snapshot.lots.find((entry) => entry.lot.id === use.lotId)!.lot;
+      specs.push({
+        clientKey: `cook:${plan.cookId}:use:${use.lotId}`,
+        input: {
+          type: 'USE', lotId: use.lotId, expectedVersion: lot.version,
+          quantity: use.takeMilli / 1000, unit: use.canonicalUnit,
+          reason: `Nấu món ${plan.recipe.title}`,
+        },
+      });
+    }
+    const composed = await composeInventoryLotCommands(db, scope, specs, now);
+    const batchStatements: any[] = [
+      db.prepare('INSERT OR IGNORE INTO households (id, name, created_by) VALUES (?, ?, ?)')
+        .bind(auth.householdId, 'Tủ lạnh gia đình', auth.userId),
+      db.prepare(`INSERT OR IGNORE INTO recipes (id, slug, title, cuisine, cook_time_minutes, servings, difficulty)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`)
+        .bind(plan.recipe.id, plan.recipe.slug, plan.recipe.title, plan.recipe.cuisine,
+          plan.recipe.cookTimeMinutes, plan.recipe.servings, plan.recipe.difficulty),
+      db.prepare(`INSERT INTO cooked_meals (id, household_id, user_id, recipe_id, servings_cooked, deductions_applied)
+        VALUES (?, ?, ?, ?, ?, ?)`)
+        .bind(plan.cookId, auth.householdId, auth.userId, plan.recipe.id, plan.servings, JSON.stringify(plan.deductions)),
+    ];
+    await db.batch([...composed.statements, ...batchStatements]);
+    if (kv) await kv.delete(`inv_${auth.householdId}`).catch(() => {});
+    const updatedInventory = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+    return c.json({
+      success: true,
+      cookId: plan.cookId,
+      message: `Đã hoàn tất nấu món ${plan.recipe.title} và tự động cập nhật lại tủ lạnh!`,
+      recipeId: plan.recipe.id,
+      deductionsApplied: plan.deductions,
+      remainingInventoryCount: updatedInventory.length,
+      inventory: updatedInventory,
+    });
+  } catch (error: any) {
+    // A concurrent request may have committed the same idempotent command
+    // first; the durable cooked_meals row is the replay evidence.
+    const prior = await db
+      .prepare('SELECT id, recipe_id, servings_cooked, deductions_applied FROM cooked_meals WHERE id = ? AND household_id = ? LIMIT 1')
+      .bind(plan.cookId, auth.householdId)
+      .first();
+    if (prior) {
+      if (storedCookingFingerprint(prior as { deductions_applied: string | null }) !== plan.requestFingerprint) {
+        return c.json({ error: 'Idempotency-Key đã được dùng cho một lệnh nấu khác', code: 'IDEMPOTENCY_CONFLICT' }, 409);
+      }
+      const inventory = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+      return c.json({
+        success: true, idempotentReplay: true, cookId: plan.cookId,
+        message: `Đã hoàn tất nấu món ${plan.recipe.title} và tự động cập nhật lại tủ lạnh!`,
+        recipeId: plan.recipe.id, deductionsApplied: plan.deductions,
+        remainingInventoryCount: inventory.length, inventory,
+      });
+    }
+    if (error instanceof LotCommandError) {
+      const failure = inventoryAuthorityFailure(error);
+      return c.json({ error: error.message, code: failure.code }, failure.status);
+    }
+    console.error('Adopted cooking failed:', error);
+    return c.json({ error: 'Lỗi hoàn tất nấu món trong cơ sở dữ liệu', code: 'DATABASE_ERROR' }, 500);
+  }
+}
