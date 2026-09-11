@@ -1,5 +1,10 @@
 # T09 invariant matrix
 
+E native scope is now published and verified at `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`
+(1,172 focused / 2,659 full PASS). Receipt mode dispatch and ordered stored-result
+fencing have regression proofs; no remaining E P1/P2 review finding. The full
+all-writer invariants below remain pending F/G/H, not a final readiness claim.
+
 Status: A–D published; E implemented locally with final full gate/review/publication
 pending. No full T09 PASS is claimed. E evidence below is internal native scope,
 not all-writer/HTTP adoption. Native

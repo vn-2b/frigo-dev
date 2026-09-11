@@ -6,15 +6,20 @@ Canonical repository: green-1a/frigo-dev. Writable successor:
 hoplite/orchemenos-e002591e, based exactly on frozen T09D remote
 811f7e8463303e010199741d66f88ab8a817212d. Successor documentation checkpoint
 8bf32ed4e41ed3341215c6376e0c13ef13043616 was published/fetched before E code.
-A–D complete; E implemented locally, final review/publication pending; F–H pending.
+A–E complete; E published as `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`.
+Fetch/equality/ancestry PASS. F is in progress; G–H pending.
 E adds deterministic 1–32-effect atomic FEFO, version-2 receipts/events and additive
 0027; v1 authority and migrations 0023–0026 remain intact. No adoption, live writer,
 HTTP or UI cutover. Latest post-fence gates: 1,172 focused / 11 files (35 actual
 local D1 tests), 2,659 full / 98 files, lint/typecheck/build and migration smoke
 PASS. Scoped independent E review has no remaining P1/P2 findings. Earlier
 1,170 focused / 2,657 full results predate the ordered-receipt fence.
-Next: commit/publish/fetch successor and prove equality
-before F. Exact chronology, limits and corrected failures: `inventory-truth/t09/VERIFICATION.md`.
+F first safety change implemented: DEC-012 guest transfers explicitly reject
+before OTP/account/session or data mutation. Guest/auth/outbox focused 143 PASS;
+full 2,685 / 99 files and lint/typecheck/build/27-migration smoke PASS. General
+adoption and manual/scan/shopping/cook adapters remain next per
+`inventory-truth/t09/F_ADOPTION_PLAN.md`. Full F completion is not claimed.
+Exact chronology, limits and corrected failures: `inventory-truth/t09/VERIFICATION.md`.
 See `inventory-truth/t09/CONTINUATION.md` for exact branch authority, checks,
 publication restriction and preserved pre-existing settings overlay. All protected
 surfaces untouched; no application freeze or independent-review readiness.

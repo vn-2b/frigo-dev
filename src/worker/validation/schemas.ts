@@ -17,7 +17,7 @@ export const VerifyOtpSchema = z.object({
   email: z.string().trim().email('Địa chỉ email không hợp lệ'),
   code: z.string().trim().regex(/^\d{6}$/, 'Mã OTP phải gồm đúng 6 chữ số'),
   purpose: z.enum(['register', 'forgot_password', 'login']),
-  // Optional: guest household to migrate data from after successful registration
+  // Retained request contract; inventory transfers are explicitly deferred.
   migrateFromHouseholdId: z
     .string()
     .regex(/^hh_guest_[a-z0-9]+$/i, 'ID household guest không hợp lệ')

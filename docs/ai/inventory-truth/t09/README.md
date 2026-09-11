@@ -1,5 +1,10 @@
 # T09 — Inventory Lot Engine & Event Authority
 
+**Current:** E published/fetched at `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`,
+equality/ancestry PASS; 1,172 focused / 2,659 full tests and all E gates PASS.
+F in progress per [F_ADOPTION_PLAN.md](F_ADOPTION_PLAN.md), G/H pending. No freeze
+or final independent-review readiness. Prepublication statements below are historical.
+
 Current branch authority: [CONTINUATION.md](CONTINUATION.md). On 2026-09-11 the
 user authorized writable successor `hoplite/orchemenos-e002591e` from frozen
 T09D base `811f7e8463303e010199741d66f88ab8a817212d`. Current remote/provider

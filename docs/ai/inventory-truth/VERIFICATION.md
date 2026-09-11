@@ -2,14 +2,17 @@
 
 ## T09 current verification
 
-E local implementation is uncommitted on `hoplite/orchemenos-e002591e` after
-published successor docs `8bf32ed4e41ed3341215c6376e0c13ef13043616`. Latest post-fence:
-**1,172 focused / 11 files**, lint/typecheck/build and migration smoke PASS;
-latest full rerun pending. Earlier **1,170 focused / 2,657 full** results predate
-the ordered-receipt fence. Isolated local D1: 27 migrations and schema gate PASS.
-Final full gate, independent review and E publication remain pending. Exact commands, counts,
-corrected D1/SQL NULL/replay findings and evidence chronology: `t09/VERIFICATION.md`.
-No adoption/live writer/HTTP/UI change, F–H completion, freeze or readiness claim.
+E published/fetched at `9bd1e6bc000cd2e94121469babb1a5eb63a5047f` on the
+authorized successor; equality/ancestry PASS. Final E: **1,172 focused / 11 files**,
+**2,659 full / 98 files**, static/build/migration gates and scoped review PASS.
+Separate fetched-source worktree: 1,172 focused and typecheck PASS. Isolated local
+D1: 27 migrations/schema PASS. Earlier intermediate E totals below are historical.
+
+F guest-transfer safety: **143 focused / 5 files**, **2,685 full / 99 files**,
+lint/typecheck/build and 27-migration smoke PASS. The explicit preflight removes
+the guest ownership writer without pretending general adoption is implemented.
+Exact commands, failures corrected and source/publication chronology:
+`t09/VERIFICATION.md`. F/G/H remain incomplete; no freeze or readiness claim.
 
 ## Historical T09D verification
 

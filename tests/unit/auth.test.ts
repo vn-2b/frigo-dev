@@ -283,11 +283,9 @@ describe('Zero-Trust Security & Cryptography Unit Tests', () => {
     });
   });
 
-  describe('S1: guest-migration ownership (anti cross-tenant data theft)', () => {
-    // Mirrors the server-side predicate added to POST /auth/verify-otp: a guest
-    // household may only be migrated when the caller presents a validly-signed
-    // GUEST token whose `hid` equals the requested migrateFromHouseholdId.
-    async function guestMigrationAllowed(presentedToken: string, targetHouseholdId: string) {
+  describe('S1: legacy guest-token ownership claims', () => {
+    // Valid ownership claims do not override the T09F transfer deferral.
+    async function guestOwnershipClaim(presentedToken: string, targetHouseholdId: string) {
       const v = await verifyJwt(presentedToken, TEST_SECRET);
       return (
         v.valid === true &&
@@ -304,21 +302,21 @@ describe('Zero-Trust Security & Cryptography Unit Tests', () => {
       );
     }
 
-    it('allows migration when the owner presents their own valid guest token', async () => {
+    it('recognizes the owner’s valid guest claim', async () => {
       const guestToken = await mintToken({ sub: 'guest_1', hid: 'hh_guest_1', typ: 'guest', isGuest: true });
-      expect(await guestMigrationAllowed(guestToken, 'hh_guest_1')).toBe(true);
+      expect(await guestOwnershipClaim(guestToken, 'hh_guest_1')).toBe(true);
     });
 
-    it('rejects migrating ANOTHER visitor household (predictable-id theft)', async () => {
+    it('rejects a claim for another visitor household', async () => {
       // Attacker registers their own account but points migrateFromHouseholdId at
       // a victim's guest household (ids are hh_guest_<timestamp>, guessable).
       const attackerGuestToken = await mintToken({ sub: 'guest_a', hid: 'hh_guest_a', typ: 'guest', isGuest: true });
-      expect(await guestMigrationAllowed(attackerGuestToken, 'hh_guest_victim')).toBe(false);
+      expect(await guestOwnershipClaim(attackerGuestToken, 'hh_guest_victim')).toBe(false);
     });
 
-    it('rejects a non-guest (registered user) token for migration', async () => {
+    it('rejects a non-guest token as a guest ownership claim', async () => {
       const userToken = await mintToken({ sub: 'usr_1', hid: 'hh_usr_1', typ: 'access' });
-      expect(await guestMigrationAllowed(userToken, 'hh_usr_1')).toBe(false);
+      expect(await guestOwnershipClaim(userToken, 'hh_usr_1')).toBe(false);
     });
 
     it('rejects a forged token signed with the wrong secret', async () => {
@@ -326,7 +324,7 @@ describe('Zero-Trust Security & Cryptography Unit Tests', () => {
         { sub: 'guest_x', hid: 'hh_guest_x', typ: 'guest', isGuest: true, exp: Math.floor(Date.now() / 1000) + 3600 },
         'attacker-secret'
       );
-      expect(await guestMigrationAllowed(forged, 'hh_guest_x')).toBe(false);
+      expect(await guestOwnershipClaim(forged, 'hh_guest_x')).toBe(false);
     });
 
     it('rejects an expired guest token', async () => {
@@ -334,7 +332,7 @@ describe('Zero-Trust Security & Cryptography Unit Tests', () => {
         { sub: 'guest_x', hid: 'hh_guest_x', typ: 'guest', isGuest: true, exp: Math.floor(Date.now() / 1000) - 10 },
         TEST_SECRET
       );
-      expect(await guestMigrationAllowed(expired, 'hh_guest_x')).toBe(false);
+      expect(await guestOwnershipClaim(expired, 'hh_guest_x')).toBe(false);
     });
   });
 });

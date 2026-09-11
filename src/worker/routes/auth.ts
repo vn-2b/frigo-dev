@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { Env, AuthContext } from '../types';
 import { SQL } from '@frigo/db';
 import { hashPassword, generateSalt, verifyPassword } from '../utils/password';
-import { signJwt, verifyJwt } from '../utils/jwt';
+import { signJwt } from '../utils/jwt';
 import { generateSessionToken, sha256Hex, SESSION_COOKIE } from '../utils/session';
 import { createOtpDigest, verifyOtpDigest, OTP_DIGEST_VERSION } from '../utils/otp-digest';
 import { SCAN_QUOTA_POLICY } from '../config/scan-quota-policy';
@@ -422,6 +422,14 @@ authRoutes.post('/auth/verify-otp', async (c) => {
       return c.json({ error: 'Mã OTP đã hết hạn. Vui lòng bấm gửi lại mã mới.' }, 400);
     }
 
+    // Defer every transfer until ownership, lots, events and receipts can move atomically.
+    if (purpose === 'register' && parseResult.data.migrateFromHouseholdId) {
+      return c.json({
+        error: 'Chưa hỗ trợ chuyển dữ liệu từ hộ khách một cách an toàn. Hàng tồn kho vẫn được giữ nguyên trong hộ khách; tài khoản chưa được kích hoạt và mã OTP chưa được sử dụng. Chỉ gửi lại yêu cầu không kèm migrateFromHouseholdId nếu bạn chọn giữ dữ liệu hộ khách và tài khoản mới riêng biệt.',
+        code: 'INVENTORY_TRANSFER_DEFERRED',
+      }, 409);
+    }
+
     // Reset verification is preliminary; only the final reset consumes it.
     if (shouldConsumeOtpOnVerify(purpose) && !await consumeOtp(db, otpRow.id)) {
       return c.json({ error: 'Mã OTP không chính xác hoặc đã được sử dụng' }, 400);
@@ -441,115 +449,6 @@ authRoutes.post('/auth/verify-otp', async (c) => {
       const userId = userRow?.id;
       const householdId = `hh_${userId}`;
 
-      // Guest data migration: if the visitor was previously using the app as a
-      // guest, carry their fridge inventory / shopping list over to the new
-      // household so nothing they scanned disappears after signing up.
-      const guestHouseholdId = rawBody?.migrateFromHouseholdId;
-
-      // New guests use D1-authoritative cookies; retain signed guest migration compatibility.
-      let ownsGuestHousehold = false;
-      const guestCookie = c.req.header('cookie')?.split(';').map((v) => v.trim())
-        .find((v) => v.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
-      if (guestCookie && typeof guestHouseholdId === 'string') {
-        let token = '';
-        try { token = decodeURIComponent(guestCookie); } catch { /* invalid cookie */ }
-        const guest = await db.prepare(
-          `SELECT s.user_id FROM sessions_v2 s JOIN users u ON u.id = s.user_id
-            WHERE s.token_hash = ? AND s.household_id = ? AND u.is_guest = 1
-              AND s.revoked_at IS NULL AND datetime(s.expires_at) > datetime('now')`
-        ).bind(await sha256Hex(token), guestHouseholdId).first();
-        ownsGuestHousehold = Boolean(guest);
-      }
-      const reqAuthHeader = c.req.header('authorization');
-      if (
-        !ownsGuestHousehold &&
-        typeof guestHouseholdId === 'string' &&
-        guestHouseholdId.startsWith('hh_guest_') &&
-        reqAuthHeader?.startsWith('Bearer ')
-      ) {
-        try {
-          const guestVerify = await verifyJwt(
-            reqAuthHeader.replace('Bearer ', '').trim(),
-            getJwtSecret(c.env)
-          );
-          ownsGuestHousehold =
-            guestVerify.valid === true &&
-            guestVerify.payload?.typ === 'guest' &&
-            guestVerify.payload?.isGuest === true &&
-            guestVerify.payload?.hid === guestHouseholdId;
-        } catch {
-          ownsGuestHousehold = false;
-        }
-      }
-
-      if (
-        ownsGuestHousehold &&
-        guestHouseholdId &&
-        typeof guestHouseholdId === 'string' &&
-        guestHouseholdId !== householdId
-      ) {
-        try {
-          // Ensure the destination household row exists (FK targets).
-          await db
-            .prepare('INSERT OR IGNORE INTO households (id, name, created_by) VALUES (?, ?, ?)')
-            .bind(householdId, 'Tủ lạnh của tôi', userId)
-            .run();
-          await db
-            .prepare('INSERT OR IGNORE INTO household_members (id, household_id, user_id, role) VALUES (?, ?, ?, ?)')
-            .bind(`hm_${userId}`, householdId, userId, 'owner')
-            .run();
-
-          const migrateTables = ['inventory_items', 'inventory_events'];
-          for (const table of migrateTables) {
-            await db
-              .prepare(`UPDATE OR IGNORE ${table} SET household_id = ? WHERE household_id = ?`)
-              .bind(householdId, guestHouseholdId)
-              .run();
-          }
-          // Shopping list: move the guest's list (and its items) under the new household.
-          const guestList: any = await db
-            .prepare('SELECT id FROM shopping_lists WHERE household_id = ? LIMIT 1')
-            .bind(guestHouseholdId)
-            .first();
-          if (guestList?.id) {
-            const existingList: any = await db
-              .prepare('SELECT id FROM shopping_lists WHERE household_id = ? LIMIT 1')
-              .bind(householdId)
-              .first();
-            if (existingList?.id) {
-              // Merge items into the existing list, skipping duplicates.
-              await db
-                .prepare(
-                  `UPDATE OR IGNORE shopping_items SET list_id = ? WHERE list_id = ?`
-                )
-                .bind(existingList.id, guestList.id)
-                .run();
-              await db.prepare('DELETE FROM shopping_lists WHERE id = ?').bind(guestList.id).run();
-            } else {
-              await db
-                .prepare('UPDATE shopping_lists SET household_id = ? WHERE id = ?')
-                .bind(householdId, guestList.id)
-                .run();
-            }
-          }
-          // Weekly plan cache is KV-based — copy it across.
-          if (c.env.CACHE) {
-            const guestPlan = await c.env.CACHE.get(`plan_active_${guestHouseholdId}`);
-            if (guestPlan) {
-              await c.env.CACHE.put(`plan_active_${householdId}`, guestPlan, { expirationTtl: 604800 });
-              await c.env.CACHE.delete(`plan_active_${guestHouseholdId}`);
-            }
-            // Invalidate stale inventory cache for both households.
-            await c.env.CACHE.delete(`inv_${guestHouseholdId}`).catch(() => {});
-            await c.env.CACHE.delete(`inv_${householdId}`).catch(() => {});
-          }
-          console.log(JSON.stringify({ event: 'guest_migration_completed', householdId }));
-        } catch {
-          // Migration is best-effort — never block registration on it.
-          console.warn(JSON.stringify({ event: 'guest_migration_failed' }));
-        }
-      }
-
       // The reusable credential is returned only via the HttpOnly cookie.
       const token = await createSessionAndToken(db, c.env, {
         id: userId,
@@ -562,7 +461,6 @@ authRoutes.post('/auth/verify-otp', async (c) => {
       return c.json({
         success: true,
         message: 'Xác thực tài khoản thành công!',
-        migratedFromHouseholdId: ownsGuestHousehold ? guestHouseholdId : undefined,
         user: {
           id: userId,
           email: userRow?.email,

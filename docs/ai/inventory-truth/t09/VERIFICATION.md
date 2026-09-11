@@ -1,5 +1,65 @@
 # T09 verification (append-only evidence)
 
+## F guest-safety final prepublication gates
+
+Current F safety application tree: `pnpm test` **PASS 2,685 / 99 files**,
+02:21:16 UTC, 159.97s. Log `.hoplite/artifacts/t09f-guest/full.log`. This includes
+all 1,172 E focused cases, the 25 new guest route cases and the new outbox case.
+`pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm check:migrations` and
+`git diff --check`: all PASS (logs in the same directory).
+
+`git diff --exit-code 9bd1e6bc000cd2e94121469babb1a5eb63a5047f -- migrations packages/db packages/domain .hoplite/settings.json pnpm-lock.yaml`
+PASS: no native/schema/setup/dependency changes in this bounded F checkpoint.
+The only application changes are removal/deferral of the guest transfer path and
+the schema's explanatory comment. Other auth, Week, inventory, scan, shopping,
+cook and payment paths are unchanged. Full regression tests include their
+existing coverage; no real payment, remote D1, deployment or live service used.
+
+This is an intermediate F safety checkpoint, not the required completed F
+adoption/writer milestone. Next: publish this verified checkpoint, then implement
+explicit adoption and every remaining live-writer adapter before G/H acceptance.
+
+## Published E source-isolation proof
+
+Created detached worktree `.hoplite/worktrees/t09e-9bd` from fetched
+`origin/hoplite/orchemenos-e002591e` at E SHA `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`.
+Reused installed lockfile dependencies through a temporary node_modules symlink;
+this is fresh-source verification, not a second dependency-install claim.
+Executed the same 11-file focused command then `pnpm typecheck`: **1,172 PASS**,
+02:15:43 UTC, 82.44s, both TS projects PASS. Log:
+`.hoplite/artifacts/t09e-publish/remote-worktree.log`. Removed the temporary
+dependency symlink, confirmed clean source with `git status --short`, then
+removed the detached verification worktree. No application branch was created.
+
+## F guest safety focused proof — 2026-09-11
+
+```sh
+pnpm exec vitest run tests/unit/sync.test.ts tests/unit/auth.test.ts tests/integration/auth-hardening.test.ts tests/integration/auth-me-quota.test.ts tests/integration/inventory-guest-transfer.test.ts
+```
+
+PASS **143 / 5 files**, 02:20:47 UTC, 8.96s. Breakdown: guest transfer 25,
+auth hardening 72, auth-me/quota 17, JWT/auth unit 19, sync/outbox 10. Log:
+`.hoplite/artifacts/t09f-guest/focused-final.log`. Initial run was 142 PASS / one
+new sync assertion failure: existing `ApiError` carries response JSON/code in
+`message`, not a `code` property. Corrected the test to assert actual unchanged
+`kind`, status and code-bearing message; no HTTP transport behavior was weakened.
+
+All requested guest transfers reject before OTP consumption/account activation/
+session creation, stock/history ownership changes and business cache operations.
+Existing rate-limit bookkeeping remains active. Ordinary non-migration verify and
+forgot-password/reset controls PASS. This does not implement general adoption or
+manual/scan/shopping/cook authority migration. Full/static checkpoint gates are
+recorded in the subsequent receipt; F/G/H completion is not claimed here.
+
+## T09E publication receipt
+
+Committed E `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`, published through the
+trusted broker to `hoplite/orchemenos-e002591e` using the prior remote lease
+`8bf32ed4e41ed3341215c6376e0c13ef13043616`, fetched, then executed equality and
+ancestry assertions. Both `git rev-parse HEAD` and remote tracking HEAD returned
+the E SHA; merge-base remained `811f7e8463303e010199741d66f88ab8a817212d`; tree
+was clean. This completed the required E publication gate before F code.
+
 ## T09E final prepublication receipt — 2026-09-11
 
 Both independent-review findings are fixed: retained fingerprint/result version

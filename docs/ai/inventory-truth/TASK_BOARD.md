@@ -1,5 +1,14 @@
 # Inventory Truth task board
 
+## Current checkpoint — 2026-09-11
+
+A–E complete. E `9bd1e6bc000cd2e94121469babb1a5eb63a5047f` is published/fetched
+with equality/ancestry PASS. Final E 1,172 focused / 2,659 full tests and all
+static/build/local migration gates PASS. F IN_PROGRESS: DEC-012 guest safety,
+then explicit adoption and all writer adapters (`t09/F_ADOPTION_PLAN.md`). G/H
+pending; no freeze, T09 readiness or T10. Earlier local-only E statuses below
+are historical and superseded by this checkpoint.
+
 ## Current continuation — 2026-09-11
 
 Canonical writable successor: `hoplite/orchemenos-e002591e` in `green-1a/frigo-dev`.

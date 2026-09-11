@@ -1,5 +1,22 @@
 # T09 change manifest
 
+## F safety checkpoint after published E (not full F completion)
+
+- `src/worker/routes/auth.ts`: remove guest-only non-atomic ownership/cache
+  transfer and false success flag; explicit valid-OTP preflight deferral before
+  account/OTP/session mutations. No other authentication or payment policy changed.
+- `src/worker/validation/schemas.ts`: comment clarifies retained deferred request
+  contract; schema validation is unchanged.
+- `tests/integration/inventory-guest-transfer.test.ts`: 25 real SQLite/Hono cases
+  proving no transfer side effects and ordinary verification/reset controls.
+- `tests/unit/sync.test.ts`: deferred HTTP error preserves guest outbox/scope;
+  historical successful-server response compatibility stays tested.
+- `tests/unit/auth.test.ts`: rename legacy JWT claim tests so they no longer
+  pretend to authorize a live transfer; cryptographic expectations unchanged.
+- `F_ADOPTION_PLAN.md`, DEC-012 and status/evidence docs record remaining F work.
+
+Native persistence/migrations 0023–0027 are unchanged in this F safety checkpoint.
+
 ## T09E local implementation (uncommitted; final review/publication pending)
 
 | Classification | Files | E change |

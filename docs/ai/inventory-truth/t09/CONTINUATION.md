@@ -1,5 +1,10 @@
 # T09 continuation — 2026-09-11
 
+Latest published E application: `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`.
+Successor fetch/equality and exact frozen-D ancestry PASS. A–E complete; F active,
+G/H pending. Final E tests 1,172 focused / 2,659 full PASS; see VERIFICATION.md.
+The original takeover/prepublication chronology below is retained as history.
+
 Repository: green-1a/frigo-dev (current Git remote and provider commit URL).
 Remote: https://github.com/green-1a/frigo-dev.git
 T09D Frozen Base Branch: hoplite/euhesperides-d77023a5

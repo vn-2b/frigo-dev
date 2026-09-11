@@ -163,7 +163,29 @@ describe('offline outbox and scan persistence contract', () => {
     expect(pendingCount()).toBe(3);
   });
 
-  it('rebinds guest outbox operations after successful registration migration', async () => {
+  it('keeps guest outbox and scope unchanged when inventory transfer is deferred', async () => {
+    storage.setItem('frigo_user_id', 'guest-1');
+    storage.setItem('frigo_household_id', 'hh_guest_1');
+    pushOp({
+      path: '/inventory', method: 'POST', body: '{"id":"offline_item"}',
+      label: 'guest item', userId: 'guest-1', householdId: 'hh_guest_1',
+    });
+    const before = getPendingOps();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: 'Inventory transfer deferred', code: 'INVENTORY_TRANSFER_DEFERRED',
+    }), { status: 409, headers: { 'Content-Type': 'application/json' } })));
+
+    await expect(api.verifyOtp('a@example.com', '123456', 'register', 'hh_guest_1'))
+      .rejects.toMatchObject({
+        kind: 'http', status: 409, message: expect.stringContaining('INVENTORY_TRANSFER_DEFERRED'),
+      });
+    expect(getPendingOps()).toEqual(before);
+    expect(storage.getItem('frigo_user_id')).toBe('guest-1');
+    expect(storage.getItem('frigo_household_id')).toBe('hh_guest_1');
+    expect(storage.getItem('frigo_token')).toBeNull();
+  });
+
+  it('retains outbox compatibility with a server-confirmed successful registration migration', async () => {
     storage.setItem('frigo_user_id', 'guest-1');
     storage.setItem('frigo_household_id', 'hh_guest_1');
     pushOp({

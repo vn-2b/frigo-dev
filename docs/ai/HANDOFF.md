@@ -4,15 +4,15 @@
 
 Program: Inventory Truth Layer
 Task: T09 — unchanged continuation
-Phase: A–D complete; E locally implemented, final review/publication pending; F–H pending
+Phase: A–E complete; F in progress; G–H pending
 Status: IN_PROGRESS
 Canonical Repository: green-1a/frigo-dev
 T09D Frozen Base Branch: hoplite/euhesperides-d77023a5
 T09D Frozen Base HEAD: 811f7e8463303e010199741d66f88ab8a817212d
 Canonical Writable Continuation: hoplite/orchemenos-e002591e
-Last Verified Published Continuation SHA: 8bf32ed4e41ed3341215c6376e0c13ef13043616
-Last Verified Application SHA: b036b257a8ad775dd6f1a445dcfdcce38a6babf1
-T09E Application SHA: UNCOMMITTED
+Last Verified Published Continuation SHA: 9bd1e6bc000cd2e94121469babb1a5eb63a5047f
+Last Verified Application SHA: 9bd1e6bc000cd2e94121469babb1a5eb63a5047f
+T09E Application SHA: 9bd1e6bc000cd2e94121469babb1a5eb63a5047f
 Application Freeze: NOT FROZEN
 
 Reason: Hoplite base branches are read-only; user authorized writable successor.
@@ -27,8 +27,12 @@ Isolated local D1 applied 27 migrations and schema gate returned success.
 Failures fixed: D1 expression depth, SQL NULL fail-open, replay envelope/mode
 misclassification; ordered-receipt follow-up and gate chronology are recorded in
 `inventory-truth/t09/VERIFICATION.md`. Scoped E review has no remaining P1/P2
-findings; E publication remains pending. Exact Next Action: commit/publish successor,
-fetch and prove local/remote equality before F; never push the frozen D base.
+findings. E publication/fetch/equality/ancestry PASS. Exact Next Action: F explicit
+adoption/all-writer integration per `inventory-truth/t09/F_ADOPTION_PLAN.md`;
+DEC-012 guest-transfer safety is implemented with 143 focused auth/guest/outbox
+tests PASS, full 2,685 / 99 and all static/build/local migration gates PASS.
+No automatic guest-data fallback occurs. Adoption and other live
+writers remain incomplete. Never push the frozen D base.
 No main/legacy/production/staging/remote D1/PayOS/T10 changes.
 
 ## Historical T09D handoff — 2026-09-10

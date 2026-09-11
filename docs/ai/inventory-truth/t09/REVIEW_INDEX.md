@@ -1,5 +1,15 @@
 # T09 review index
 
+## Current published checkpoint
+
+E application: `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`, published/fetched on
+the authorized successor with equality and frozen-D ancestry PASS. Final E gates:
+1,172 focused (35 actual local D1), 2,659 full / 98 files, lint/typecheck/build,
+27-migration replay and isolated local-D1 schema PASS. Both E review findings
+were fixed and re-reviewed. F–H are incomplete; see F_ADOPTION_PLAN.md. No
+application freeze or final T09 independent-review readiness. Earlier local-only
+E/full-gate/publication statuses below are historical.
+
 Repository: green-1a/frigo-dev (current remote/provider evidence)
 Remote T09 Branch: hoplite/orchemenos-e002591e
 T09D Frozen Base Branch: hoplite/euhesperides-d77023a5

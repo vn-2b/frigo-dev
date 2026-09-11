@@ -1,5 +1,16 @@
 # T09 test matrix
 
+F safety: 25 new Hono/SQLite guest-transfer cases plus one client no-rebind case;
+combined auth/guest/outbox suite **143 / 5 files PASS**. Existing crypto assertions
+remain unchanged, renamed to avoid claiming that valid guest tokens authorize
+transfers. Full adoption and other writer/race matrices are still pending.
+
+Final published E proof supersedes the intermediate counts below: **1,172 tests /
+11 files**, including FEFO unit 20, FEFO repository 34, FEFO schema 77 and actual
+local D1 35; **2,659 / 98 files** full PASS. Lint/typecheck/build/migration gates
+PASS. Source: `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`; publication equality
+PASS. F all-writer and G/H acceptance remain pending, not hidden by E test totals.
+
 T09A–D published; E local implementation has final full gate/review/publication
 pending. Full T09 integration gates remain PENDING. Historical
 T08 counts are not fresh T09 evidence; executed commands are in VERIFICATION.md.

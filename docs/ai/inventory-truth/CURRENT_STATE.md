@@ -1,5 +1,15 @@
 # Inventory Truth current state
 
+## Published E / active F — 2026-09-11
+
+E published/fetched: `9bd1e6bc000cd2e94121469babb1a5eb63a5047f` on the authorized
+successor; exact equality and frozen-D ancestry PASS. Final E: 1,172 focused,
+2,659 full / 98 files, lint/typecheck/build, 27-migration replay and isolated
+local-D1 schema PASS. Scoped E review has no remaining P1/P2 findings. F adoption/
+writers is in progress; DEC-012 guest preflight safety first. G/H remain pending,
+application not frozen and T09 not ready for independent review. The local-only
+E publication/full-gate statements below are historical prepublication evidence.
+
 ## T09 continuation takeover — 2026-09-11
 
 Current repository: green-1a/frigo-dev. Writable continuation:

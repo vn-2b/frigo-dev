@@ -1,5 +1,11 @@
 # Inventory Truth Layer — repository authority
 
+Current checkpoint (2026-09-11): published E application
+`9bd1e6bc000cd2e94121469babb1a5eb63a5047f`; successor fetch/equality and frozen-D
+ancestry PASS. F is active, G/H pending. Final E proof: 1,172 focused / 2,659 full
+tests, static/build/local migration gates PASS. Earlier prepublication E statuses
+below are historical; canonical branch/production exclusions remain unchanged.
+
 ## Current continuation authority — 2026-09-11
 
 See `t09/CONTINUATION.md`: current repository `green-1a/frigo-dev`, frozen T09D

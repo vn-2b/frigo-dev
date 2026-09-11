@@ -1,5 +1,26 @@
 # Inventory Truth architecture decisions
 
+## DEC-012 — Fail closed before guest inventory transfer
+
+The T09F audit reconfirms separate `UPDATE OR IGNORE` ownership rewrites followed
+by shopping/KV changes under a swallowed-error catch. They cannot preserve lot,
+location, receipt, event and projection ownership atomically, and can falsely
+report a successful migration. A stock-dependent preflight would itself race.
+
+Until an explicit atomic authority transfer exists, all requested guest-household
+transfers are SAFE-DEFERRED. A valid register OTP request containing a nonempty
+`migrateFromHouseholdId` must return 409 `INVENTORY_TRANSFER_DEFERRED` before OTP
+consumption, account activation, session creation or any transfer side effect.
+No ownership information is disclosed; forged and legitimate source IDs receive
+the same policy result. The old mutation/cache-copy block is removed, not left
+as a fallback. Ordinary verification without a migration request and password
+reset remain unchanged. Retrying without transfer is an explicit caller choice,
+not an automatic data-loss workaround. Existing guest data remains in its scope.
+
+This is a narrow inventory-related authentication transition, not authorization
+to change login, OTP policy, payments or subscriptions. F is not complete until
+adoption and the other live writer adapters are implemented and verified.
+
 ## DEC-011 — Versioned atomic FEFO authority and writable continuation
 
 The 2026-09-11 recovery instruction authorizes `hoplite/orchemenos-e002591e`

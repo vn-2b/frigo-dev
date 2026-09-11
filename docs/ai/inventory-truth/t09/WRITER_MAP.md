@@ -1,6 +1,7 @@
 # T09 writer map
 
-T09A exhaustive repository audit complete. Final migration statuses remain PENDING;
+T09A exhaustive repository audit complete. F guest transfer is SAFE-DEFERRED;
+other required live writer classifications remain PENDING.
 this is not a completion claim. Paths below are relative to `src/worker/` unless
 qualified otherwise. HTTP paths are under `/api/v1`.
 
@@ -17,7 +18,7 @@ remain pending; D testing is not evidence of completed writer integration.
 | Offline scan fallback | src/web/services/scans.ts -> queued POST /inventory; lib/sync.ts | Same as manual add | ADD | Same as manual add | offline scan/item IDs; different identity from server confirm | YES / PENDING via manual adapter; audit lost-response duplicate risk |
 | Shopping stock import | POST /week/plans/:id/shopping/complete; routes/week.ts | inventory_items/events, shopping_runs/run_items/import_commands | SHOPPING_IMPORT | Lease/fence; no observed stock CAS | Durable command fingerprint, lock token, completion last, 15-minute takeover | YES / PENDING |
 | Cook completion | POST /recipes/:id/cook/complete; routes/recipes.ts | cooked_meals, inventory_items/events; parent FK rows | COOK | household/id/version/quantity; invalid-event guard abort | Cook ID/fingerprint in cooked_meals | YES / PENDING; updated_at/id allocation must become FEFO |
-| Guest household reassignment | POST /auth/verify-otp registration; routes/auth.ts | inventory_items and inventory_events household IDs via separate UPDATE OR IGNORE runs | Rewrites historical ownership, no new event | None; failures swallowed | Guest proof, no mutation command receipt | YES / PENDING; explicit atomic policy or preflight rejection required |
+| Guest household reassignment | POST /auth/verify-otp registration; routes/auth.ts | None for a requested transfer; old stock/shopping/KV mutation block removed | No transfer event because no transfer occurs | Unconditional policy after valid unexpired OTP, before consume/activation/session; no stock-read race | Repeated request yields explicit 409; no fake migratedFromHouseholdId | SAFE-DEFERRED / DEC-012; 25 route cases and client no-rebind control |
 | T08 foundation backfill | packages/db/src/inventory-truth.ts; explicit internal helper only | storage_locations, inventory_lots | None (foundation snapshot) | Full legacy source guard in batch | Stable synthetic ID/unique source; insert-only | ADAPTATION AUDIT / PENDING; never refresh drift |
 | Raw SQL update/physical delete helpers | packages/db/src/queries.ts constants UPDATE_INVENTORY_ITEM, DELETE_INVENTORY_ITEM | No executable callers found | N/A | N/A | N/A | NOT A LIVE MUTATION |
 | Initial seed | migrations/0002_seed_data.sql | 8 inventory_items, 5 inventory_events | Seed history | N/A | INSERT OR IGNORE | NOT A LIVE MUTATION; applied migration immutable |
@@ -41,8 +42,12 @@ remain pending; D testing is not evidence of completed writer integration.
   inconsistent snapshots must fail closed, never silently overwrite lot truth.
 - No dedicated live SCAN_CORRECTION endpoint: reviewed changes are confirmation
   inputs; later corrections use PATCH. Queue predictions never directly write stock.
-- Guest transfer currently rewrites event ownership and can partially succeed.
-  T09 must not hide rejection inside its existing swallowed-error loop.
+- Guest transfer no longer rewrites event ownership. Requests receive explicit
+  `INVENTORY_TRANSFER_DEFERRED`; the old swallowed-error loop is removed. Route
+  tests cover legacy/backfilled/native/empty sources, native targets, signed and
+  cookie callers, foreign/forged IDs, repeated requests, OTP/account/session and
+  inventory/event/receipt/location/shopping/KV byte preservation. Client outbox
+  remains guest-scoped on 409. Rate-limit KV accounting is intentionally retained.
 - Same-unit contextual packs/bunches/slices are not proof of package equivalence;
   multi-lot pooling requires explicit safe policy, not guessed mass.
 

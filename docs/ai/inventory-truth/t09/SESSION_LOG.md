@@ -147,3 +147,26 @@ counts: VERIFICATION.md. E has no published application SHA yet. Next: finalize
 E gates/review, commit/publish/fetch successor and prove equality before F.
 F–H not complete; no application freeze, review-readiness, UI/browser, main,
 legacy production, deployment, remote D1, PayOS or T10 claim.
+
+## 2026-09-11 — E published; F guest safety verified
+
+Final E review/gates supersede the intermediate pending statuses above. E code
+`9bd1e6bc000cd2e94121469babb1a5eb63a5047f` published/fetched; local/remote equality
+and exact frozen-D ancestry PASS. Tests: 1,172 focused / 2,659 full, all static/
+build/local migration gates PASS. Separate fetched-source worktree 1,172 focused
+and typecheck PASS, then dependency symlink and temporary worktree removed.
+
+F first bounded change removes unsafe guest ownership transfer and false migration
+success. Explicit valid-OTP 409 preflight is independent of stock state, so no
+adoption/preflight race can reach the deleted writer. No OTP consumption, account
+activation/session cookie, lot/event/receipt/location/shopping move or business
+cache copy occurs. Existing rate-limit accounting and invalid-OTP defenses remain.
+Guest/auth/outbox focused 143 / 5 PASS; full 2,685 / 99 PASS; lint/typecheck/build/
+27-migration smoke/diff PASS. Exact commands and one corrected test-contract
+failure are in VERIFICATION.md. JWT expectations retained; renamed obsolete
+unit-test labels are not a substitute for the 25 real route proofs.
+
+F is not complete: explicit adoption plus manual/scan/shopping/cook adapters and
+all-writer fences remain required, followed by G races and H freeze/review packet.
+No main/frozen-base/legacy/production/remote D1/PayOS change or T10 work. Next:
+publish verified F safety checkpoint; continue `F_ADOPTION_PLAN.md`.

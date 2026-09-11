@@ -125,3 +125,23 @@ chronology: t09/VERIFICATION.md. Final regates/review and E publication pending;
 no E commit SHA yet. F–H/adoption/live writers/HTTP/UI unchanged. Next: finish E
 gates/review, commit/publish/fetch successor and prove equality before F. Frozen D
 base/main/legacy/production/staging/remote D1/PayOS untouched; no T10 or readiness.
+
+## 2026-09-11 — Published E and F guest-transfer safety
+
+E `9bd1e6bc000cd2e94121469babb1a5eb63a5047f` committed/published/fetched on the
+authorized successor; equality and exact frozen-D ancestry PASS. Final E 1,172
+focused / 2,659 full plus static/build/migrations PASS. Fetched-source worktree
+1,172 focused and typecheck PASS, temporary dependencies/worktree cleaned.
+
+F begins with DEC-012: remove the non-atomic guest stock/history/shopping/KV writer;
+valid transfer requests explicitly fail before OTP/account/session changes. Guest
+data and outbox stay scoped. 25 route regressions and one no-rebind client test
+added; old JWT claim tests no longer pretend to authorize live transfers. Focused
+143 / 5 PASS; full 2,685 / 99 PASS; lint/typecheck/build/migrations/diff PASS.
+Initial new client test asserted a nonexistent ApiError.code; corrected to the
+unchanged status/kind/message contract, without modifying transport or coverage.
+
+Only guest transfer is SAFE-DEFERRED. Adoption and manual/scan/shopping/cook writer
+adapters are pending; precise plan in `t09/F_ADOPTION_PLAN.md`. F/G/H incomplete,
+no application freeze and no READY FOR INDEPENDENT REVIEW claim. Next: publish
+the bounded F safety checkpoint, then continue explicit adoption/all-writer work.
