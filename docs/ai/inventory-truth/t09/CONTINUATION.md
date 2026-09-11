@@ -2,7 +2,8 @@
 
 ## Current authority after T09F/G/H — 2026-09-11
 
-T09F = COMPLETE, T09G = COMPLETE, T09H = COMPLETE. Application freeze `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f`
+T09F = COMPLETE, T09G = COMPLETE, T09H = COMPLETE. Independent-review candidate `27427383d61930ea1b67ccbc1d69bb1cc069f931`
+follows application freeze `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f`
 published/fetched with local/remote equality on **hoplite/kydonia-2785bb72**, the
 platform-verified successor branched at `aa44d2a2f80ea33fd4b328aba906660c0129051e` (the configured base
 `hoplite/kos-2a686759` is read-only and refuses publication; lineage and ancestry
@@ -25,8 +26,8 @@ offline frozen install, typecheck and the same 1,347-test combined gate PASS;
 source tree CLEAN before completion (92.13s focused run, 04:21:15 UTC).
 This is checkpoint recovery proof, not H's final application freeze.
 
-Canonical repository: **vn-2d/frigo-dev**.
-Remote: `https://github.com/vn-2d/frigo-dev.git`.
+Canonical repository: **vn-2e/frigo-dev**.
+Remote: `https://github.com/vn-2e/frigo-dev.git`.
 Current writable continuation: **hoplite/kos-2a686759**, the one platform-created
 successor directly at verified interrupted HEAD
 `66858c5296b38715e4bfca77fca5eefe5adadf5a`. No successor was created from main.

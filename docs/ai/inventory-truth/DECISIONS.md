@@ -1,6 +1,6 @@
 # Inventory Truth architecture decisions
 
-## DEC-013 — Recovery-stage writer safety and explicit adoption preparation
+## Historical DEC-013 — Recovery-stage writer safety and explicit adoption preparation
 
 Canonical repository after transfer: `vn-2d/frigo-dev`; prior owners are historical
 provenance. The verified interrupted F HEAD is `66858c5`; the single writable

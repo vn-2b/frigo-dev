@@ -1,5 +1,18 @@
 # T09 verification (append-only evidence)
 
+## Independent review follow-up — 2026-09-11
+
+Published application `27427383d61930ea1b67ccbc1d69bb1cc069f931` follows the GLM
+freeze on `hoplite/kydonia-2785bb72`. Review reproduced that an adopted PATCH with
+a valid idempotency key could commit, then return stale `409` on an exact retry
+because the route checked the legacy version before the native receipt. The fix
+reads and validates the retained canonical CORRECT receipt first; exact retries
+return 200 replay, altered payload/version reuse returns `IDEMPOTENCY_CONFLICT`, and
+a distinct key still requires the current version. Regression suite: 43/43 across
+adoption/writer-fence/concurrency tests PASS. Full `pnpm test`: 2,838/2,838 tests / 105
+files PASS (165.25s). `pnpm lint`, `pnpm typecheck`, `pnpm check:migrations`, and
+`pnpm build` PASS. No remote D1, deployment, payment, or T10 work occurred.
+
 ## Clean-checkout verification — 2026-09-11
 
 Separate worktree created from the exact published remote SHA `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f`

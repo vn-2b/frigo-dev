@@ -1,9 +1,11 @@
 # Inventory Truth task board
 
-2026-09-11: T09F/G/H COMPLETE at application `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` on hoplite/kydonia-2785bb72.
+## Current authoritative state — 2026-09-11
+
+Repository **vn-2e/frigo-dev**. T09F/G/H COMPLETE at application `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` on hoplite/kydonia-2785bb72.
 Full gates at this checkpoint: **2,837 tests / 105 files PASS** (155s), including the new 19-test adoption suite, 9-test G concurrency matrix and rewritten 14-test writer-fence suite; 38 isolated real local-D1 tests PASS; lint PASS; typecheck PASS; build PASS; 28-migration smoke PASS; local D1 schema gate PASS (0028 required). Awaiting external review; T10 not started.
 
-## Canonical recovery checkpoint
+## Historical recovery checkpoint (superseded)
 
 Repository **vn-2d/frigo-dev**, branch **hoplite/kos-2a686759**. Published application
 `aa43e069edbff7843e9eb7532ff386b27be96a17`: adoption preparation and writer/retry

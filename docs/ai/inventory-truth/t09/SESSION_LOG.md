@@ -1,5 +1,14 @@
 # T09 session log (append-only)
 
+## 2026-09-11 — independent review follow-up
+
+Verified remote `vn-2e/frigo-dev`, branch `hoplite/kydonia-2785bb72`, HEAD
+`999fab5`, main `d1b0673`, 23 ahead / 0 behind, with `aa44d2a` and `9bf9ac0` as
+ancestors. The pre-existing `.hoplite/settings.json` overlay remained unmodified and
+excluded. Reproduced/fixed adopted PATCH response-loss replay and published
+`27427383d61930ea1b67ccbc1d69bb1cc069f931`; exact/altered/new-key behavior has a
+regression test. Full 2,838-test suite, lint/typecheck/build and migration smoke PASS.
+
 ## 2026-09-11 — GLM 5.3 flash completes T09F/T09G/T09H
 
 Started from the published safety checkpoint `aa43e069edbff7843e9eb7532ff386b27be96a17`

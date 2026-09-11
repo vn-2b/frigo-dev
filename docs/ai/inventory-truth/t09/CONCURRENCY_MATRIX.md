@@ -26,7 +26,9 @@ receipt/event agreement.
 | G7 duplicate event identity | Schema gate rejects duplicate receipt/event identity | PASS |
 | G8/G9 isolation | Concurrent households independent; foreign lot/location/receipt rejected | PASS |
 
-Full T09 matrix remains PENDING. C native tests already exercise controlled
+## Historical pre-F/G matrix (superseded)
+
+The following matrix was pending before the F/G completion checkpoint. C native tests already exercised controlled
 USE/USE, USE/DISCARD, USE/CORRECT, same/different-key CREATE/mutation, membership
 revocation, candidate phantom and location-change fences. Other pairs and multi-lot
 FEFO remain required in E/G; this is not a full concurrency PASS.

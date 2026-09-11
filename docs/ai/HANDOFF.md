@@ -6,7 +6,7 @@ Program: Inventory Truth Layer
 Task: T09 — unchanged continuation
 Phase: A–H COMPLETE (F = COMPLETE, G = COMPLETE, H = COMPLETE freeze/evidence)
 Status: AWAITING_EXTERNAL_REVIEW
-Canonical Repository: vn-2d/frigo-dev (workspace remote vn-2e/frigo-dev)
+Canonical Repository: vn-2e/frigo-dev
 T09D Frozen Base Branch/HEAD: hoplite/euhesperides-d77023a5 / 811f7e8463303e010199741d66f88ab8a817212d
 Read-only configured base: hoplite/kos-2a686759 at aa44d2a2f80ea33fd4b328aba906660c0129051e
 Published Branch: hoplite/kydonia-2785bb72 (platform-verified successor, same lineage)
@@ -21,10 +21,15 @@ What changed since the last handoff: atomic receipt-backed adoption with
 empty-household evidence (0028); every inventory writer either serves adopted
 households through the lot authority or fails closed; G concurrency/tenancy matrix;
 final writer map without UNKNOWN. DEC-012 remains SAFE-DEFERRED.
+Independent-review follow-up `27427383d61930ea1b67ccbc1d69bb1cc069f931` restores
+committed adopted PATCH response-loss replay ahead of legacy version preflight,
+rejects altered idempotency-key reuse, and keeps distinct-key CAS strict. Fresh full
+verification: 2,838 tests / 105 files PASS (165.25s); lint/typecheck/build and
+28-migration smoke PASS.
 Next action: external independent review decides readiness. Do not merge to main,
 deploy, mutate remote D1, touch PayOS, or start T10 from this handoff.
 
-## Current continuation handoff — 2026-09-11
+## Historical continuation handoff (superseded) — 2026-09-11
 
 Program: Inventory Truth Layer
 Task: T09 — unchanged continuation

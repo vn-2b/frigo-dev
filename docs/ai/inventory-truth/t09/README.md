@@ -1,16 +1,18 @@
 # T09 — Inventory Lot Engine & Event Authority
 
-**Current canonical repository: vn-2d/frigo-dev.** Writable continuation:
-`hoplite/kos-2a686759`, directly from verified interrupted `66858c5`.
+## Current authoritative state
+
+**Current canonical repository: vn-2e/frigo-dev.** Published continuation:
+`hoplite/kydonia-2785bb72`, successor of read-only `hoplite/kos-2a686759`.
 Application freeze: `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` on `hoplite/kydonia-2785bb72` (successor of the
 read-only base `hoplite/kos-2a686759` at `aa44d2a2f80ea33fd4b328aba906660c0129051e`); equality PASS. T09F/G/H
 COMPLETE: 2,837 tests / 105 files PASS (155s), 38 isolated real local-D1 tests, lint, typecheck, build, 28-migration smoke and local D1 schema gate PASS. Awaiting external review; do not start T10. [CONTINUATION.md](CONTINUATION.md) is current authority and
-[F_ADOPTION_PLAN.md](F_ADOPTION_PLAN.md) is the next implementation contract.
+[F_ADOPTION_PLAN.md](F_ADOPTION_PLAN.md) retains implementation provenance.
 The previous repository references and chronology below are historical provenance.
 
 ## Historical pre-transfer state
 
-**Current:** E published/fetched at `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`,
+**Historical checkpoint:** E published/fetched at `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`,
 equality/ancestry PASS; 1,172 focused / 2,659 full tests and all E gates PASS.
 F in progress per [F_ADOPTION_PLAN.md](F_ADOPTION_PLAN.md), G/H pending. No freeze
 or final independent-review readiness. Prepublication statements below are historical.

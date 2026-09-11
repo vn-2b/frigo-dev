@@ -4,6 +4,9 @@
 
 Application freeze SHA: `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` (docs-only commit follows on the same branch;
 exact docs HEAD: `git rev-parse origin/hoplite/kydonia-2785bb72` after the next push).
+Independent review follow-up application: `27427383d61930ea1b67ccbc1d69bb1cc069f931`
+(published). It fixes adopted PATCH response-loss replay before legacy preflight;
+full 2,838-test verification is recorded in `VERIFICATION.md`.
 Branch: **hoplite/kydonia-2785bb72** — platform-verified successor of the read-only
 configured base `hoplite/kos-2a686759` at `aa44d2a2f80ea33fd4b328aba906660c0129051e`. Main anchor unchanged
 `d1b0673`; branch is 22 ahead / 0 behind main (recalculated at freeze).
@@ -25,7 +28,7 @@ Reviewer hotspots: adoption executor atomicity and poststate fence; composition
 shared-CAS ordering; receipt replay boundaries; kg/l display-unit normalization;
 scan/shopping/cook completion-last ordering; empty adopted household fencing.
 
-## Historical pre-transfer review packet
+## Historical pre-transfer review packet (superseded; never use for takeover)
 
 ## Current published checkpoint
 

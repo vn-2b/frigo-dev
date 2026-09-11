@@ -13,7 +13,7 @@ round trips, terminal evidence, metadata fingerprint conflicts, replay after lat
 stock changes, activation/writer races, G11/G12, guest byte preservation and all
 writer-map classifications with executable evidence. F = COMPLETE.
 
-## Current recovery increment — 2026-09-11
+## Historical recovery increment (superseded) — 2026-09-11
 
 Canonical repository `vn-2d/frigo-dev`, successor `hoplite/kos-2a686759` directly
 from interrupted `66858c5`; transfer/ancestry and baseline PASS. Authority and

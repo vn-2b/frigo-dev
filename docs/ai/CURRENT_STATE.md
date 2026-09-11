@@ -2,6 +2,8 @@
 
 ## T09 F/G/H complete — 2026-09-11
 
+Independent review follow-up `27427383d61930ea1b67ccbc1d69bb1cc069f931` is published on the same branch. It restores exact adopted PATCH response-loss replay before legacy version preflight, rejects altered key reuse, and retains normal CAS for a distinct key. Fresh full verification: 2,838 tests / 105 files PASS (165.25s), lint/typecheck/build and 28-migration smoke PASS.
+
 T09F = COMPLETE, T09G = COMPLETE, T09H = COMPLETE (freeze + evidence). Application
 freeze SHA: `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f`, published/fetched on **hoplite/kydonia-2785bb72** with exact
 local/remote equality; branch base `hoplite/kos-2a686759` is the platform read-only
@@ -19,7 +21,7 @@ identities, adoption races and stale-legacy-post-activation all pass with proper
 Not authorized/started: main merge, deployment, remote D1, PayOS, T10. Independent
 review readiness: READY FOR EXTERNAL ASTRA REVIEW (reviewer decides next steps).
 
-## Previous continuation record — 2026-09-11 (historical)
+## Historical continuation record — 2026-09-11 (superseded)
 
 Latest verified/published application: `aa43e069edbff7843e9eb7532ff386b27be96a17`.
 Same task, A–E COMPLETE; F IN_PROGRESS; G/H NOT_STARTED. F now has pure adoption
