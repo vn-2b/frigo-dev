@@ -1,5 +1,16 @@
 # T09 — Inventory Lot Engine & Event Authority
 
+## Current authoritative final targeted PATCH packet
+
+`vn-2e/frigo-dev` / `hoplite/kydonia-2785bb72`.
+Final application freeze: **`e796f695bdb4228853992cdedc4e3cecf3437adb`**.
+Read [FINAL_PATCH_VERIFICATION.md](FINAL_PATCH_VERIFICATION.md) for both reproduced
+and fixed PATCH findings, full clean-source verification, and the inherited P1
+backfilled-lot mapping blocker. Recommendation: **NOT READY FOR MAIN**. No merge,
+deployment or T10. All prior freezes/readiness claims below are historical.
+
+## Historical evidence (superseded)
+
 ## Current authoritative state
 
 **Current canonical repository: vn-2e/frigo-dev.** Published continuation:

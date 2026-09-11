@@ -1,5 +1,25 @@
 # T09 test matrix
 
+## Current targeted PATCH final gate — e796f695bdb4228853992cdedc4e3cecf3437adb
+
+| Proof | Evidence |
+| --- | --- |
+| Exact combined replay and retained historical response | `inventory-patch-parity.test.ts` |
+| Every supported field's changed value/presence, null expiry and version | Same suite; 25 tests total |
+| Category-only and storage-only durable parity/version/location | Same suite |
+| Combined rollback: zero-row category write, late MOVE failure, metadata drift | Same suite |
+| Known-winner same/changed-key races, lost committed response | Same suite |
+| Strict distinct-key stale CAS, foreign-household replay denial | Same suite |
+| Metadata-only correction and CORRECT+MOVE in actual workerd/D1 | `inventory-lot-d1.test.mjs`; 40 total, two new |
+| Focused native/manual/receipt/concurrency regressions | 515 tests / six files PASS |
+| Full suite | 2,865 tests / 106 files PASS |
+
+Exact clean-source results and separate inherited failing diagnostic:
+`FINAL_PATCH_VERIFICATION.md`. A passing suite is not a claim that the separately
+reproduced backfilled-lot mapping refusal is fixed.
+
+## Historical test evidence (superseded)
+
 ## COMPLETE — 2026-09-11 (9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f)
 
 Fresh full gate: **2,837 tests / 105 files PASS** (155.1s), including:

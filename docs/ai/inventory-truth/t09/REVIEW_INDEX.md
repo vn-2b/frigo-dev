@@ -1,5 +1,20 @@
 # T09 review index
 
+## Current authoritative final review packet — 2026-09-11
+
+Repository `vn-2e/frigo-dev`; branch `hoplite/kydonia-2785bb72`.
+**Final application freeze: `e796f695bdb4228853992cdedc4e3cecf3437adb`.**
+Historical GLM freeze: `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f`.
+Historical Astra first fix: `27427383d61930ea1b67ccbc1d69bb1cc069f931`.
+Docs HEAD: fetched docs-only branch tip; exact SHA is in the final operator report.
+Start at `FINAL_PATCH_VERIFICATION.md`: both targeted findings reproduced/fixed,
+515 focused/2,865 full/40 real local-D1 tests PASS, strict CAS/tenancy retained,
+full exact-SHA clean-source verification. Targeted independent re-review found no
+additional issue. **NOT READY FOR MAIN**: separately reproduced inherited
+backfilled-lot PATCH mapping refusal remains P1. No merge or deployment authorized.
+
+## Historical evidence — all prior freeze/readiness claims below are superseded
+
 ## T09 freeze — review packet
 
 Application freeze SHA: `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` (docs-only commit follows on the same branch;

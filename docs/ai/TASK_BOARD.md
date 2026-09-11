@@ -1,5 +1,18 @@
 # Frigo task board
 
+## Current authoritative T09 board — 2026-09-11
+
+- Final targeted PATCH fixes A/storage and B/category: REPRODUCED, FIXED, VERIFIED.
+- Published application freeze: `e796f695bdb4228853992cdedc4e3cecf3437adb`.
+- Fresh gates: 515 focused/six files; 2,865 full/106; 40 isolated local-D1;
+  lint/typecheck/build/28-migration smoke/local schema/diff PASS.
+- **NOT READY FOR MAIN**: inherited P1 backfilled-lot PATCH mapping refusal remains.
+- Next: separately scoped mapping compatibility authorization, then main review.
+  No merge/deployment/remote D1/PayOS/T10 work. Exact evidence:
+  `inventory-truth/t09/FINAL_PATCH_VERIFICATION.md`.
+
+## Historical evidence — all prior freeze/readiness claims below are superseded
+
 ## T09 F/G/H complete — 2026-09-11
 
 Independent-review follow-up `27427383d61930ea1b67ccbc1d69bb1cc069f931` is published: adopted PATCH retries now replay retained receipt evidence before stale-version rejection; altered reuse conflicts and a new key retains CAS. Fresh full suite: 2,838 tests / 105 files PASS (165.25s); lint, typecheck, migration smoke and build PASS. Next action remains external review; do not start T10.

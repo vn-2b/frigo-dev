@@ -1,5 +1,17 @@
 # Inventory Truth task board
 
+## Current authoritative final targeted PATCH — 2026-09-11
+
+Final application freeze `e796f695bdb4228853992cdedc4e3cecf3437adb` published on
+`hoplite/kydonia-2785bb72` in `vn-2e/frigo-dev`. Targeted storage replay/category
+parity findings are reproduced/fixed. 515 focused, 2,865 full, 40 real local-D1
+tests and static/build/schema/migration gates PASS; clean-source receipt is in
+`t09/FINAL_PATCH_VERIFICATION.md`. **NOT READY FOR MAIN** until the inherited
+backfilled-lot PATCH mapping refusal is addressed in a separately authorized task.
+No T10, main merge, deployment or remote database changes.
+
+## Historical evidence — all prior freeze/readiness claims below are superseded
+
 ## Current authoritative state — 2026-09-11
 
 Repository **vn-2e/frigo-dev**. T09F/G/H COMPLETE at application `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` on hoplite/kydonia-2785bb72.

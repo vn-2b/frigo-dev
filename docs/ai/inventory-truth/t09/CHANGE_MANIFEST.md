@@ -1,5 +1,22 @@
 # T09 change manifest
 
+## Current final PATCH application — e796f695bdb4228853992cdedc4e3cecf3437adb
+
+- `src/worker/routes/inventory.ts`: compare the complete normalized PATCH fingerprint
+  including presence and version; hash bounded per-operation keys; validate both
+  CORRECT/MOVE receipts; return retained results rather than mutable current rows.
+- `packages/db/src/inventory-lot-commands.ts`: opt-in manual PATCH envelope in existing
+  immutable native receipts, carrying projection metadata/result and request fingerprint;
+  category/freshness in guarded writes, metadata-only revision advancement, full projection
+  poststate guard. Ordinary native v1/v2 command/event semantics are unchanged.
+- `tests/integration/inventory-patch-parity.test.ts`: 25 durable-state PATCH cases.
+- `tests/helpers/inventory-lot-d1-worker.ts` and `tests/integration/inventory-lot-d1.test.mjs`:
+  two targeted workerd/D1 cases; suite grows from 38 to 40.
+- No migrations, adoption executor, scan/shopping/cook, payments or settings changes.
+- Verification/status and inherited mapping blocker: `FINAL_PATCH_VERIFICATION.md`.
+
+## Historical application manifests (superseded)
+
 ## T09F/T09G/T09H application 9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f
 
 - `migrations/0028_inventory_adoption_authority.sql`: additive

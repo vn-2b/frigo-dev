@@ -1,5 +1,23 @@
 # Frigo current state — isolated T09 development
 
+## Current authoritative state — final targeted PATCH, 2026-09-11
+
+Repository `vn-2e/frigo-dev`, branch `hoplite/kydonia-2785bb72`.
+New final application freeze: `e796f695bdb4228853992cdedc4e3cecf3437adb` (published/fetched equality).
+External final review's storage replay and category parity defects were reproduced
+and fixed. Complete normalized request presence/value is retained in native receipts;
+CORRECT/MOVE/category commit atomically; historical response replay no longer reads
+today's stock. Native commands without PATCH metadata are unchanged.
+Fresh gates: 515 focused / six files, 2,865 full / 106 files, 40 isolated local-D1,
+lint/typecheck/build/28-migration smoke/local schema/diff PASS.
+Recommendation: **NOT READY FOR MAIN**. An inherited P1 remains: PATCH of an
+adopted backfilled legacy lot rejects its legitimate distinct mapping with
+`500 DRIFT_DETECTED`. No adoption/migration fix was attempted in this narrow task.
+Exact clean-source evidence, historical SHAs and next action:
+`inventory-truth/t09/FINAL_PATCH_VERIFICATION.md`.
+
+## Historical evidence — all prior freeze/readiness claims below are superseded
+
 ## T09 F/G/H complete — 2026-09-11
 
 Independent review follow-up `27427383d61930ea1b67ccbc1d69bb1cc069f931` is published on the same branch. It restores exact adopted PATCH response-loss replay before legacy version preflight, rejects altered key reuse, and retains normal CAS for a distinct key. Fresh full verification: 2,838 tests / 105 files PASS (165.25s), lint/typecheck/build and 28-migration smoke PASS.

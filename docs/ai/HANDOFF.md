@@ -1,5 +1,29 @@
 # Frigo AI Handoff — isolated T09 development
 
+## Current authoritative handoff — final targeted PATCH, 2026-09-11
+
+Program: Inventory Truth Layer
+Task: T09 — final targeted manual PATCH fix
+Status: TARGETED_FIX_VERIFIED; NOT_READY_FOR_MAIN
+Canonical Repository: vn-2e/frigo-dev
+Published Branch: hoplite/kydonia-2785bb72
+Start SHA: 6999b64aff0786827637b0a85f2de28c196ca288
+Historical GLM Freeze: 9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f
+Historical Astra First Fix: 27427383d61930ea1b67ccbc1d69bb1cc069f931
+Final Application Freeze: e796f695bdb4228853992cdedc4e3cecf3437adb
+Docs HEAD: the docs-only commit containing this receipt; resolve the fetched branch tip
+Main SHA: d1b06732f8a80db4e77986df31ff28d9f04641fa (unchanged)
+Changes: complete presence-sensitive PATCH replay; atomic projection category and
+freshness; versioned metadata-only correction; retained CORRECT/MOVE response.
+Verification: 515 focused/six files; 2,865 full/106; 40 isolated real local-D1;
+lint/typecheck/build/migration smoke/local schema/diff PASS. Clean worktree evidence:
+inventory-truth/t09/FINAL_PATCH_VERIFICATION.md.
+Remaining P1: pre-existing backfilled-lot mapping refusal on PATCH (500 DRIFT_DETECTED).
+Next action: separately authorize that mapping compatibility fix before main review;
+do not merge, deploy, start T10 or modify remote D1. External settings overlay unchanged.
+
+## Historical evidence — all prior freeze/readiness claims below are superseded
+
 ## T09 F/G/H complete handoff — 2026-09-11
 
 Program: Inventory Truth Layer

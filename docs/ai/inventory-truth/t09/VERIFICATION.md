@@ -1,5 +1,16 @@
 # T09 verification (append-only evidence)
 
+## Current final targeted PATCH verification — 2026-09-11
+
+Final application freeze **`e796f695bdb4228853992cdedc4e3cecf3437adb`**, published/fetched
+from `hoplite/kydonia-2785bb72` in `vn-2e/frigo-dev`. Both storage replay and category
+parity findings REPRODUCED, FIXED. 515 focused/six files; 2,865 full/106 (172.97s);
+40 isolated local-D1; lint/typecheck/build/migration smoke/local schema/diff PASS.
+The exact commands, clean detached-checkout results, failure chronology and remaining
+P1 mapping diagnostic are in `FINAL_PATCH_VERIFICATION.md`.
+Recommendation **NOT READY FOR MAIN** because of that inherited separate blocker.
+The older GLM/Astra SHA and readiness statements below are historical only.
+
 ## Independent review follow-up — 2026-09-11
 
 Published application `27427383d61930ea1b67ccbc1d69bb1cc069f931` follows the GLM

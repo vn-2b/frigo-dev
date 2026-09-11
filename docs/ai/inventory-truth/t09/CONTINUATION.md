@@ -1,5 +1,24 @@
 # T09 continuation — 2026-09-11
 
+## Current authoritative continuation — final targeted PATCH
+
+Repository: `vn-2e/frigo-dev`; branch: `hoplite/kydonia-2785bb72`.
+Start: `6999b64aff0786827637b0a85f2de28c196ca288`.
+Historical GLM: `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f`.
+Historical Astra first fix: `27427383d61930ea1b67ccbc1d69bb1cc069f931`.
+**Final application freeze: `e796f695bdb4228853992cdedc4e3cecf3437adb`**, published/fetched equality.
+Docs HEAD: resolve `origin/hoplite/kydonia-2785bb72` after the docs-only publication;
+the final operator report records its exact SHA (a commit cannot embed its own hash).
+Main remains `d1b06732f8a80db4e77986df31ff28d9f04641fa`; lineage intact, no successor needed.
+515 focused, 2,865 full, 40 isolated local-D1 and static/build/schema/migration gates PASS.
+Full clean-checkout commands/results: `FINAL_PATCH_VERIFICATION.md`.
+Status: **NOT READY FOR MAIN**, despite both targeted findings fixed. A separate
+P1 is reproduced: adopted LEGACY_BACKFILL mappings fail the native equal-ID parity
+assumption. Next: separately authorize that compatibility work; no migration/adoption
+changes were made here. `.hoplite/settings.json` overlay is byte-preserved/uncommitted.
+
+## Historical evidence — all prior freeze/readiness claims below are superseded
+
 ## Current authority after T09F/G/H — 2026-09-11
 
 T09F = COMPLETE, T09G = COMPLETE, T09H = COMPLETE. Independent-review candidate `27427383d61930ea1b67ccbc1d69bb1cc069f931`

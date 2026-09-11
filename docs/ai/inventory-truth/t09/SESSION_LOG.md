@@ -1,5 +1,21 @@
 # T09 session log (append-only)
 
+## 2026-09-11 — final targeted PATCH parity fix
+
+Started at verified `6999b64aff0786827637b0a85f2de28c196ca288`, 25 ahead/0 behind
+unchanged `d1b0673` main in vn-2e/frigo-dev. Required ancestors and preserved
+settings hash passed. Both reported defects reproduced before source edits:
+changed storage replayed 200; category-only PATCH left category/version unchanged.
+Published/fetched application `e796f695bdb4228853992cdedc4e3cecf3437adb` implements
+full presence-sensitive intent and immutable response evidence plus atomic metadata
+parity. 515 focused/six files, 2,865 full/106, 40 isolated local-D1 and all
+static/build/schema/migration gates passed. Full clean-source receipt and exact
+commands/failures: `FINAL_PATCH_VERIFICATION.md`.
+Bounded fixture setup also reproduced an inherited backfilled-lot equal-ID mapping
+refusal (500 DRIFT_DETECTED); no unrelated adoption/migration fix attempted.
+Recommendation is NOT READY FOR MAIN pending that separate P1, not a renewed
+whole-T09 review. No protected path or external workspace overlay change.
+
 ## 2026-09-11 — independent review follow-up
 
 Verified remote `vn-2e/frigo-dev`, branch `hoplite/kydonia-2785bb72`, HEAD

@@ -1,5 +1,18 @@
 # Inventory Truth current state
 
+## Current authoritative final targeted PATCH — 2026-09-11
+
+`vn-2e/frigo-dev`, `hoplite/kydonia-2785bb72`; final application freeze
+`e796f695bdb4228853992cdedc4e3cecf3437adb` is published/fetched.
+Both external PATCH findings reproduced and fixed: complete semantic receipt replay
+and atomic category parity (including metadata-only optimistic versions).
+515 focused/six files; 2,865 full/106; 40 isolated local-D1; all static/build/local
+schema/migration gates PASS. Full clean-checkout receipt: `t09/FINAL_PATCH_VERIFICATION.md`.
+**NOT READY FOR MAIN**: inherited backfilled-lot PATCH refusal is a separately
+scoped P1. The GLM freeze and Astra first fix below are historical, not final freezes.
+
+## Historical evidence — all prior freeze/readiness claims below are superseded
+
 ## Current authoritative state — 2026-09-11
 
 Repository **vn-2e/frigo-dev**. Application freeze `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` on `hoplite/kydonia-2785bb72` (successor of read-only
