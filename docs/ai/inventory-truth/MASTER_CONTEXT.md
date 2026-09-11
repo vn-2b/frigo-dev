@@ -7,7 +7,18 @@ base `hoplite/euhesperides-d77023a5` at `811f7e8463303e010199741d66f88ab8a817212
 user-authorized writable successor `hoplite/orchemenos-e002591e`. Same T09 task;
 this supersedes earlier same-branch-only constraints. Publish successor only.
 
-## Current T09 authority (supersedes historical T08 branch/repository restrictions)
+Published successor docs: `8bf32ed4e41ed3341215c6376e0c13ef13043616`, before E code.
+T09E now adds internal `packages/domain/src/inventory-fefo.ts` and
+`packages/db/src/inventory-lot-commands.ts` FEFO USE: deterministic exact allocation,
+one atomic 1–32-effect command, v2 receipt/event evidence, bounded snapshots/JSON and
+additive 0027. Keep v1 predicates and migrations 0023–0026 immutable. Contextual
+units fail closed; no adoption/live writer/HTTP/read/UI cutover. E remains
+uncommitted pending final full gate/review/publication; F–H are not complete.
+Latest post-fence focused gate passes 1,172 tests / 11 files, including 35 actual
+local D1 tests; the latest full rerun is still pending.
+DEC-011 and `t09/VERIFICATION.md` define bounds, corrected findings and gate chronology.
+
+## Historical T09 authorization (superseded repository/branch identity)
 
 User confirmed `vn-2b/frigo-dev` on 2026-09-10; the original T09 owner was outdated.
 Development T09 branch `hoplite/euhesperides-d77023a5` starts at exact fetched T08

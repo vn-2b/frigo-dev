@@ -7,9 +7,11 @@ T09D Frozen Base HEAD: 811f7e8463303e010199741d66f88ab8a817212d
 Branch succession: CONTINUATION.md (user-authorized read-only-base recovery)
 T08 Base Branch: hoplite/xanthos-7d942897
 T08 Base SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
-T09 Application Freeze SHA: NOT FROZEN — T09D native authority checkpoint; E–H pending
+T09 Application Freeze SHA: NOT FROZEN — E locally implemented; final review/publication and F–H pending
 Latest Docs HEAD: resolve `git rev-parse HEAD`; this document cannot contain its own commit SHA
 Last Verified Frozen Base Remote HEAD: 811f7e8463303e010199741d66f88ab8a817212d
+Last Verified Published Continuation HEAD: 8bf32ed4e41ed3341215c6376e0c13ef13043616
+T09E Code Checkpoint: UNCOMMITTED
 T09D Code Checkpoint: b036b257a8ad775dd6f1a445dcfdcce38a6babf1
 T09C Code Checkpoint: 13133b3aad214f2dbe7bdfb0c6ad9a70483d32de
 Status: IN_PROGRESS, not ready for independent review
@@ -29,12 +31,13 @@ PRODUCTION_DELTA_PENDING_RECONCILIATION: intentionally not inspected/integrated.
 
 ## Files and verification
 
-Changed Application Files: domain/repository inventory-lot-commands.ts, additive
+Changed Application Files: domain inventory-fefo.ts, domain/repository inventory-lot-commands.ts, additive
 schema and verification scripts/tests; exact files in CHANGE_MANIFEST.md.
 Migrations: 0024_inventory_lot_commands.sql, 0025_inventory_event_authority.sql,
-0026_inventory_event_poststate.sql; see MIGRATION_NOTES.md.
+0026_inventory_event_poststate.sql, 0027_inventory_fefo_authority.sql; see MIGRATION_NOTES.md.
 Tests: native core/schema and actual local D1 verified; exact counts and corrected
-findings in VERIFICATION.md. FEFO/live writer and full concurrency acceptance pending.
+findings in VERIFICATION.md. E FEFO implemented locally; final full gate/review and
+publication pending. Live writer and full concurrency acceptance remain pending.
 At C checkpoint: 507 focused / 1,994 full tests PASS; lint/typecheck/build and
 24-migration/schema gates PASS. Separate fetched-source worktree: 507 PASS.
 At D prepublication: 1,031 focused / 2,518 full tests PASS; lint/typecheck/build,
@@ -42,7 +45,13 @@ At D prepublication: 1,031 focused / 2,518 full tests PASS; lint/typecheck/build
 paired receipt/event versus stock mismatch fixed; review replay and both new SQL
 guards together. D b036b25 published/fetched with exact local/remote equality.
 Separate fetched-source worktree: 1,031 tests and typecheck PASS, clean source.
-Only documentation changes follow the D code checkpoint; E is the next phase.
+The successor's published 8bf32ed checkpoint is docs-only; E source changes now
+follow it locally. Latest post-fence: 1,172 focused / 11 files (35 actual D1 tests),
+lint/typecheck/build/migration smoke PASS; latest full rerun pending. Earlier
+1,170 focused / 2,657 full results predate this fence. Isolated D1: 27 migrations/schema
+gate PASS. Exact chronology: VERIFICATION.md.
+Next: finish E full gate/review and commit/publish/fetch/equality before F; no E
+remote-source verification or final T09 readiness is claimed.
 
 Reviewer hotspots: lifecycle; CAS; idempotency; event atomicity; deterministic
 FEFO; exhaustive writer migration; tenant isolation; legacy parity; multi-lot

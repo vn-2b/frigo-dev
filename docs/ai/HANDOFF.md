@@ -4,25 +4,34 @@
 
 Program: Inventory Truth Layer
 Task: T09 — unchanged continuation
-Phase: A–D complete; E–H pending
+Phase: A–D complete; E locally implemented, final review/publication pending; F–H pending
 Status: IN_PROGRESS
 Canonical Repository: green-1a/frigo-dev
 T09D Frozen Base Branch: hoplite/euhesperides-d77023a5
 T09D Frozen Base HEAD: 811f7e8463303e010199741d66f88ab8a817212d
 Canonical Writable Continuation: hoplite/orchemenos-e002591e
+Last Verified Published Continuation SHA: 8bf32ed4e41ed3341215c6376e0c13ef13043616
 Last Verified Application SHA: b036b257a8ad775dd6f1a445dcfdcce38a6babf1
+T09E Application SHA: UNCOMMITTED
 Application Freeze: NOT FROZEN
 
 Reason: Hoplite base branches are read-only; user authorized writable successor.
-Ancestry PASS. Fresh 1,031/1,031 focused tests and typecheck PASS; exact commands
-and initially misnamed test filter corrected by separate run are in
-`inventory-truth/t09/CONTINUATION.md`. No source changes. Existing settings overlay
-preserved in named stash. Initial base publication denial is not an application
-failure; no further base push permitted. Next: publish/fetch/equality-check this
-successor checkpoint, then implement/review atomic multi-effect FEFO authority.
+Ancestry and successor publication-first PASS at 8bf32ed4e41ed3341215c6376e0c13ef13043616.
+E adds deterministic bounded FEFO USE, one atomic 1–32-effect batch, v2 receipt/event
+authority and additive 0027; v1 predicates and 0023–0026 are unchanged. Existing
+settings overlay remains outside this task. No adoption, live writer, HTTP or UI change.
+Latest checks after the ordered-receipt fence: 1,172 focused / 11 files (35 actual
+local D1 tests), full 2,659 / 98 files and lint/typecheck/build/migration smoke PASS.
+Earlier post-replay-fix 1,170 focused / 2,657 full results predate that fence.
+Isolated local D1 applied 27 migrations and schema gate returned success.
+Failures fixed: D1 expression depth, SQL NULL fail-open, replay envelope/mode
+misclassification; ordered-receipt follow-up and gate chronology are recorded in
+`inventory-truth/t09/VERIFICATION.md`. Scoped E review has no remaining P1/P2
+findings; E publication remains pending. Exact Next Action: commit/publish successor,
+fetch and prove local/remote equality before F; never push the frozen D base.
 No main/legacy/production/staging/remote D1/PayOS/T10 changes.
 
-## Current T09 handoff — 2026-09-10
+## Historical T09D handoff — 2026-09-10
 
 Program: Inventory Truth Layer
 Task: T09 — Inventory Lot Engine & Event Authority

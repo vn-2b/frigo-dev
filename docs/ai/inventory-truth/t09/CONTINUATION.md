@@ -9,9 +9,20 @@ Last Verified Base Docs SHA: 811f7e8463303e010199741d66f88ab8a817212d
 T09 Continuation Branch: hoplite/orchemenos-e002591e
 T08 Base SHA: 8f8788c1a0c9e486657751ef3875a5baa5334dec
 Development main: d1b06732f8a80db4e77986df31ff28d9f04641fa
-Status: IN_PROGRESS; A–D complete, E–H not implemented.
+Status: IN_PROGRESS; A–D complete, E locally implemented; final review/publication and F–H pending.
 
-## Branch succession authority
+## Successor publication receipt and current E boundary
+
+Successor documentation checkpoint `8bf32ed4e41ed3341215c6376e0c13ef13043616`
+was published/fetched with local/remote equality before E source implementation.
+Frozen-base merge-base remains `811f7e8463303e010199741d66f88ab8a817212d`.
+E now exists as uncommitted local source; no E application SHA, fetched-source
+verification, freeze or readiness claim. Finish final E review/regates, then
+commit/publish successor, fetch and verify local == remote before F. Exact current
+evidence and corrected findings: VERIFICATION.md. The initial recovery/baseline
+and prepublication instructions below are historical; publication-first succeeded.
+
+## Branch succession authority and historical recovery
 
 The user's 2026-09-11 recovery instruction authorizes this writable successor.
 Hoplite base branches are read-only; continuation branch required for publication.

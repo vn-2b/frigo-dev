@@ -1,8 +1,9 @@
 # Inventory Truth session log (append-only)
 
 Current T09 sessions are recorded append-only in `t09/SESSION_LOG.md`, including
-user-confirmed vn-2b/frigo-dev identity, publication-first SHA evidence and
-production-track isolation. Historical T08 entries below are preserved.
+current green-1a/frigo-dev continuation authority, historical owner identities,
+publication-first SHA evidence and production-track isolation. Historical entries
+below are preserved.
 
 ## 2026-09-10 — T09D checkpoint
 
@@ -111,3 +112,16 @@ Ended verified/published checkpoint: hoplite/xanthos-7d942897@fb00f46d4633c9659e
 Final tip is the subsequent docs-only completion commit (`git rev-parse HEAD`);
 its own SHA cannot be embedded in its contents. Status COMPLETE. Branch pushed YES.
 Main/production/staging/remote D1/PayOS untouched YES. No PR, merge or deployment.
+
+## 2026-09-11 — T09E local continuation checkpoint
+
+Published/fetched successor docs 8bf32ed4e41ed3341215c6376e0c13ef13043616 preceded
+E source. Internal atomic FEFO, v2 receipts/events and additive 0027 implemented;
+v1 authority and migrations 0023–0026 retained. Real D1 expression-depth, SQL NULL
+checks and replay mode/envelope findings corrected. Post-replay-fix 1,170 focused,
+2,657 full tests and static/build/migration gates PASS; later ordered-receipt fence
+has 131 focused PASS. Local D1 27-migration apply/schema success inspected. Exact
+chronology: t09/VERIFICATION.md. Final regates/review and E publication pending;
+no E commit SHA yet. F–H/adoption/live writers/HTTP/UI unchanged. Next: finish E
+gates/review, commit/publish/fetch successor and prove equality before F. Frozen D
+base/main/legacy/production/staging/remote D1/PayOS untouched; no T10 or readiness.

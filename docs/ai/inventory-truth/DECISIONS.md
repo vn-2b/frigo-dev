@@ -1,5 +1,51 @@
 # Inventory Truth architecture decisions
 
+## DEC-011 — Versioned atomic FEFO authority and writable continuation
+
+The 2026-09-11 recovery instruction authorizes `hoplite/orchemenos-e002591e`
+as the canonical T09E–H successor of frozen T09D base `811f7e8` in the current
+`green-1a/frigo-dev` remote. Publication-first docs checkpoint `8bf32ed4e41ed3341215c6376e0c13ef13043616`
+was pushed/fetched with local/remote equality and exact base ancestry before E.
+The base, main and legacy production remain immutable for this task.
+
+FEFO remains command type USE with explicit `mode: FEFO`. Its version-2 result
+contains 1–32 ordered effects, each with ordinal, native/legacy identity, complete
+before/after, exact signed milli delta and both version transitions. Historical
+single-lot results/events retain their original version-1 validation. Reuse
+inventory_commands and inventory_events; do not create a second ledger or loop
+single-lot executor calls. A pure per-lot planner may be reused before one batch.
+
+Eligibility: exact household, canonical ingredient and canonical unit; ACTIVE
+positive lots only. FEFO supports g/kg, ml/l and piece with exact normalization.
+Contextual pack/bunch/slice pooling is rejected because no shared product/size
+context exists. No fuzzy identity, estimated mass conversion or silent rounding.
+
+Comparator, in order: earliest effective expiry (known `expiryAt`, otherwise
+`estimatedExpiryAt`); unknown after every dated lot; known before estimated on
+equal date; earliest purchasedAt (unknown last); chronological createdAt; binary
+stable lot ID. BEST_BEFORE and USE_BY share certainty priority; neither becomes
+a safety assertion. Quantities/sums use exact safe milli-units/BigInt, not floats.
+
+Bound effects at 32 to cap guarded SQL statements and per-effect JSON validation.
+Bound household snapshot rows/lots/locations at 1,000 (read at most 1,001 to detect
+overflow), command ingredient ID at 200 and reason at 1,000 characters; normalized
+fingerprint reads at 16 KiB and each receipt/event JSON at 256 KiB. Oversized work
+fails closed with FEFO_LIMIT_EXCEEDED; never commit a partial prefix or split a
+logical use into separately committed commands. These conservative internal limits
+are not permission to silently drop older lots or unsupported units.
+
+The household revision/membership fence precedes receipt insertion; each legacy
+projection and lot mutation has its own immediate zero-row abort guard. All stock
+writes precede all effect events, followed by an all-effect count/poststate fence.
+Additive 0027 retains 0025/0026 v1 predicates and adds v2 receipt prestate and event
+poststate authority. Keep migrations 0023–0026 byte-for-byte unchanged.
+
+Replay validates the whole durable ordered result and a bijection to immutable
+effect events, never new inventory state. Current-stock-independent historical
+replay is required after later legitimate mutations. Corruption fails closed;
+no recomputation, repair, reallocation or extra success event occurs on retry.
+All live writer/adoption work remains F; this internal E path has no HTTP exposure.
+
 ## DEC-010 — Validate retained receipts and bind event inserts to declared effects
 
 T09D review reproduced valid-JSON but malformed receipts returning successful

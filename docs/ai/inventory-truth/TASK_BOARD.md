@@ -3,25 +3,29 @@
 ## Current continuation — 2026-09-11
 
 Canonical writable successor: `hoplite/orchemenos-e002591e` in `green-1a/frigo-dev`.
-Frozen base and exact ancestry: `t09/CONTINUATION.md`. A–D remain complete;
-E–H below remain open. Fresh baseline: 1,031 tests and typecheck PASS.
-Next: successor publication proof, then atomic multi-effect FEFO; no T10.
+Frozen base and exact ancestry: `t09/CONTINUATION.md`. Successor docs
+8bf32ed4e41ed3341215c6376e0c13ef13043616 published/fetched before E. A–D complete;
+E locally implemented/verified, final full gate/review/publication pending; F–H open.
+Latest post-fence: 1,172 focused / 11 files and static/build/migration gates PASS;
+latest full rerun pending. Earlier 1,170 focused / 2,657 full results predate the fence. Exact
+chronology: `t09/VERIFICATION.md`. No adoption/live writer/UI change or T10 work.
 
-## T09 — IN_PROGRESS (vn-2b/frigo-dev)
+## T09 — IN_PROGRESS (green-1a/frigo-dev)
 
 - [x] Publish authorized T09 branch at exact T08 HEAD; fetch/equality verified.
 - [x] T09A — exhaustive writer audit, lifecycle decision, 130 fresh baseline tests PASS.
 - [x] T09B — six deterministic command contracts; 202 new tests, 332 combined PASS.
 - [x] T09C — internal native persistence/CAS, additive 0024, local D1 rollback proof.
 - [x] T09D — idempotency/event/poststate authority; b036b25 published/fetched and remote-source verified.
-- [ ] T09E — deterministic FEFO allocations.
+- [ ] T09E — atomic deterministic FEFO implemented locally; final full gate/review and publication pending.
 - [ ] T09F — all legacy mutation writers adapted/migrated or safely rejected.
 - [ ] T09G — controlled concurrency and tenancy matrix.
 - [ ] T09H — application freeze, full gates, review packet, remote-checkout proof.
 
-Exact next action: E FEFO from published D b036b25 before legacy adoption/writer
-integration. D: 1,031 focused and 2,518 full tests PASS; static/build and 26-migration
-local gates PASS. Remote-source 1,031 tests and typecheck PASS.
+Exact next action: finalize E full gate/review, commit/publish the successor, fetch and
+prove local == remote before F legacy adoption/writer integration. Historical D:
+1,031 focused and 2,518 full tests PASS; static/build and 26-migration local gates
+PASS; fetched-source 1,031 tests and typecheck PASS. E has no published code SHA yet.
 T09 is not ready for independent review.
 
 ## Historical T08 board

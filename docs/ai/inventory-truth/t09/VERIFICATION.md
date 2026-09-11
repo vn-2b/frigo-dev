@@ -1,5 +1,36 @@
 # T09 verification (append-only evidence)
 
+## T09E final prepublication receipt — 2026-09-11
+
+Both independent-review findings are fixed: retained fingerprint/result version
+binding and persisted ordered-receipt equality in the completion fence. The latter
+uses symmetric JSON-tree comparisons (array order matters; object key order does
+not). Full-batch reverse-and-renumber attacks roll back in SQLite and actual local
+D1; unmodified batches and subsequent replay succeed. Scoped independent E review
+reports no remaining P1/P2 findings. This is not the final T09 independent review.
+
+Final executed checks on the application tree to be committed:
+
+| Command / evidence | Result |
+| --- | --- |
+| Full 11-file focused command recorded below; `.hoplite/artifacts/t09e-publish/focused.log` | PASS, **1,172 tests / 11 files**, 02:03:37 UTC, 89.46s; includes 35 actual local D1 cases |
+| `pnpm test`; `.hoplite/artifacts/t09e-publish/full.log` | PASS, **2,659 tests / 98 files**, 02:07:12 UTC, 154.24s |
+| `pnpm lint` | PASS |
+| `pnpm typecheck` | PASS, both TypeScript projects |
+| `pnpm build` | PASS |
+| `pnpm check:migrations` | PASS, 27-migration replay |
+| Isolated local-D1 27-migration apply/schema gate recorded below | PASS; schema unchanged by final completion-fence fix |
+| `git diff --check`; frozen 0023–0026 byte comparison | PASS |
+
+Final focused breakdown: command unit 202, truth unit 76, command repository 146,
+lot schema 26, actual D1 35, truth repository 54, receipt authority 306, event
+authority 196, FEFO unit 20, FEFO repository 34, FEFO schema 77. No migration
+artifact duplicates remain. The older 1,170/2,657 receipts below are historical;
+these final results include both later ordered-receipt regressions.
+
+Next: commit/publish/fetch/equality-check E on the authorized successor before F.
+No live writer changed, no application freeze and no T09 readiness claim.
+
 ## 2026-09-10 — publication-first baseline
 
 - User confirmed canonical `vn-2b/frigo-dev`; no remote URL changed.
@@ -186,3 +217,95 @@ ancestry. Fresh checks: frozen install PASS, 835+196 tests / eight files PASS
 correction of the initially misnamed event-authority filter: CONTINUATION.md.
 No application changes or fresh full-suite/CI claims. Docs-only publication proof
 must precede E implementation; base publication denial is preserved in that file.
+
+## 2026-09-11 — T09E local implementation and corrected review findings
+
+Publication-first successor docs: `8bf32ed4e41ed3341215c6376e0c13ef13043616`,
+published/fetched before E code on `hoplite/orchemenos-e002591e` in green-1a/frigo-dev.
+Frozen D base: `811f7e8463303e010199741d66f88ab8a817212d`; merge-base equality
+PASS. E source is uncommitted; final independent review/regates and publication
+remain pending. This section does not declare E complete or T09 review-ready.
+
+Implementation: pure deterministic FEFO USE plus one atomic 1–32-effect batch;
+version-2 ordered receipt/event evidence; additive 0027 retains v1 predicates.
+Exact g/ml/piece, kg/l normalization, contextual-unit rejection, 1,000-row snapshot
+bounds, 16 KiB fingerprint and 256 KiB receipt/event JSON bounds are explicit.
+No single-lot commit loop, adoption, live writer, HTTP, read or UI cutover.
+
+Corrected findings (earlier failing evidence remains under
+`.hoplite/artifacts/t09-takeover/`):
+
+1. Real D1 rejected the first authority expression with `Expression tree is too
+   large (maximum depth 100)` although SQLite accepted it. Split validation into
+   bounded statements without removing checks; actual D1 v1/v2 regressions and
+   maximum 32-effect execution pass after correction.
+2. Missing JSON/type checks could evaluate to SQL NULL rather than rejection.
+   Explicit presence/type and NULL-safe predicates now reject missing, malformed,
+   duplicate and forged evidence; valid reordered object-key controls still pass.
+3. Replay review P1: a retained FEFO fingerprint with the wrong result envelope
+   could be classified as a payload conflict before corruption was diagnosed.
+   Fingerprint mode now selects/validates the stored result envelope before payload
+   comparison. Genuine valid v1 key collisions still return IDEMPOTENCY_CONFLICT;
+   misbound envelope returns CORRUPT_RECEIPT without effects or repair.
+
+### Post-replay-fix gates inspected from completed logs
+
+Focused selection (11 files):
+
+```sh
+pnpm exec vitest run tests/unit/inventory-lot-commands.test.ts tests/unit/inventory-truth.test.ts tests/integration/inventory-lot-commands.test.ts tests/integration/inventory-lot-schema.test.ts tests/integration/inventory-lot-d1.test.mjs tests/integration/inventory-truth.test.ts tests/integration/inventory-lot-authority.test.ts tests/integration/inventory-event-authority.test.ts tests/unit/inventory-fefo.test.ts tests/integration/inventory-fefo.test.ts tests/integration/inventory-fefo-schema.test.ts
+```
+
+| Command / evidence | Result |
+| --- | --- |
+| Focused selection above; `t09e-final/focused.log` | PASS **1,170 / 11 files**, start 01:50:44 UTC, 92.07s |
+| `pnpm test`; `t09e-final/full.log` | PASS **2,657 / 98 files**, start 01:53:02 UTC, 170.79s; completion summary inspected, not inferred from progress |
+| `pnpm lint`; `t09e-final/lint.log` | PASS |
+| `pnpm typecheck`; `t09e-final/typecheck.log` | PASS, both projects |
+| `pnpm build`; `t09e-final/build.log` | PASS, Vite + Worker TypeScript; no deployment |
+| `pnpm check:migrations`; `t09e-final/check-migrations.log` | PASS, `migration-smoke=ok`, current 27-migration chain |
+| Isolated local D1 apply log, `t09e-final/d1-apply.log` | PASS, all 27 migrations; local store `t09e-final/d1`, no remote DB |
+| `pnpm exec wrangler d1 execute frigo-db --local --persist-to .hoplite/artifacts/t09e-final/d1 --file scripts/d1-schema-gate.sql --json` | PASS, read-only docs-agent rerun returned `success: true`, empty violation results |
+
+Artifact paths above are relative to ignored `.hoplite/artifacts/`; they are not
+committed artifacts or hosted-CI evidence. Focused count breakdown: 202 command
+unit, 76 truth unit, 146 command repository, 26 lot schema, 34 actual D1, 54 truth
+integration, 306 receipt authority, 196 event authority, 20 FEFO unit, 34 FEFO
+repository and 76 FEFO schema. The prior 1,031 baseline already includes 25 D1
+tests; the increase is 20 + 34 + 76 + nine additional D1 tests, not 34 extra D1.
+Populated 0026 -> 0027 preservation and unchanged v1 behavior are covered in schema
+and regression tests. No temporary/duplicate migration files remain in `migrations/`.
+
+### Later ordered-receipt fence — separate, not covered by the earlier full run
+
+A reordered and renumbered receipt/event pair could contradict the intended
+allocation order while retaining participants/poststate. The completion fence now
+compares the complete stored ordered receipt to the intended result using JSON-tree
+equality before commit. One new schema regression raises that file to 77 tests.
+
+```sh
+pnpm exec vitest run tests/unit/inventory-fefo.test.ts tests/integration/inventory-fefo.test.ts tests/integration/inventory-fefo-schema.test.ts
+```
+
+PASS **131 / 3 files** (20 + 34 + 77), start 01:59:53 UTC, 28.87s;
+`.hoplite/artifacts/t09e-final/ordered-fence.log`. Do not relabel the earlier
+1,170/2,657 totals as post-fence full verification or invent 1,171/2,658 results.
+Final full/static/D1 regates and independent review of the latest fence remain
+pending before E publication.
+
+Docs-agent verification also executed:
+
+```sh
+git diff --check
+git diff --exit-code 811f7e8463303e010199741d66f88ab8a817212d -- migrations/0023_inventory_truth_foundation.sql migrations/0024_inventory_lot_commands.sql migrations/0025_inventory_event_authority.sql migrations/0026_inventory_event_poststate.sql
+git rev-parse HEAD origin/hoplite/orchemenos-e002591e origin/hoplite/euhesperides-d77023a5
+git merge-base HEAD origin/hoplite/euhesperides-d77023a5
+```
+
+Diff checks PASS; HEAD/tracking successor both 8bf32ed4e41ed3341215c6376e0c13ef13043616;
+base and merge-base both 811f7e8463303e010199741d66f88ab8a817212d. These last
+read-only Git checks did not fetch or publish E. No E code SHA/freeze, remote-source
+test, hosted-CI or UI/browser claim is made. Next: finish E review/gates, commit,
+publish only successor, fetch and verify local == remote before F. F–H remain
+incomplete; no main/base push, legacy access, staging/production, remote D1, PayOS
+or T10 work.

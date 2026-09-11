@@ -25,7 +25,8 @@ required_migrations(name) AS (
     ('0023_inventory_truth_foundation.sql'),
     ('0024_inventory_lot_commands.sql'),
     ('0025_inventory_event_authority.sql'),
-    ('0026_inventory_event_poststate.sql')
+    ('0026_inventory_event_poststate.sql'),
+    ('0027_inventory_fefo_authority.sql')
 ),
 required_tables(name) AS (
   VALUES
@@ -143,6 +144,9 @@ required_triggers(name) AS (
     ('trg_inventory_events_command_insert'),
     ('trg_inventory_events_command_authority_insert'),
     ('trg_inventory_events_command_poststate_insert'),
+    ('trg_inventory_commands_fefo_authority_insert'),
+    ('trg_inventory_commands_fefo_envelope_insert'),
+    ('trg_inventory_events_command_fefo_authority_insert'),
     ('trg_inventory_events_command_update'),
     ('trg_inventory_events_command_replace'),
     ('trg_inventory_events_command_delete'),

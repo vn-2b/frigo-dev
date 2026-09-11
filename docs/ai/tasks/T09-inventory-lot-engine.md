@@ -1,6 +1,13 @@
 # T09 — Inventory Lot Engine & Event Authority
 
-Active user-authorized packet, 2026-09-10. Canonical repository vn-2b/frigo-dev
+Current continuation authority (2026-09-11): `green-1a/frigo-dev`, writable
+`hoplite/orchemenos-e002591e` from frozen D base
+`811f7e8463303e010199741d66f88ab8a817212d`. See
+`../inventory-truth/t09/CONTINUATION.md`; the phase contract below is unchanged.
+A–D complete; E locally implemented, final review/regates/publication pending;
+F–H pending. Only the successor may be published; never push the frozen base.
+
+Historical authorization, 2026-09-10. Canonical repository vn-2b/frigo-dev
 (explicit owner correction). Base exact T08 remote HEAD 8f8788c1a0c9e486657751ef3875a5baa5334dec;
 canonical T09 branch hoplite/euhesperides-d77023a5, published before implementation.
 

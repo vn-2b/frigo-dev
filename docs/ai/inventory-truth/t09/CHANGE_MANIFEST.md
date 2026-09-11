@@ -1,5 +1,41 @@
 # T09 change manifest
 
+## T09E local implementation (uncommitted; final review/publication pending)
+
+| Classification | Files | E change |
+| --- | --- | --- |
+| DOMAIN | packages/domain/src/inventory-fefo.ts | Exact canonical-unit parsing, bounded snapshot/effects, deterministic FEFO planner |
+| PERSISTENCE | packages/db/src/inventory-lot-commands.ts | One atomic 1–32-effect USE batch, strict v2 replay/event bijection, snapshot/CAS/completion fences; fingerprint mode bound to result envelope before payload comparison |
+| MIGRATION | migrations/0027_inventory_fefo_authority.sql | Additive v2 receipt prestate/envelope and event poststate authority; retain v1 predicates |
+| TEST | tests/unit/inventory-fefo.test.ts | 20 parser, bounds, unit, tie-order and exact allocation tests |
+| TEST | tests/integration/inventory-fefo.test.ts | 34 atomicity/replay/collision/tenancy/limit/race tests |
+| TEST | tests/integration/inventory-fefo-schema.test.ts | 76 SQL/upgrade tests at post-replay-fix gate; 77 after ordered-receipt fence regression |
+| TEST | tests/integration/inventory-lot-d1.test.mjs; tests/helpers/inventory-lot-d1-worker.ts | 35 actual local D1 tests total, including multi-effect rollback, ordered-receipt rejection and 32-effect maximum (34 before ordered-receipt regression) |
+| TEST/GATES | tests/integration/inventory-truth.test.ts; tests/integration/recipe-foundation.test.ts; tests/e2e/planner-preview.test.mjs; scripts/migration-smoke.sh; scripts/d1-schema-gate.sql; scripts/d1-schema-gate.sh | Assert actual 0027/27 lineage and FEFO authority guards; no UI implementation change |
+
+Exact gate chronology is in VERIFICATION.md. No migration-file duplicates in the
+active migrations directory; ignored diagnostic artifacts are not migrations.
+No historical adoption, live writer/HTTP/read cutover or F–H completion claim.
+
+## Historical T09E single-effect audit (811f7e8 application tree)
+
+| Assumption | Classification / E action |
+| --- | --- |
+| domain `inventory-lot-commands.ts`: USE/DISCARD `lotId`/`expectedVersion`, `SingleLotCommandPlan` | SAFE SINGLE-LOT PATH; reuse pure per-lot planning inside one new FEFO plan, never loop executor calls |
+| db `inventory-lot-commands.ts`: `ReceiptResult.effects.max(1)`, result `lotId`/`version` | SAFE V1 ONLY; MUST ADD bounded versioned multi-effect receipt contract rather than weaken historical replay |
+| same module: `replay` binds `result.lotId`/`version`, `receipt.events[0]` | SAFE V1 ONLY; MUST ADD v2 bijection, ordinal/order, count, intent, full before/after/delta/version verification |
+| same module: `eventMetadata` one-entry allocation | SAFE PER-EFFECT V1 SHAPE; v2 adds schema/mode/ordinal/effectCount and retains full effect snapshots |
+| same module: executor one projection/CAS/event | MUST ADD one multi-effect batch with per-participant guards and final cardinality/poststate fence |
+| migration 0025: `$.effects[0]`, array length 1, singular result/fingerprint identity | HISTORICAL IMMUTABLE FILE; additive 0027 retains v1 trigger predicates and separately dispatches strict v2 authority |
+| migration 0026: written-stock check for `$.effects[0]` only | HISTORICAL IMMUTABLE FILE; additive v2 per-effect full persisted poststate binding required |
+| migration 0024 unique `(command_id, inventory_item_id)` event index | SAFE MULTI-LOT; already permits N distinct effect events and forbids repeated effect events |
+| existing native command/event/schema/D1 test helpers using `effects[0]`, one event | HISTORICAL / SINGLE-LOT TEST ONLY; preserve as regressions and add distinct multi-effect coverage |
+
+All live routes are still T09F work; no E HTTP exposure or legacy writer cutover.
+The audit reserved 0027; the local E implementation above now uses that number.
+
+## Historical T09B–D manifest (retained milestones)
+
 | Classification | Files | Reason |
 | --- | --- | --- |
 | DOMAIN | packages/domain/src/inventory-lot-commands.ts | Six validated pure command planners, exact quantities, lifecycle, CAS expectations and bounded correction |

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { unstable_dev, unstable_splitSqlQuery } from 'wrangler';
+import { executeInventoryFefoCommand } from '../../packages/db/src/inventory-lot-commands';
 
 let worker;
 let directory;
@@ -283,5 +284,156 @@ describe('T09D real D1 controlled receipt and event authority', () => {
     expect(attempted.status).toBe(409);
     expect(attempted.error).toContain('Inventory command event evidence mismatch');
     expect(await facts()).toEqual(before);
+  });
+});
+
+async function fefoFixture(count = 2) {
+  const fixture = await raceFixture('CREATE');
+  const { scope, now } = fixture;
+  const lots = [];
+  for (let ordinal = 0; ordinal < count; ordinal += 1) {
+    const input = { ...fixture.input, lotId: `${fixture.input.lotId}-${String(ordinal).padStart(2, '0')}`,
+      quantity: count === 2 ? (ordinal === 0 ? 2 : 8) : 1,
+      expiryKind: 'BEST_BEFORE', expiryAt: ordinal === 0 ? '2026-09-11' : '2026-09-18' };
+    expect(await requestCommand('command', { scope, key: `seed-${ordinal}`, input, now }))
+      .toMatchObject({ status: 200, replayed: false });
+    lots.push(input);
+  }
+  return { ...fixture, lots,
+    input: { type: 'USE', mode: 'FEFO', ingredientId: 'CHICKEN_EGG', quantity: count === 2 ? 6 : count, unit: 'piece' } };
+}
+
+describe('T09E actual local D1 multi-effect authority', () => {
+  it('rolls back reversed and renumbered receipt/event effects, then accepts and replays the original batch', async () => {
+    const { scope, input, now, facts } = await fefoFixture();
+    const key = 'ordered-receipt';
+    const before = await facts();
+    let captured;
+    const captureDb = {
+      prepare(sql) {
+        return { sql, values: [], bind: (...values) => ({ sql, values }) };
+      },
+      async batch(statements) {
+        if (statements.some(({ sql }) => sql.includes('INSERT INTO inventory_commands'))) {
+          captured = structuredClone(statements);
+          throw new Error('Capture FEFO batch before persistence');
+        }
+        const response = await batch(statements);
+        if (response.status !== 200) throw new Error(response.error);
+        return response.results;
+      },
+    };
+    await expect(executeInventoryFefoCommand(captureDb, scope, key, input, now))
+      .rejects.toMatchObject({ code: 'PERSISTENCE_FAILED' });
+    expect(captured).toBeDefined();
+    expect(await facts()).toEqual(before);
+
+    const altered = structuredClone(captured);
+    const receipt = altered.find(({ sql }) => sql.includes('INSERT INTO inventory_commands'));
+    const result = JSON.parse(receipt.values[6]);
+    result.effects.reverse().forEach((effect, ordinal) => { effect.ordinal = ordinal; });
+    receipt.values[6] = JSON.stringify(result);
+    const events = altered.filter(({ sql }) => sql.includes('INSERT INTO inventory_events') && sql.includes('command_id'));
+    expect(events).toHaveLength(2);
+    for (const event of events) {
+      const metadata = JSON.parse(event.values[7]);
+      metadata.ordinal = result.effects.find(({ legacyItemId }) => legacyItemId === event.values[2]).ordinal;
+      event.values[7] = JSON.stringify(metadata);
+    }
+    const rejected = await batch(altered);
+    expect(rejected).toMatchObject({ status: 409 });
+    expect(rejected.error).toContain('NOT NULL constraint failed: inventory_events.inventory_item_id');
+    expect(await facts()).toEqual(before);
+
+    expect(await batch(captured)).toMatchObject({ status: 200 });
+    const expected = JSON.parse(captured.find(({ sql }) => sql.includes('INSERT INTO inventory_commands')).values[6]);
+    const committed = await facts();
+    expect(committed[1].map(({ quantity_milli, version }) => [quantity_milli, version])).toEqual([[0, 2], [4000, 2]]);
+    expect(committed[2].map(({ quantity, version }) => [quantity, version])).toEqual([[0, 2], [4, 2]]);
+    expect(committed[3].filter(({ client_key }) => client_key === key)).toHaveLength(1);
+    expect(committed[4].filter(({ command_id }) => command_id === expected.commandId)).toHaveLength(2);
+    expect(await requestCommand('command', { scope, input, now, key }))
+      .toEqual({ status: 200, result: expected, replayed: true });
+    expect(await facts()).toEqual(committed);
+  });
+
+  it('atomically consumes two lots, preserves exact events, and replays after later stock changes', async () => {
+    const { scope, input, now, facts, lots } = await fefoFixture();
+    const executed = await requestCommand('command', { scope, input, now, key: 'fefo' });
+    expect(executed).toMatchObject({ status: 200, replayed: false, result: { schemaVersion: 2, effects: [
+      { ordinal: 0, legacyItemId: lots[0].lotId, deltaMilli: -2000, after: { quantityMilli: 0, state: 'CONSUMED', version: 2 } },
+      { ordinal: 1, legacyItemId: lots[1].lotId, deltaMilli: -4000, after: { quantityMilli: 4000, state: 'ACTIVE', version: 2 } },
+    ] } });
+    const stock = await facts();
+    expect(stock[1].map((row) => [row.quantity_milli, row.version])).toEqual([[0, 2], [4000, 2]]);
+    expect(stock[2].map((row) => [row.quantity, row.version])).toEqual([[0, 2], [4, 2]]);
+    expect(stock[4].filter((row) => row.command_id === executed.result.commandId)).toHaveLength(2);
+    expect(await requestCommand('command', { scope, now, key: 'later-use',
+      input: { type: 'USE', lotId: lots[1].lotId, expectedVersion: 2, quantity: 1, unit: 'piece' } }))
+      .toMatchObject({ status: 200 });
+    const beforeReplay = await facts();
+    expect(await requestCommand('command', { scope, input, now, key: 'fefo' }))
+      .toEqual({ status: 200, result: executed.result, replayed: true });
+    expect(await facts()).toEqual(beforeReplay);
+  });
+
+  it.each(['FEFO', 'CORRECT', 'DISCARD'])('fences a prepared FEFO after %s wins', async (winnerType) => {
+    const { scope, input, now, facts, lots } = await fefoFixture();
+    const contender = { scope, input, now, key: 'stale-fefo' };
+    const winnerInput = winnerType === 'FEFO' ? input : winnerType === 'CORRECT'
+      ? { type: 'CORRECT', lotId: lots[1].lotId, expectedVersion: 1, changes: { quantity: 3 }, reason: 'Counted' }
+      : { type: 'DISCARD', lotId: lots[1].lotId, expectedVersion: 1, quantity: 8, unit: 'piece' };
+    const race = await requestCommand('race', { contender, winner: { scope, input: winnerInput, now, key: 'winner' } });
+    expect(race).toMatchObject({ status: 200, arrivals: 1, winner: { execution: { replayed: false } },
+      contender: { error: 'STALE_SNAPSHOT' } });
+    const stock = await facts();
+    expect(stock[3].map((row) => row.client_key).sort()).toEqual(['seed-0', 'seed-1', 'winner']);
+    expect(stock[1].map((row) => row.quantity_milli))
+      .toEqual(winnerType === 'FEFO' ? [0, 4000] : winnerType === 'CORRECT' ? [2000, 3000] : [2000, 0]);
+    expect(stock[2].map((row) => row.quantity * 1000)).toEqual(stock[1].map((row) => row.quantity_milli));
+    expect(stock[4].filter((row) => row.command_id === race.winner.execution.result.commandId))
+      .toHaveLength(winnerType === 'FEFO' ? 2 : 1);
+  });
+
+  it.each([false, true])('same-key controlled FEFO race has one event set (different payload=%s)', async (different) => {
+    const { scope, input, now, facts } = await fefoFixture();
+    const contender = { scope, input, now, key: 'shared' };
+    const winner = { ...contender, input: different ? { ...input, quantity: 5 } : input };
+    const raced = await requestCommand('race', { contender, winner });
+    expect(raced).toMatchObject({ status: 200, arrivals: 1, winner: { execution: { replayed: false } } });
+    expect(raced.contender).toEqual(different ? { error: 'IDEMPOTENCY_CONFLICT' }
+      : { execution: { result: raced.winner.execution.result, replayed: true } });
+    const stock = await facts();
+    expect(stock[3]).toHaveLength(3);
+    expect(stock[4].filter((row) => row.command_id === raced.winner.execution.result.commandId)).toHaveLength(2);
+  });
+
+  it.each(['lot', 'event'])('rolls back every participant when the second %s write is ignored', async (kind) => {
+    const { scope, input, now, facts, lots } = await fefoFixture();
+    const before = await facts();
+    const table = kind === 'lot' ? 'inventory_lots' : 'inventory_events';
+    const operation = kind === 'lot' ? 'UPDATE' : 'INSERT';
+    const predicate = kind === 'lot' ? `NEW.id = '${lots[1].lotId}'` : `NEW.inventory_item_id = '${lots[1].lotId}'`;
+    expect(await batch([`CREATE TRIGGER fefo_ignore_second BEFORE ${operation} ON ${table}
+      WHEN ${predicate} BEGIN SELECT RAISE(IGNORE); END;`])).toMatchObject({ status: 200 });
+    expect(await requestCommand('command', { scope, input, now, key: 'rollback-fefo' }))
+      .toMatchObject({ status: 409, error: kind === 'lot' ? 'STALE_VERSION' : 'PERSISTENCE_FAILED' });
+    expect(await facts()).toEqual(before);
+    expect(await batch(['DROP TRIGGER fefo_ignore_second'])).toMatchObject({ status: 200 });
+    expect(await requestCommand('command', { scope, input, now, key: 'rollback-fefo' }))
+      .toMatchObject({ status: 200, replayed: false, result: { effects: [{ ordinal: 0 }, { ordinal: 1 }] } });
+  });
+
+  it('executes the maximum 32 effects as one real D1 command', async () => {
+    const { scope, input, now, facts } = await fefoFixture(32);
+    const executed = await requestCommand('command', { scope, input, now, key: 'bounded-fefo' });
+    expect(executed).toMatchObject({ status: 200, replayed: false });
+    expect(executed.result.effects).toHaveLength(32);
+    const stock = await facts();
+    expect(stock[1].every((row) => row.quantity_milli === 0 && row.state === 'CONSUMED')).toBe(true);
+    expect(stock[2].every((row) => row.quantity === 0 && row.freshness === 'out_of_stock')).toBe(true);
+    expect(stock[4].filter((row) => row.command_id === executed.result.commandId)).toHaveLength(32);
+    expect(await batch(['PRAGMA foreign_key_check', 'PRAGMA quick_check']))
+      .toMatchObject({ status: 200, results: [{ results: [] }, { results: [{ quick_check: 'ok' }] }] });
   });
 });

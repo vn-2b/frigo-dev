@@ -2,6 +2,17 @@
 
 ## T09 current verification
 
+E local implementation is uncommitted on `hoplite/orchemenos-e002591e` after
+published successor docs `8bf32ed4e41ed3341215c6376e0c13ef13043616`. Latest post-fence:
+**1,172 focused / 11 files**, lint/typecheck/build and migration smoke PASS;
+latest full rerun pending. Earlier **1,170 focused / 2,657 full** results predate
+the ordered-receipt fence. Isolated local D1: 27 migrations and schema gate PASS.
+Final full gate, independent review and E publication remain pending. Exact commands, counts,
+corrected D1/SQL NULL/replay findings and evidence chronology: `t09/VERIFICATION.md`.
+No adoption/live writer/HTTP/UI change, F–H completion, freeze or readiness claim.
+
+## Historical T09D verification
+
 See `t09/VERIFICATION.md`. Exact T08 base was published to the authorized T09
 branch then fetched; local/remote equality PASS. A–D checkpoints are published.
 D final local verification: 1,031 focused / 8 files and 2,518 full / 95 files;

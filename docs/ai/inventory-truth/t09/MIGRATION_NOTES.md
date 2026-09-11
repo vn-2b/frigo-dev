@@ -2,8 +2,9 @@
 
 T08 lineage ends at `0023_inventory_truth_foundation.sql`. T09C adds
 `0024_inventory_lot_commands.sql`; no applied T08 migration was modified.
-D adds `0025_inventory_event_authority.sql` and `0026_inventory_event_poststate.sql`;
-the current chain has 26 migrations. No 0001–0024 migration was rewritten.
+D adds `0025_inventory_event_authority.sql` and `0026_inventory_event_poststate.sql`.
+E adds `0027_inventory_fefo_authority.sql`; the current chain has 27 migrations.
+No earlier migration was rewritten; 0023–0026 diff unchanged against the frozen D base.
 Do not modify applied migrations. Additive schema only when actual constraints
 need it; clean replay and populated upgrade must pass locally.
 
@@ -27,7 +28,8 @@ after a failed CAS to trigger NOT NULL rollback. T08 backfill similarly forces
 NULL quantity on stale source. Reuse this fail-closed mechanism, not a post-commit
 row-count check or `version = expected+1` postcondition (another writer can match).
 The real SQLite D1 helper runs BEGIN IMMEDIATE with rollback and provides before/
-after batch hooks for deterministic scheduling. Runtime local D1 proof is pending.
+after batch hooks for deterministic scheduling. Runtime local D1 proof was pending
+at this historical audit; implemented C–E evidence is recorded below.
 
 A narrow durable command receipt table is likely required: no uniform inventory
 command table exists (only cooked_meals, scan status and shopping_import_commands).
@@ -86,5 +88,30 @@ CORRUPT_RECEIPT and never uses newer live stock as historical evidence.
 Local D1 applied 0025 and then 0026 successfully. The final SQLite clean replay,
 local D1 schema gate and 25 runtime tests pass, including matching forged evidence
 versus real stock, receipt rollback, same-key races and late-event failure.
-Both new guards currently implement the native single-lot v1 contract. T09E must
+At the D checkpoint both new guards implement the native single-lot v1 contract. T09E must
 explicitly extend receipt/event validation for FEFO rather than bypass these guards.
+
+## Implemented T09E additive authority (local; not published)
+
+0027 recreates the two prior event guards with their v1 predicate bodies unchanged,
+dispatching schemaVersion 2 to separate strict FEFO receipt/event guards. Historical
+v1 receipts/events are not rewritten or repaired; populated 0026 -> 0027 byte
+preservation and v1 regression tests pass. No duplicate migration files remain
+in the active directory. No adoption/backfill or new ledger is introduced.
+
+V2 receipt validation binds envelope, intent, ordered effect identities, exact
+before/delta/after and versions to pre-write stock. Events bind each effect to
+actual written lot/core projection. Application completion additionally binds the
+stored ordered receipt to the intended result and checks all-effect cardinality
+and poststate before the batch can commit. SQL NULL/missing-key predicates are
+explicitly fail-closed; unknown/contextual units never become conversion evidence.
+
+Initial real D1 execution failed with `Expression tree is too large (maximum depth
+100)` despite SQLite acceptance. Smaller validation statements preserve the checks
+within D1 limits; subsequent real D1 multi-effect/max-32 tests pass. Missing JSON
+checks that could evaluate to NULL were separately corrected. These are resolved
+implementation findings, not waived runtime coverage. Exact gates/follow-up fence:
+VERIFICATION.md. Fresh isolated local apply shows all 27 migrations and schema
+gate success. Latest post-fence focused gate includes 35 actual local D1 tests,
+including reversed/renumbered evidence rollback and successful original-batch replay.
+No remote D1, staging, production or reconciliation operation ran.

@@ -5,12 +5,20 @@
 Current repository: green-1a/frigo-dev. Writable continuation:
 hoplite/orchemenos-e002591e. Frozen T09D base: hoplite/euhesperides-d77023a5 at
 811f7e8463303e010199741d66f88ab8a817212d. Last verified application: b036b257a8ad775dd6f1a445dcfdcce38a6babf1.
-Ancestry PASS; fresh 1,031 tests and typecheck PASS. A–D complete; E–H pending.
-Publication-first successor checkpoint is required before source edits. Exact
-commands, preserved settings overlay, resolved branch-policy blocker and next
-action: `t09/CONTINUATION.md`. IN_PROGRESS, not frozen/review-ready.
+Ancestry and publication-first PASS: successor docs 8bf32ed4e41ed3341215c6376e0c13ef13043616
+published/fetched before E. A–D complete; E locally implemented but uncommitted,
+final review/publication pending; F–H pending. Internal FEFO supports one atomic
+1–32-effect v2 receipt/event batch, exact g/ml/piece (kg/l normalized), bounded
+JSON/1,000-lot snapshots and additive 0027 with historical v1 authority retained.
+No adoption, live writer, HTTP or UI changes. Latest post-fence: 1,172 focused /
+11 files (35 actual local D1 tests) and static/build/migration smoke PASS. Latest
+full rerun pending; earlier 1,170 focused / 2,657 full results predate the fence.
+Isolated 27-migration local D1 apply/schema gate PASS. Final full gate/review and
+E commit/publish/fetch/equality are next, before F.
+Exact evidence/fixes: `t09/VERIFICATION.md`; branch policy: `t09/CONTINUATION.md`.
+IN_PROGRESS, not frozen/review-ready.
 
-## T09 development authority — 2026-09-10
+## Historical T09D development checkpoint — 2026-09-10
 
 Program: Inventory Truth Layer
 Current Task: T09 — Inventory Lot Engine & Event Authority

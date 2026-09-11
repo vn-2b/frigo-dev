@@ -1,9 +1,11 @@
 import type { D1DatabaseBinding, D1PreparedStatement } from '../../packages/db/src';
-import { executeInventoryLotCommand, type InventoryLotCommandScope } from '../../packages/db/src/inventory-lot-commands';
+import { executeInventoryFefoCommand, executeInventoryLotCommand, type InventoryLotCommandScope } from '../../packages/db/src/inventory-lot-commands';
 
 interface CommandRequest { scope: InventoryLotCommandScope; key: string; input: unknown; now: string }
 const run = (db: D1DatabaseBinding, command: CommandRequest) =>
-  executeInventoryLotCommand(db, command.scope, command.key, command.input, command.now);
+  command.input !== null && typeof command.input === 'object' && 'mode' in command.input && command.input.mode === 'FEFO'
+    ? executeInventoryFefoCommand(db, command.scope, command.key, command.input, command.now)
+    : executeInventoryLotCommand(db, command.scope, command.key, command.input, command.now);
 
 async function controlledRace(db: D1DatabaseBinding, contender: CommandRequest, winner: CommandRequest) {
   let arrived!: () => void;

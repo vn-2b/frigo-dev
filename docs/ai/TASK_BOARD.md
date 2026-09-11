@@ -4,11 +4,16 @@
 
 Same T09 task, writable successor `hoplite/orchemenos-e002591e` from frozen D
 base `811f7e8463303e010199741d66f88ab8a817212d`, repository green-1a/frigo-dev.
-A–D complete; E–H pending. Fresh 1,031 tests/typecheck PASS. Next: documentation
-publication/equality proof, then E multi-effect FEFO. See
-`inventory-truth/t09/CONTINUATION.md`; no main/production/PayOS/T10 work.
+A–D complete; E atomic multi-effect FEFO implemented locally, final review and
+publication pending; F–H not complete. Successor docs 8bf32ed4e41ed3341215c6376e0c13ef13043616
+published/fetched before E. Latest post-fence: 1,172 focused / 11 files and
+static/build/migration gates PASS; final full rerun 2,659 / 98 files PASS. Earlier
+1,170 focused / 2,657 full results predate this fence. Scoped E review has no
+remaining P1/P2 findings; E commit/push/fetch/equality
+are next, before F adoption/writers. See `inventory-truth/t09/VERIFICATION.md` and
+`inventory-truth/t09/CONTINUATION.md`; no main/production/PayOS/T10 work or readiness claim.
 
-## T09 — active isolated development (2026-09-10)
+## Historical T09D checkpoint (2026-09-10)
 
 IN_PROGRESS in vn-2b/frigo-dev on hoplite/euhesperides-d77023a5, exact T08 base
 8f8788c1a0c9e486657751ef3875a5baa5334dec. Publication-first and A/B published;

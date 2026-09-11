@@ -121,3 +121,29 @@ Pre-existing settings overlay preserved in named stash; CONTINUATION.md records 
 Frozen install, 835+196 focused tests (all eight intended files) and typecheck PASS.
 No application change. Publish/fetch this docs-only checkpoint before E source;
 subsequent receipt will record its exact SHA. Main/legacy/remote D1/PayOS untouched.
+
+## 2026-09-11 — T09E local multi-effect FEFO checkpoint
+
+Successor docs 8bf32ed4e41ed3341215c6376e0c13ef13043616 published/fetched before
+source work; exact frozen-base ancestry retained. E adds pure deterministic FEFO
+USE, bounded 1–32-effect atomic persistence, v2 receipt/event replay and additive
+0027; historical v1 predicates and 0023–0026 remain unchanged. Snapshot/JSON limits
+and exact unit support are recorded in DEC-011. No adoption or live writer exposure.
+
+Fixed real D1 expression-depth failure, SQL NULL/missing JSON fail-open and review
+P1 fingerprint-mode/result-envelope classification before payload comparison.
+Valid historical v1 collisions remain conflicts. Post-replay-fix completed logs:
+1,170 focused / 11 files, 2,657 full / 98 files, lint/typecheck/build/migration smoke
+PASS; fresh isolated local D1 27-migration apply and schema gate PASS. A later
+ordered/renumbered receipt finding added an intended-result completion fence and
+one schema regression: 131 focused / 3 files PASS. Earlier full totals do not
+cover this later change; final regates/review and publication remain pending.
+
+Docs-only follow-up inspected logs and current implementation, updated handoffs,
+and reran read-only isolated D1 schema plus diff/0023–0026 immutability/ancestry
+checks. No source edits or commits by the docs agent; existing parent changes,
+including DEC-011 and the initial manifest audit, preserved. Exact commands and
+counts: VERIFICATION.md. E has no published application SHA yet. Next: finalize
+E gates/review, commit/publish/fetch successor and prove equality before F.
+F–H not complete; no application freeze, review-readiness, UI/browser, main,
+legacy production, deployment, remote D1, PayOS or T10 claim.
