@@ -721,7 +721,8 @@ function replayFefo(receipt: ReceiptRow, fingerprint: string, scope: InventoryLo
     let remaining = command.quantityMilli;
     for (const [ordinal, effect] of result.effects.entries()) {
       const { before, after, deltaMilli } = effect;
-      valid(effect.ordinal === ordinal && !seen.has(after.id) && effect.legacyItemId === after.id
+      valid(effect.ordinal === ordinal && !seen.has(after.id)
+        && authoritativeMapping(after, effect.legacyItemId, receipt.adoptedMappings)
         && before.id === after.id && before.householdId === scope.householdId
         && before.ingredientId === command.ingredientId && before.canonicalUnit === command.canonicalUnit
         && before.state === 'ACTIVE' && before.quantityMilli > 0
@@ -813,9 +814,9 @@ export async function prepareInventoryFefoCommand(db: D1DatabaseBinding, scope: 
   const rows: ProjectionRow[] = [];
   const effects = plans.map((plan, ordinal): FefoPlan => {
     const mapped = snapshot.lots.find(({ lot }) => lot.id === plan.after.id)!;
+    // Admission is the same authoritative mapping evidence requireParity
+    // enforces for v1; 0029 SQL authority accepts proven synthetic mappings.
     const row = requireParity(mapped, snapshot, scope.householdId);
-    // Retained v2 SQL authority still requires equal IDs; only v1 supports adopted mappings.
-    if (mapped.legacyItemId !== mapped.lot.id) throw new LotCommandError('DRIFT_DETECTED');
     if (row.version === Number.MAX_SAFE_INTEGER) throw new LotCommandError('VERSION_OVERFLOW');
     rows.push(row);
     const after = { ...plan.after, legacyVersion: row.version + 1 };
@@ -844,7 +845,7 @@ export async function prepareInventoryFefoCommand(db: D1DatabaseBinding, scope: 
   }
   for (const effect of effects) {
     statements.push(projectionWrites(db, effect, rows[effect.ordinal], snapshot, now), writeGuard(db, scope, 'unit'),
-      lotWrite(db, effect), writeGuard(db, scope, 'event_type'));
+      lotWrite(db, effect, effect.legacyItemId), writeGuard(db, scope, 'event_type'));
   }
   for (const effect of effects) {
     const metadata = JSON.stringify(fefoEventMetadata(scope, key.data, fingerprint, result, effect, now));

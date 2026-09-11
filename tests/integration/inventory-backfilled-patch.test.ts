@@ -258,13 +258,17 @@ describe('T09 legitimate adopted backfilled PATCH', () => {
     expect(facts()).toEqual(committed);
   });
 
-  it('preserves fail-closed v2 FEFO admission while its SQL requires equal IDs', async () => {
+  it('serves v2 FEFO on adopted backfilled stock through the same authoritative mapping', async () => {
     await adopt();
-    const before = facts();
     const snapshot = await readMappedLotSnapshot(db, scope, 'RICE');
-    await expect(executeInventoryFefoCommand(db, scope, 'backfill-fefo-key', { type: 'USE', mode: 'FEFO',
-      ingredientId: 'RICE', quantity: 100, unit: 'g', expectedInventoryVersion: snapshot.inventoryVersion }, now))
-      .rejects.toMatchObject({ code: 'DRIFT_DETECTED' });
-    expect(facts()).toEqual(before);
+    const execution = await executeInventoryFefoCommand(db, scope, 'backfill-fefo-key', { type: 'USE', mode: 'FEFO',
+      ingredientId: 'RICE', quantity: 100, unit: 'g', expectedInventoryVersion: snapshot.inventoryVersion }, now);
+    expect(execution.result.effects[0]).toMatchObject({ legacyItemId: 'patch-rice',
+      after: { id: 't08-legacy:patch-rice', quantityMilli: 1900000 } });
+    expect(lot()).toMatchObject({ id: 't08-legacy:patch-rice', legacy_item_id: 'patch-rice',
+      quantity_milli: 1900000, version: 3, legacy_version: 2 });
+    expect(row()).toMatchObject({ id: 'patch-rice', quantity: 1900, version: 2 });
+    expect(db.query('SELECT inventory_item_id FROM inventory_events WHERE household_id = ?', scope.householdId))
+      .toEqual([{ inventory_item_id: 'patch-rice' }]);
   });
 });

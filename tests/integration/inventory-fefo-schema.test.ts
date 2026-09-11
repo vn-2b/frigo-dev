@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
+import { executeInventoryAdoption } from '../../packages/db/src/inventory-adoption-executor';
 import { executeInventoryFefoCommand, executeInventoryLotCommand } from '../../packages/db/src/inventory-lot-commands';
 import { SqliteD1, type SqliteStatementEvent } from '../helpers/sqlite-d1';
 
@@ -322,6 +323,82 @@ describe('T09E SQLite FEFO authority guards', () => {
     expect(next.result.effects.map((effect) => effect.ordinal)).toEqual([0, 1]);
     expect(db.query('PRAGMA foreign_key_check')).toEqual([]);
     expect(db.query('PRAGMA integrity_check')).toEqual([{ integrity_check: 'ok' }]);
+    // The 0029 backfill compatibility upgrade preserves every 0027 v1/v2
+    // object by name, keeps v1 replay working and still accepts native v2.
+    const upgraded = bytes();
+    db.seed(readFileSync('migrations/0029_inventory_fefo_backfill_compatibility.sql', 'utf8'));
+    expect(bytes()).toBe(upgraded);
+    expect(db.query(`SELECT count(*) AS n FROM sqlite_master WHERE type = 'trigger' AND name IN
+      ('trg_inventory_events_command_authority_insert', 'trg_inventory_events_command_poststate_insert',
+       'trg_inventory_commands_fefo_authority_insert', 'trg_inventory_commands_fefo_envelope_insert',
+       'trg_inventory_events_command_fefo_authority_insert')`)).toEqual([{ n: 5 }]);
+    await expect(executeInventoryLotCommand(db, scope, 'v1-use', {
+      type: 'USE', lotId: 'v1-rice-early', expectedVersion: 1, quantity: 0.01, unit: 'g', reason: 'v1 proof',
+    }, now)).resolves.toMatchObject({ replayed: true, result: old.result });
+    const after0029 = await use(db, 'v2-after-0029', 0.2);
+    expect(after0029.result.schemaVersion).toBe(2);
+    expect(db.query('PRAGMA foreign_key_check')).toEqual([]);
+    expect(db.query('PRAGMA integrity_check')).toEqual([{ integrity_check: 'ok' }]);
+  });
+
+  it('accepts a captured synthetic FEFO batch only with authoritative adoption evidence', async () => {
+    // Real adoption proves the kg-display synthetic mapping; each scenario uses
+    // a fresh capture so the exact same batch replays under one tamper at a time.
+    const capture = async (): Promise<{ db: SqliteD1; statements: Statement[] }> => {
+      const db = database();
+      db.seed(`INSERT INTO inventory_items(id, household_id, ingredient_id, name, quantity, unit, category, storage,
+        expiry_date, expiry_kind, expiry_source)
+        VALUES ('synthetic-rice', '${scope.householdId}', 'RICE', 'Rice', 2, 'kg', 'grain', 'pantry',
+          '2026-09-15', 'use_by', 'user')`);
+      await executeInventoryAdoption(db, scope, {}, now);
+      expect(db.query(`SELECT legacy_item_id FROM inventory_lots WHERE id = 't08-legacy:synthetic-rice'`))
+        .toEqual([{ legacy_item_id: 'synthetic-rice' }]);
+      let statements: Statement[] = [];
+      db.hooks.beforeBatch = (batch: readonly SqliteStatementEvent[]) => {
+        if (!batch.some(isReceipt)) return;
+        statements = batch.map(({ sql, bindings }) => ({ sql, bindings: [...bindings] }));
+        throw new Error('Capture synthetic FEFO write before transaction');
+      };
+      await expect(executeInventoryFefoCommand(db, scope, 'synthetic-key', {
+        type: 'USE', mode: 'FEFO', ingredientId: 'RICE', quantity: 0.5, unit: 'g', reason: 'Schema proof',
+      }, now)).rejects.toMatchObject({ code: 'PERSISTENCE_FAILED' });
+      db.hooks = {};
+      expect(statements.filter(isReceipt)).toHaveLength(1);
+      expect(statements.filter(isEvent)).toHaveLength(1);
+      // Effect and event evidence bind both identities explicitly.
+      const result = jsonField(receipt(statements), receiptColumns, 'result_json');
+      const effect = (result.effects as JsonObject[])[0];
+      expect(effect).toMatchObject({ legacyItemId: 'synthetic-rice' });
+      expect((effect.after as JsonObject).id).toBe('t08-legacy:synthetic-rice');
+      expect(field(events(statements)[0], eventColumns, 'inventory_item_id')).toBe('synthetic-rice');
+      return { db, statements };
+    };
+
+    // 0029 authority commits the exact synthetic batch, kg display parity included.
+    const accepted = await capture();
+    await expect(accepted.db.batch(accepted.statements.map(({ sql, bindings }) =>
+      accepted.db.prepare(sql).bind(...bindings)))).resolves.toBeTruthy();
+    expect(accepted.db.query(`SELECT quantity_milli, version FROM inventory_lots WHERE id = 't08-legacy:synthetic-rice'`))
+      .toEqual([{ quantity_milli: 1999500, version: 3 }]);
+    expect(accepted.db.query(`SELECT quantity, unit FROM inventory_items WHERE id = 'synthetic-rice'`))
+      .toEqual([{ quantity: 1999.5, unit: 'g' }]);
+    expect(accepted.db.query('PRAGMA foreign_key_check')).toEqual([]);
+
+    // Without the adoption receipt the SQL mapping guard fails closed.
+    const unproven = await capture();
+    unproven.db.seed('DROP TRIGGER trg_inventory_adoption_receipts_immutable_delete;');
+    unproven.db.exec(`DELETE FROM inventory_adoption_receipts WHERE household_id = '${scope.householdId}'`);
+    await rejected(unproven.db, unproven.statements, commandMismatch);
+
+    // A projection unit outside the exact kg/l display aliases is drift. The
+    // revision bump from the tamper is undone so the batch reaches the receipt
+    // guard instead of the household snapshot CAS.
+    const parity = await capture();
+    parity.db.exec(`UPDATE inventory_items SET unit = 'pack' WHERE id = 'synthetic-rice'`);
+    const cas = parity.statements.find(({ sql }) =>
+      sql.includes('UPDATE households SET inventory_version = inventory_version WHERE id = ? AND inventory_version = ?'))!;
+    parity.db.exec(`UPDATE households SET inventory_version = ${Number(cas.bindings[1])} WHERE id = '${scope.householdId}'`);
+    await rejected(parity.db, parity.statements, commandMismatch);
   });
 
   it('uses indexed bounded reads for FEFO lots/items, ingredient identity, and receipt events', () => {
