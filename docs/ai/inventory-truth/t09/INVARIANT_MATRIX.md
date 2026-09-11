@@ -1,5 +1,15 @@
 # T09 invariant matrix
 
+## COMPLETE — 2026-09-11 (9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f)
+
+All-writer invariants now hold with executable evidence: atomic adoption, mapped
+lifecycle (ACTIVE positive / terminal zero), stale CAS denial with no partial
+effects, one idempotency effect per key with payload conflicts, immutable events
+bound to receipts, legacy projection compatibility (kg/l aliases exact), tenant
+isolation for every command, and no-writer bypass (fail-closed admission). The G
+sweep verifies poststate/lot quantity agreement, monotonic versions and receipt/
+event agreement. 2,837 tests / 105 files PASS (155s), 38 isolated real local-D1 tests, lint, typecheck, build, 28-migration smoke and local D1 schema gate PASS. The historical checklist below is retained.
+
 E native scope is now published and verified at `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`
 (1,172 focused / 2,659 full PASS). Receipt mode dispatch and ordered stored-result
 fencing have regression proofs; no remaining E P1/P2 review finding. The full

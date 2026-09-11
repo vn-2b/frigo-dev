@@ -1,6 +1,25 @@
 # Frigo current state — isolated T09 development
 
-## Current T09 continuation — 2026-09-11
+## T09 F/G/H complete — 2026-09-11
+
+T09F = COMPLETE, T09G = COMPLETE, T09H = COMPLETE (freeze + evidence). Application
+freeze SHA: `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f`, published/fetched on **hoplite/kydonia-2785bb72** with exact
+local/remote equality; branch base `hoplite/kos-2a686759` is the platform read-only
+configured base at `aa44d2a2f80ea33fd4b328aba906660c0129051e` and refused publication, so the verified successor
+continues that exact lineage (same pattern as the prior transfer). A–E unchanged.
+Full gates at this checkpoint: **2,837 tests / 105 files PASS** (155s), including the new 19-test adoption suite, 9-test G concurrency matrix and rewritten 14-test writer-fence suite; 38 isolated real local-D1 tests PASS; lint PASS; typecheck PASS; build PASS; 28-migration smoke PASS; local D1 schema gate PASS (0028 required).
+Adoption: atomic receipt-backed `executeInventoryAdoption` (migration 0028), empty-household
+activation evidence, executor-owned snapshot/authority validation, projection-compatibility
+preflight. Every inventory writer now serves adopted households through the lot authority
+(manual create/edit/discard, scan confirm, shopping import, cook) and fails closed with
+`INVENTORY_AUTHORITY_REQUIRED` when mappings are incomplete; DEC-012 remains SAFE-DEFERRED.
+G matrix: USE/USE, USE/DISCARD, USE/CORRECT, DISCARD/DISCARD, MOVE/MOVE, OPEN/OPEN,
+FEFO/FEFO, receipt replay, duplicate event identity, household isolation, cross-tenant
+identities, adoption races and stale-legacy-post-activation all pass with property sweeps.
+Not authorized/started: main merge, deployment, remote D1, PayOS, T10. Independent
+review readiness: READY FOR EXTERNAL ASTRA REVIEW (reviewer decides next steps).
+
+## Previous continuation record — 2026-09-11 (historical)
 
 Latest verified/published application: `aa43e069edbff7843e9eb7532ff386b27be96a17`.
 Same task, A–E COMPLETE; F IN_PROGRESS; G/H NOT_STARTED. F now has pure adoption

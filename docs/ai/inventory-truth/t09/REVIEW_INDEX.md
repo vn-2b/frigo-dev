@@ -1,14 +1,29 @@
 # T09 review index
 
-## Canonical recovery review boundary
+## T09 freeze — review packet
 
-Repository **vn-2d/frigo-dev**; branch **hoplite/kos-2a686759**. Published application
-`aa43e069edbff7843e9eb7532ff386b27be96a17` has scoped independent review and fresh
-1,347 focused / 2,808 full tests, static/build/local migration gates PASS. Two P2
-recovery findings were corrected/retested. This is only F safety/adoption preparation;
-atomic adoption, functional adapters, scan intent replay and G/H remain incomplete.
-No application freeze or final independent-review readiness. CONTINUATION.md and
-F_ADOPTION_PLAN.md govern current work. Earlier owner names are historical provenance.
+Application freeze SHA: `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` (docs-only commit follows on the same branch;
+exact docs HEAD: `git rev-parse origin/hoplite/kydonia-2785bb72` after the next push).
+Branch: **hoplite/kydonia-2785bb72** — platform-verified successor of the read-only
+configured base `hoplite/kos-2a686759` at `aa44d2a2f80ea33fd4b328aba906660c0129051e`. Main anchor unchanged
+`d1b0673`; branch is 22 ahead / 0 behind main (recalculated at freeze).
+
+T09F = COMPLETE: atomic receipt-backed adoption (0028), empty-household evidence,
+writer admission fail-closed, functional adapters for manual/scan/shopping/cook.
+T09G = COMPLETE: barrier races for USE/USE, USE/DISCARD, USE/CORRECT, DISCARD/DISCARD,
+MOVE/MOVE, OPEN/OPEN, FEFO/FEFO, replay, duplicate event identity, isolation,
+cross-tenant IDs, adoption races, stale-legacy post-activation, property sweeps.
+T09H = COMPLETE: full re-audit (WRITER_MAP has no UNKNOWN), 28-migration chain
+verified (clean replay + populated upgrades + local D1 schema gate), full gates
+2,837 tests / 105 files PASS (155s), 38 isolated real local-D1 tests, lint, typecheck, build, 28-migration smoke and local D1 schema gate PASS, clean-checkout verification PASS (worktree at the exact remote SHA, frozen
+install, typecheck PASS, 716/716 focused T09 tests PASS; recorded in VERIFICATION.md).
+
+Scope boundaries: DEC-012 SAFE-DEFERRED; no main merge/push, no deployment, no
+remote D1, no PayOS, no T10. Reviewer decides readiness; this packet claims no merge.
+
+Reviewer hotspots: adoption executor atomicity and poststate fence; composition
+shared-CAS ordering; receipt replay boundaries; kg/l display-unit normalization;
+scan/shopping/cook completion-last ordering; empty adopted household fencing.
 
 ## Historical pre-transfer review packet
 

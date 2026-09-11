@@ -1,18 +1,28 @@
 # T09 writer map
 
-## Current recovery safety classification
+## T09F final classification (9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f)
 
-Canonical repository `vn-2d/frigo-dev`; writable successor `hoplite/kos-2a686759`.
-Manual CREATE/PATCH/DELETE, scan confirmation, Week shopping import and cooking
-now fence mapped authority inside the stock transaction. They remain compatible
-for unactivated legacy households and are **SAFE-DEFERRED for mapped households**
-with explicit 409 `INVENTORY_AUTHORITY_REQUIRED`. This is not functional adoption
-or completed migration. Scan/shopping additionally fence stock revision; shopping
-retains lease/replay behavior and server-scan recovery retains confirmation identity.
-Pure adoption planning has no live database writer. DEC-012 remains SAFE-DEFERRED.
-Backfill stays insert-only; fixture/query-constant classifications stay NOT LIVE.
-F_ADOPTION_PLAN.md records every remaining adapter requirement. The audit below
-describes the pre-integration source and is retained as historical discovery.
+Every inventory mutation path has exactly one final status; no UNKNOWN entries.
+Adopted households are served by the lot authority; unactivated households keep
+legacy behavior; the in-batch fence catches activation races.
+
+| Writer | Final status | Evidence |
+| --- | --- | --- |
+| Manual add POST /inventory | AUTHORITY_ADAPTER | Adopted households run native CREATE via receipt `manual-create:<id>`; replay/conflict preserved; empty adoption supported |
+| Manual edit PATCH /inventory/:id | AUTHORITY_ADAPTER | Composed CORRECT (+MOVE for storage) in one atomic commit; If-Match maps to lot legacyVersion; stale = 409 CONFLICT |
+| Manual delete DELETE /inventory/:id | AUTHORITY_ADAPTER | Full-quantity DISCARD (zero rows via explicit terminal CORRECT); receipt replay precedes preflight |
+| Adoption POST /inventory/adopt | AUTHORITY_ADAPTER | Explicit authorized one-shot activation; idempotent replay; 403 for non-members |
+| Scan confirm POST /scans/:id/confirm | AUTHORITY_ADAPTER | Adopted households compose per-item CREATE/CORRECT receipts with reviewed scan_items writes and the completion-last status flip |
+| Offline scan fallback (web service) | AUTHORITY_ADAPTER | Local drafts keep the manual adapter identity; server-scan response-loss retries the confirmation identity |
+| Shopping import POST /week/plans/:id/shopping/complete | AUTHORITY_ADAPTER | Adopted households compose CREATE/CORRECT receipts; lease/run/import-command bookkeeping and completion-last retained |
+| Cook POST /recipes/:id/cook/complete | AUTHORITY_ADAPTER | FEFO-ordered shared-snapshot USE composition; cooked_meals row + effects one batch; duplicate replay via cooked_meals/lot receipts |
+| Guest household transfer (DEC-012) | SAFE_DEFERRED | Explicit 409 INVENTORY_TRANSFER_DEFERRED; unchanged in F; byte-preservation tests intact |
+| T08 backfill (internal helper) | READ_ONLY_FOR_ADOPTED | Insert-only; refuses adopted households; remaining entry SAFE_DEFERRED for tooling-only use |
+| Raw SQL constants UPDATE/DELETE_INVENTORY_ITEM | REMOVED (no callers) | NOT_INVENTORY_MUTATION; no executable callers |
+| Seed, preview fixtures, query plans, test factories | NOT_INVENTORY_MUTATION | Isolated fixtures/tests, never live |
+| Web optimistic caches/outbox, scan queue/cleanup jobs, auth guest creation | NOT_INVENTORY_MUTATION | No direct stock mutation |
+
+Historical pre-integration audit below is retained as provenance.
 
 ## Original audit
 

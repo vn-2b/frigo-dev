@@ -1,5 +1,16 @@
 # T09 migration notes
 
+## T09F additive schema — 0028 (9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f)
+
+`0028_inventory_adoption_authority.sql` adds `inventory_adoption_receipts`
+(UNIQUE household_id, source version, byte-bounded result JSON) with immutable
+update/delete triggers. No applied migration changed; 0001–0027 diffs untouched.
+Clean replay (0001→0028) and populated upgrades (0022→…→0028, 0024→…→0028,
+0026→0027→0028) pass locally; the local D1 schema gate now requires 0028. First
+native commands on adopted households rewrite the legacy projection from the lot,
+normalizing kg/l display units to exact canonical milli-units; adoption itself
+preserves historical bytes. Remote D1 untouched.
+
 T08 lineage ends at `0023_inventory_truth_foundation.sql`. T09C adds
 `0024_inventory_lot_commands.sql`; no applied T08 migration was modified.
 D adds `0025_inventory_event_authority.sql` and `0026_inventory_event_poststate.sql`.

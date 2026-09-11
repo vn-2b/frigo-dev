@@ -1,5 +1,18 @@
 # T09 session log (append-only)
 
+## 2026-09-11 — GLM 5.3 flash completes T09F/T09G/T09H
+
+Started from the published safety checkpoint `aa43e069edbff7843e9eb7532ff386b27be96a17`
+on `hoplite/kos-2a686759` (verified: branch/HEAD/ancestry/21-ahead-0-behind). Read the
+full authority packet before editing. Implemented atomic adoption (0028 receipts +
+executor), writer admission for every inventory mutation, functional adapters for
+manual/scan/shopping/cook, and the G matrix. 2,837 tests / 105 files PASS (155s), 38 isolated real local-D1 tests, lint, typecheck, build, 28-migration smoke and local D1 schema gate PASS.
+Publication to the configured base was refused by the platform (read-only base);
+the thread's own successor branch **hoplite/kydonia-2785bb72** published the
+application checkpoint `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` and fetched equality PASS — the same successor
+pattern this transfer authority documents. Docs-only freeze commit follows; the
+docs SHA is recorded in REVIEW_INDEX/CONTINUATION, never self-contained.
+
 ## 2026-09-11 — canonical transfer recovery and F safety checkpoint
 
 Verified `vn-2d/frigo-dev`, fetched all enumerated branches/tag, proved consecutive

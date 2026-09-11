@@ -1,5 +1,14 @@
 # T09 continuation — 2026-09-11
 
+## Current authority after T09F/G/H — 2026-09-11
+
+T09F = COMPLETE, T09G = COMPLETE, T09H = COMPLETE. Application freeze `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f`
+published/fetched with local/remote equality on **hoplite/kydonia-2785bb72**, the
+platform-verified successor branched at `aa44d2a2f80ea33fd4b328aba906660c0129051e` (the configured base
+`hoplite/kos-2a686759` is read-only and refuses publication; lineage and ancestry
+are unchanged). 2,837 tests / 105 files PASS (155s), 38 isolated real local-D1 tests, lint, typecheck, build, 28-migration smoke and local D1 schema gate PASS. Exact next action: external independent review decides
+readiness; do not merge to main, deploy, or start T10 from this packet.
+
 ## Current transferred-repository authority
 
 Published safety/preparation application: `aa43e069edbff7843e9eb7532ff386b27be96a17`.

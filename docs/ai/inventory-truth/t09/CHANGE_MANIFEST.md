@@ -1,5 +1,38 @@
 # T09 change manifest
 
+## T09F/T09G/T09H application 9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f
+
+- `migrations/0028_inventory_adoption_authority.sql`: additive
+  `inventory_adoption_receipts` (UNIQUE household, byte-bounded receipt) with
+  immutable update/delete triggers; no 0023–0027 change.
+- `packages/db/src/inventory-adoption-executor.ts`: atomic receipt-backed adoption
+  — independent snapshot/authority read, pure plan validation, one fenced batch
+  (CAS bump, receipt, missing locations, missing snapshots, mapping/terminal
+  updates, poststate fence), projection-compatibility preflight, replay/conflict.
+- `packages/db/src/inventory-lot-commands.ts`: snapshot gains activation evidence
+  and household timestamps; executor admission requires receipt-backed adoption for
+  LEGACY_BACKFILL provenance; requireParity accepts exact kg/l display aliases and
+  adoption-evidenced provenance; prepare/compose/recover/execute split for single
+  and FEFO commands; shared-snapshot composition (one household CAS, evolving lots);
+  readAdoptedLotSnapshot + replayLotCommandReceipt adapter boundaries.
+- `packages/db/src/inventory-writer-fence.ts`: authority-active predicate now
+  includes adoption receipts (empty adopted households fence legacy writers);
+  readInventoryAuthorityMode.
+- `packages/db/src/inventory-truth.ts`: backfill refuses adopted households.
+- `src/worker/utils/inventory-authority.ts`: route-layer failure/expiry mapping.
+- `routes/inventory.ts`: POST /inventory/adopt (explicit authorized adoption),
+  manual create/edit(composed CORRECT+MOVE)/discard adapters.
+- `routes/scans.ts`: adopted confirmation composes CREATE/CORRECT commands with
+  reviewed draft writes and the completion-last status flip in one batch.
+- `routes/week.ts`: adopted shopping import composes lot commands with
+  lease-guarded run/import bookkeeping, durable command completion last.
+- `routes/recipes.ts`: adopted cooking plans FEFO-ordered multi-lot USE commands
+  against one shared snapshot with the cooked_meals row in one atomic batch.
+- New tests: `inventory-adoption.test.ts` (19), `inventory-concurrency.test.ts` (9);
+  rewritten `inventory-writer-fence.test.ts` (14) for the adapter contract;
+  migration-count/upgrade fixtures updated to the 28-migration chain;
+  schema gate requires 0028.
+
 ## Transferred-repository F safety application aa43e06 (partial F)
 
 - `packages/domain/src/inventory-adoption.ts`: pure bounded adoption preparation;

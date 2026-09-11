@@ -1,5 +1,20 @@
 # T09 test matrix
 
+## COMPLETE — 2026-09-11 (9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f)
+
+Fresh full gate: **2,837 tests / 105 files PASS** (155.1s), including:
+- F adoption executor + adapters: `tests/integration/inventory-adoption.test.ts`
+  (19) — atomic activation, empty-household evidence, terminal evidence, replay/
+  conflict, stale-race rollback, single-winner adoption, G12 stale legacy,
+  tenancy, adapter behavior for manual/scan/shopping/cook.
+- G matrix: `tests/integration/inventory-concurrency.test.ts` (9) — barrier races
+  G1–G12 subsets + property sweeps.
+- Rewritten `inventory-writer-fence.test.ts` (14) — authority-served writers and
+  the fail-closed unmapped-row refusal.
+- Existing native/FEFO/event-authority/schema suites unchanged and passing;
+  migration-count/upgrade fixtures updated to the 28-migration chain; real local
+  D1 worker suite 38 PASS. lint/typecheck/build/migration smoke/schema gate PASS.
+
 F safety: 25 new Hono/SQLite guest-transfer cases plus one client no-rebind case;
 combined auth/guest/outbox suite **143 / 5 files PASS**. Existing crypto assertions
 remain unchanged, renamed to avoid claiming that valid guest tokens authorize

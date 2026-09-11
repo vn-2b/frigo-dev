@@ -1,5 +1,18 @@
 # T09F adoption and writer integration — implementation plan
 
+## IMPLEMENTED — 2026-09-11 (9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f)
+
+The adoption authority is live: `executeInventoryAdoption` owns the snapshot read,
+validates authority/snapshot completeness independently, executes the pure plan in
+ONE batch (household CAS bump, UNIQUE receipt, missing locations, missing snapshots,
+mapping/terminal evidence, poststate fence) and replays response-loss retries from
+the receipt. Empty households receive durable explicit activation evidence. Mapped
+LEGACY_BACKFILL provenance is accepted only through that evidence. All required
+proofs pass: adoption atomicity/failure rollback, mapping/provenance/display-unit
+round trips, terminal evidence, metadata fingerprint conflicts, replay after later
+stock changes, activation/writer races, G11/G12, guest byte preservation and all
+writer-map classifications with executable evidence. F = COMPLETE.
+
 ## Current recovery increment — 2026-09-11
 
 Canonical repository `vn-2d/frigo-dev`, successor `hoplite/kos-2a686759` directly

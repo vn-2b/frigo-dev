@@ -1,5 +1,29 @@
 # Frigo AI Handoff — isolated T09 development
 
+## T09 F/G/H complete handoff — 2026-09-11
+
+Program: Inventory Truth Layer
+Task: T09 — unchanged continuation
+Phase: A–H COMPLETE (F = COMPLETE, G = COMPLETE, H = COMPLETE freeze/evidence)
+Status: AWAITING_EXTERNAL_REVIEW
+Canonical Repository: vn-2d/frigo-dev (workspace remote vn-2e/frigo-dev)
+T09D Frozen Base Branch/HEAD: hoplite/euhesperides-d77023a5 / 811f7e8463303e010199741d66f88ab8a817212d
+Read-only configured base: hoplite/kos-2a686759 at aa44d2a2f80ea33fd4b328aba906660c0129051e
+Published Branch: hoplite/kydonia-2785bb72 (platform-verified successor, same lineage)
+Application Freeze SHA: 9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f (local == remote verified)
+Docs SHA: recorded in REVIEW_INDEX after the docs-only commit that follows
+Main anchor: d1b06732f8a80db4e77986df31ff28d9f04641fa (branch 22 ahead / 0 behind)
+Fresh Checks at the application freeze: 2,837 tests / 105 files PASS; 38 isolated
+real local-D1 tests PASS; lint/typecheck/build PASS; 28-migration smoke PASS;
+local D1 schema gate PASS (0028 required); clean-checkout gate recorded in
+inventory-truth/t09/VERIFICATION.md.
+What changed since the last handoff: atomic receipt-backed adoption with
+empty-household evidence (0028); every inventory writer either serves adopted
+households through the lot authority or fails closed; G concurrency/tenancy matrix;
+final writer map without UNKNOWN. DEC-012 remains SAFE-DEFERRED.
+Next action: external independent review decides readiness. Do not merge to main,
+deploy, mutate remote D1, touch PayOS, or start T10 from this handoff.
+
 ## Current continuation handoff — 2026-09-11
 
 Program: Inventory Truth Layer

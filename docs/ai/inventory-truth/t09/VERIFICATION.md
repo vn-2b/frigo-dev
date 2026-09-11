@@ -1,5 +1,47 @@
 # T09 verification (append-only evidence)
 
+## Clean-checkout verification — 2026-09-11
+
+Separate worktree created from the exact published remote SHA `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f`
+(origin/hoplite/kydonia-2785bb72); `pnpm install --frozen-lockfile` with no lockfile
+change. Clean typecheck PASS (both projects). Clean focused T09 gate: **716/716
+tests / 10 files PASS** (adoption, concurrency, writer fence, FEFO, native commands,
+lot authority, event authority, real local D1, truth/schema). Remote SHA == local
+clean SHA equality: PASS. The result does not depend on dirty local state.
+
+## T09F/T09G/T09H final verification — 2026-09-11
+
+Application freeze: `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f`, committed and published on **hoplite/kydonia-2785bb72**
+in canonical `vn-2d/frigo-dev` (platform refused publication to the configured base
+`hoplite/kos-2a686759`, which stays read-only at `aa44d2a2f80ea33fd4b328aba906660c0129051e`); fetched equality
+local == remote PASS. Branch ahead of main `d1b0673` by 22, behind 0 (recalculated).
+
+Implemented in this checkpoint: atomic receipt-backed adoption (executor + 0028),
+empty-household activation evidence, fail-closed writer admission for every
+inventory mutation, functional adapters for manual/scan/shopping/cook writers on
+adopted households, composed edit+move, FEFO-ordered cook allocation, and the G
+concurrency/tenancy matrix with property sweeps.
+
+Executed fresh gates (this workspace, Node 24/pnpm 10):
+- `pnpm test`: **2,837/2,837 passed, 105 files PASS**, 155.11s; 0 failed, 0 skipped.
+- `pnpm exec vitest run tests/integration/inventory-lot-d1.test.mjs`: 38/38 PASS
+  (isolated real local D1 via wrangler unstable_dev; full schema replay).
+- `pnpm lint`: PASS. `pnpm typecheck`: PASS (both projects).
+- `pnpm build`: PASS (vite + worker tsc).
+- `pnpm check:migrations`: PASS — 28-migration replay smoke.
+- `pnpm schema:check:local`: PASS — required migrations 0001–0028, inventory truth,
+  lot command/event authority guards, foreign keys valid (after clean local
+  `wrangler d1 migrations apply`; remote D1 never touched).
+
+Known limitations (explicit): adoption receipts are a separate versioned table, so
+adoption effects do not write inventory_events rows (receipt carries the full
+before/after evidence instead); first native command on a legacy kg/l row rewrites
+the projection to canonical units (quantity preserved exactly); cook uses FEFO-ordered
+per-lot USE receipts rather than the single-ingredient FEFO command because cook
+deductions may be name-keyed and multi-ingredient; PATCH replay after a committed
+edit returns 409 CONFLICT at the version preflight (legacy contract). DEC-012 guest
+transfer remains SAFE-DEFERRED.
+
 ## Transferred-repository F recovery checkpoint — 2026-09-11
 
 Application: `aa43e069edbff7843e9eb7532ff386b27be96a17`, published/fetched on

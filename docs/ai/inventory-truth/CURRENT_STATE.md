@@ -1,5 +1,13 @@
 # Inventory Truth current state
 
+## 2026-09-11 — T09F/T09G/T09H complete
+
+Application freeze `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` on `hoplite/kydonia-2785bb72` (successor of read-only
+base `hoplite/kos-2a686759` at `aa44d2a2f80ea33fd4b328aba906660c0129051e`); fetched equality PASS. Atomic
+receipt-backed adoption (0028) with empty-household evidence; all inventory writers
+serve adopted households via the lot authority or fail closed; G concurrency and
+tenancy matrix PASS. Full gates at this checkpoint: **2,837 tests / 105 files PASS** (155s), including the new 19-test adoption suite, 9-test G concurrency matrix and rewritten 14-test writer-fence suite; 38 isolated real local-D1 tests PASS; lint PASS; typecheck PASS; build PASS; 28-migration smoke PASS; local D1 schema gate PASS (0028 required).
+
 ## Canonical recovery checkpoint
 
 Repository **vn-2d/frigo-dev**, writable successor **hoplite/kos-2a686759**.

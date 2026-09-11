@@ -1,6 +1,15 @@
 # Frigo task board
 
-## T09 continuation — 2026-09-11
+## T09 F/G/H complete — 2026-09-11
+
+T09F = COMPLETE; T09G = COMPLETE; T09H = COMPLETE (freeze/evidence, no main merge).
+Application freeze `9bf9ac0fe7b5e0d39615f39ae5cc30f84569af2f` published/fetched on **hoplite/kydonia-2785bb72**
+(successor of the read-only base `hoplite/kos-2a686759` at `aa44d2a2f80ea33fd4b328aba906660c0129051e`);
+local/remote equality PASS. Full gates at this checkpoint: **2,837 tests / 105 files PASS** (155s), including the new 19-test adoption suite, 9-test G concurrency matrix and rewritten 14-test writer-fence suite; 38 isolated real local-D1 tests PASS; lint PASS; typecheck PASS; build PASS; 28-migration smoke PASS; local D1 schema gate PASS (0028 required).
+All writers classified in `inventory-truth/t09/WRITER_MAP.md` (no UNKNOWN). DEC-012
+intact. Next decision belongs to the external review; do not start T10 from here.
+
+## Previous board — 2026-09-11 (historical)
 
 Published F safety/preparation checkpoint: `aa43e069edbff7843e9eb7532ff386b27be96a17`.
 Pure adoption planner and writer/retry safety are verified, not full F completion.
