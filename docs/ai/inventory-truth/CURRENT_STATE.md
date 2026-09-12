@@ -1,6 +1,14 @@
 # Inventory Truth current state
 
-## Current authoritative T11 read authority hardening — 2026-09-12
+## Current authoritative T12 closed loop — 2026-09-12: TRAIN COMPLETE
+
+**T12 application freeze `22f675d1cca76d05c93ebb2ed40bbaea11a72238`**: the Inventory Truth loop is closed —
+permanent closed-loop suite, final authority/writer maps (UNKNOWN = 0),
+agreement-gated display aliases. 3,072 full/117; real D1 62/62; all gates PASS.
+No migration. Main NOT merged; production NOT deployed; T12 final — no
+post-T12 task started.
+
+## Historical T12 baseline — T11 hardening (superseded)
 
 **New T11 application freeze `c15c9a81fc4367b3506a7e2693798ebe1424b0a9`** (supersedes `657201f`). Real-D1 T11
 proof (11 cases, 62 real D1 total), adopted-but-empty regression on three

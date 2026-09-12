@@ -1,6 +1,15 @@
 # Frigo task board
 
-## Current authoritative T11 board — read authority hardening, 2026-09-12
+## Current authoritative board — T12 closed loop, 2026-09-12
+
+- T12 CLOSED-LOOP COMPLETE at freeze `22f675d1cca76d05c93ebb2ed40bbaea11a72238`: closed-loop suite (9), authority
+  maps (UNKNOWN readers/writers = 0), alias tightening. 3,072 full/117 files;
+  62 real D1; all gates PASS. **T08–T12 release train COMPLETE.**
+- Remaining P0/P1: NONE. P3: bounded legacy compatibility for non-adopted
+  households (removal conditions documented in FINAL_AUTHORITY_MAP.md).
+- Main NOT merged; production NOT deployed; PayOS untouched; no post-T12 task.
+
+## Historical T11 board — read authority hardening (superseded by T12)
 
 - Findings A–F closed (real-D1 proof, adopted-empty, MOVE/DISCARD/FEFO races,
   activeCount, display aliases, freshness fail-closed) → VERIFIED from a clean

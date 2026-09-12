@@ -1,6 +1,13 @@
 # Inventory Truth task board
 
-## Current authoritative T11 read authority hardening — 2026-09-12: COMPLETE
+## Current authoritative T12 closed loop — 2026-09-12: COMPLETE (TRAIN FINAL)
+
+T12 closed the loop at freeze **`22f675d1cca76d05c93ebb2ed40bbaea11a72238`**: 9-test closed-loop suite; authority +
+writer maps with UNKNOWN readers/writers = 0; alias tightening. 3,072 full/117;
+62 real D1; all gates PASS. P0/P1: NONE. **T08–T12 train COMPLETE** — main
+integration is separate and NOT performed.
+
+## Historical T11 board (superseded by T12)
 
 Findings A–F closed at new freeze **`c15c9a81fc4367b3506a7e2693798ebe1424b0a9`** (`657201f` superseded): real D1
 62/62 incl. 11 T11 cases; adopted-empty proven; concurrency matrix

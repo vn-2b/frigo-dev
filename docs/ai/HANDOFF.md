@@ -1,6 +1,31 @@
 # Frigo AI Handoff — isolated T09 development
 
-## Current authoritative handoff — T11 read authority hardening, 2026-09-12
+## Current authoritative handoff — T12 closed loop, 2026-09-12
+
+Program: Inventory Truth Layer — **T08–T12 release train COMPLETE**
+Task: T12 — closed-loop inventory integration & hardening (final train task)
+Status: T12_COMPLETE; train ready for separate main integration
+Repository: vb-2f/frigo-dev (repository ID 1364064929)
+Branch: hoplite/himera-6d3eda84-t10-observation-reconciliation-t11-inventory-read-authority-t12-inventory-closed-loop
+Base: T11 docs HEAD 847b0363… via train merge 14c02f8 (main d1b0673 untouched)
+T12 application freeze: 22f675d1cca76d05c93ebb2ed40bbaea11a72238
+Docs HEAD: docs-only commit on top; exact SHA in the final report
+Closed loop: observation → reconciliation → T09 → lots → T11 → consumers,
+proven by tests/integration/inventory-closed-loop.test.ts (9 tests: E2E
+reconciliation exactly-once + replay + IDEMPOTENCY_CONFLICT; DISMISS inert;
+recipe 500g-vs-5kg-tamper then 300g after USE; planner regeneration; shopping
+idempotent retry; atomic FEFO poststate; tamper-proof notifications;
+reconciliation-vs-manual single-winner race; drift matrix).
+Display aliases: agreement-gated (tampered projection → canonical presentation).
+Authority maps: docs/ai/inventory-truth/t12/FINAL_AUTHORITY_MAP.md and
+FINAL_WRITER_MAP.md — UNKNOWN production readers/writers = 0.
+Verification: baseline 3,063/116 · 62 real D1 → freeze 3,072/117 · 62 real D1;
+lint/typecheck/build/30-migration smoke/schema PASS; clean detached exact-SHA
+checkout repeats all with EMPTY status. No migration. Remaining P0/P1: NONE.
+Next: independent review of the train; main integration happens separately.
+Do NOT deploy, run remote D1, touch PayOS, or start a post-T12 task.
+
+## Historical handoff — T11 hardening (superseded by T12)
 
 Program: Inventory Truth Layer
 Task: T11 — final targeted hardening fix (findings A–F)

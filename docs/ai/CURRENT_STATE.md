@@ -1,6 +1,21 @@
 # Frigo current state — isolated T09 development
 
-## Current authoritative state — T11 read authority hardening, 2026-09-12
+## Current authoritative state — T12 closed loop COMPLETE, 2026-09-12
+
+**T12 application freeze: `22f675d1cca76d05c93ebb2ed40bbaea11a72238`** — `feat(t12): close the inventory truth
+loop` — the final Inventory Truth release-train task. The loop
+evidence → observation → reconciliation → T09 command authority →
+inventory_lots → T11 read authority → consumers is closed and proven by a
+permanent 9-test closed-loop suite (E2E reconciliation exactly-once, DISMISS
+inert, recipe/planner/shopping/cook/notification loops, single-winner races,
+drift matrix). Display aliases tightened: tampered projection rows drop to
+canonical presentation. FINAL_AUTHORITY_MAP/FINAL_WRITER_MAP: UNKNOWN
+production readers/writers = 0. Gates: full 3,072/3,072 across 117 files; real
+D1 62/62; all static/30-migration/schema gates PASS. No migration; no new
+writers. Main NOT merged; production NOT deployed; remote D1 NOT touched;
+PayOS untouched; **release train T08–T12 COMPLETE**.
+
+## Historical T12 baseline state — T11 hardening (superseded by T12)
 
 **New T11 application freeze: `c15c9a81fc4367b3506a7e2693798ebe1424b0a9`** — `fix(t11): complete read
 authority runtime hardening` — published/fetched (direct commit publication,
