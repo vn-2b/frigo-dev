@@ -1,7 +1,30 @@
 # T12 test matrix — closed loop (2026-09-12)
 
-New permanent suites: `tests/integration/inventory-closed-loop.test.ts` (9 tests)
-plus the retained T09/T10/T11 suites. All rows PASS at the T12 freeze.
+Permanent suites at freeze `d156001` (`22f675d` historical):
+`inventory-closed-loop.test.ts` (9), `inventory-closed-loop-routes.test.ts` (5,
+real Hono routes), `inventory-closed-loop-d1.test.mjs` (8, real workerd/D1),
+plus the retained T09/T10/T11 suites. All rows PASS.
+
+## Runtime-verification rows (new freeze)
+
+| Requirement | Test | Result |
+| --- | --- | --- |
+| Real D1: observation → accepted CORRECT+MOVE → T09 → T11; exactly once; replay; altered-key conflict | real D1 A | PASS |
+| Real D1: DISMISS inert (lot 10, no stock command, read 10, observation RECONCILED) | real D1 B | PASS |
+| Real D1: read → USE 200 g → read, no KV | real D1 C | PASS |
+| Real D1: FEFO multi-lot current/historical views | real D1 D | PASS |
+| Real D1: projection drift 8 vs 100 → read 8, QUANTITY_DRIFT, funnel 8 | real D1 E | PASS |
+| Real D1: response-loss retry, no duplicates; altered key conflict | real D1 F | PASS |
+| Real D1: cross-tenant read/reconcile/mutate/legacy-resolve rejected | real D1 G | PASS |
+| Real D1: reconciliation vs manual CORRECT → explicit STALE_SNAPSHOT loser, nothing committed | real D1 H | PASS |
+| Route: adopted shopping import creates once, replays, conflicts, no legacy batch, no KV | routes (shopping) | PASS |
+| Route: cross-tenant shopping import → 404, no mutation | routes (shopping) | PASS |
+| Route: adopted cook FEFO through T09, cooked receipt, reread, replay, altered-key conflict | routes (cook) | PASS |
+| Route: insufficient authority stock fails closed, no partial consumption | routes (cook) | PASS |
+| Route: cross-tenant cook cannot consume A's lots | routes (cook) | PASS |
+| Reconciliation vs manual race classified STALE_SNAPSHOT only (no PERSISTENCE_FAILED); no receipt/commands/events/projection damage | closed-loop race (tightened) | PASS |
+
+Original rows (first freeze, retained and re-run):
 
 | Requirement (packet) | Test | Result |
 | --- | --- | --- |

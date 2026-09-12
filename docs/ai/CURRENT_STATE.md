@@ -1,6 +1,24 @@
 # Frigo current state — isolated T09 development
 
-## Current authoritative state — T12 closed loop COMPLETE, 2026-09-12
+## Current authoritative state — T12 closed-loop runtime verification, 2026-09-12
+
+**New T12 application freeze: `d15600186c3e73faba011eb690ac6cd70e8d3d2d`** — `fix(t12): complete
+closed-loop runtime verification` — published/fetched (direct publication, no
+PR tooling), local == remote == clean-checkout SHA; `22f675d` superseded.
+Closed the independent-review gaps: P1 real workerd/D1 closed-loop suite (8
+cases; real D1 62 → 70), P2 route-level proof through the real Hono handlers
+(`POST /week/plans/:id/shopping/complete`, `POST /recipes/:id/cook/complete`,
+`GET /inventory`; 5 tests, stale KV injected), P2 reconciliation-vs-manual race
+now requires the explicit `STALE_SNAPSHOT` loser (no `PERSISTENCE_FAILED`).
+Route fix surfaced by the proof: adopted cook replays its durable receipt before
+re-planning (response-loss retry → replay, not INSUFFICIENT_INVENTORY). Gates:
+full 3,085/3,085 across 119 files; T09 654; T10 98; T11 39; T12 22; real D1
+70/70; lint/typecheck/build/30-migration smoke/schema/diff PASS — repeated from
+the clean detached exact-SHA checkout with empty status. UNKNOWN readers/writers
+= 0. No migration. Main NOT merged; production NOT deployed; remote D1 NOT
+touched; PayOS untouched; Final Release Integration Review NOT started.
+
+## Historical T12 state — first freeze 22f675d (superseded)
 
 **T12 application freeze: `22f675d1cca76d05c93ebb2ed40bbaea11a72238`** — `feat(t12): close the inventory truth
 loop` — the final Inventory Truth release-train task. The loop

@@ -1,7 +1,9 @@
 # T12 final authority map — one closed system (2026-09-12)
 
 Final classification of every production inventory path after the T12
-closed-loop task. Base: T11 freeze `c15c9a8` + T12 closed-loop integration.
+closed-loop task. Re-audited at the runtime-verification freeze `d156001` (fresh
+grep: same fenced reader/writer set; UNKNOWN = 0; route-level and real-D1 proofs
+added for the adopted shopping, cook and GET /inventory funnels). Base: T11 freeze `c15c9a8` + T12 closed-loop integration.
 Architecture: external evidence → observation (T10) → reconciliation (T10) →
 T09 command authority → `inventory_lots` → T11 read authority → product
 consumers. **UNKNOWN production readers = 0. UNKNOWN production writers = 0.**

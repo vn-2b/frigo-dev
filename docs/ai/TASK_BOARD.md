@@ -1,6 +1,16 @@
 # Frigo task board
 
-## Current authoritative board — T12 closed loop, 2026-09-12
+## Current authoritative board — T12 runtime verification, 2026-09-12
+
+- Review findings P1/P2 closed at new freeze `d15600186c3e73faba011eb690ac6cd70e8d3d2d` (`22f675d` superseded):
+  real-D1 T12 suite (8), route-level suite (5), explicit STALE_SNAPSHOT race
+  classification, adopted-cook replay-first fix.
+- 3,085 full/119 files; 70 real D1; all gates PASS from clean exact-SHA checkout.
+- No migration; no new writers; PayOS untouched; PR tooling not used.
+- Remaining P0/P1: NONE. Main NOT merged; production NOT deployed; Final
+  Release Integration Review NOT started.
+
+## Historical board — first T12 freeze (superseded)
 
 - T12 CLOSED-LOOP COMPLETE at freeze `22f675d1cca76d05c93ebb2ed40bbaea11a72238`: closed-loop suite (9), authority
   maps (UNKNOWN readers/writers = 0), alias tightening. 3,072 full/117 files;

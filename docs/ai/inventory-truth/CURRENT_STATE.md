@@ -1,6 +1,15 @@
 # Inventory Truth current state
 
-## Current authoritative T12 closed loop — 2026-09-12: TRAIN COMPLETE
+## Current authoritative T12 runtime verification — 2026-09-12
+
+**T12 application freeze `d15600186c3e73faba011eb690ac6cd70e8d3d2d`** (supersedes `22f675d`): real-D1 closed-loop
+suite (8; real D1 70/70), route-level suite (5) through the real shopping/cook/
+inventory handlers, explicit STALE_SNAPSHOT race classification, adopted-cook
+replay-first fix. 3,085 full/119; all gates PASS from the clean exact-SHA
+checkout. No migration. Main NOT merged; production NOT deployed; Final Release
+Integration Review NOT started.
+
+## Historical T12 closed loop — first freeze (superseded)
 
 **T12 application freeze `22f675d1cca76d05c93ebb2ed40bbaea11a72238`**: the Inventory Truth loop is closed —
 permanent closed-loop suite, final authority/writer maps (UNKNOWN = 0),

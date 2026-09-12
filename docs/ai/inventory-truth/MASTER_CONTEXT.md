@@ -1,6 +1,7 @@
 # Inventory Truth Layer — repository authority
 
-Current checkpoint: **T12 closed loop COMPLETE — T08–T12 release train final** — application freeze `22f675d1cca76d05c93ebb2ed40bbaea11a72238` (closed-loop suite, authority/writer maps UNKNOWN=0, agreement-gated aliases; 3,072 full/117; real D1 62/62) —
+Current checkpoint: **T12 closed loop COMPLETE + runtime-verified** — application freeze `d15600186c3e73faba011eb690ac6cd70e8d3d2d` (real D1 70/70 incl. 8 T12 cases; route-level shopping/cook/GET proofs; STALE_SNAPSHOT race classification; adopted-cook replay fix; 3,085 full/119) —
+Prior checkpoint: **T12 closed loop COMPLETE — T08–T12 release train final** — application freeze `22f675d1cca76d05c93ebb2ed40bbaea11a72238` (closed-loop suite, authority/writer maps UNKNOWN=0, agreement-gated aliases; 3,072 full/117; real D1 62/62) —
 Prior checkpoint: **T11 read authority COMPLETE (hardened)** — application freeze `c15c9a81fc4367b3506a7e2693798ebe1424b0a9` (real D1 62/62 incl. 11 T11 cases; adopted-empty, MOVE/DISCARD/FEFO races, activeCount, kg/l aliases, fail-closed freshness) —
 First T11 checkpoint (superseded): **T11 read authority COMPLETE** —
 `hoplite/himera-6d3eda84-t10-observation-reconciliation-t11-inventory-read-authority`,

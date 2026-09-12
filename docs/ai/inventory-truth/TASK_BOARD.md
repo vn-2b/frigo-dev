@@ -1,6 +1,13 @@
 # Inventory Truth task board
 
-## Current authoritative T12 closed loop — 2026-09-12: COMPLETE (TRAIN FINAL)
+## Current authoritative T12 runtime verification — 2026-09-12: COMPLETE
+
+Review P1/P2 closed at freeze **`d15600186c3e73faba011eb690ac6cd70e8d3d2d`** (`22f675d` superseded): real D1 70/70
+incl. 8 T12 cases; route-level proofs for shopping/cook/GET /inventory; race
+loser = STALE_SNAPSHOT only; adopted-cook replay fix. 3,085 full/119; all gates
+PASS. P0/P1: NONE. Main NOT merged; Final Release Integration Review NOT started.
+
+## Historical T12 board — first freeze (superseded)
 
 T12 closed the loop at freeze **`22f675d1cca76d05c93ebb2ed40bbaea11a72238`**: 9-test closed-loop suite; authority +
 writer maps with UNKNOWN readers/writers = 0; alias tightening. 3,072 full/117;

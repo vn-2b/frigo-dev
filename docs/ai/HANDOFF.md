@@ -1,6 +1,34 @@
 # Frigo AI Handoff — isolated T09 development
 
-## Current authoritative handoff — T12 closed loop, 2026-09-12
+## Current authoritative handoff — T12 runtime verification fix, 2026-09-12
+
+Program: Inventory Truth Layer — T08–T12 release train
+Task: T12 final targeted hardening fix (review findings P1 + 2×P2)
+Status: T12_COMPLETE (verified); awaiting separate Final Release Integration Review
+Repository: vb-2f/frigo-dev (repository ID 1364064929)
+Branch: hoplite/himera-6d3eda84-t10-observation-reconciliation-t11-inventory-read-authority-t12-inventory-closed-loop
+Starting docs HEAD: 24668c20dfaac094aff0f84e0d59c1f0a333fbf8
+Previous application freeze (superseded): 22f675d1cca76d05c93ebb2ed40bbaea11a72238
+NEW T12 application freeze: d15600186c3e73faba011eb690ac6cd70e8d3d2d
+Docs HEAD: docs-only commit on top; exact SHA in the final report
+P1: tests/integration/inventory-closed-loop-d1.test.mjs — 8 real workerd/D1 cases
+    (A accept exactly-once/replay/conflict, B DISMISS, C read→USE→read, D FEFO,
+    E drift, F retry, G tenancy, H reconciliation-vs-manual STALE_SNAPSHOT).
+    Real D1 62 → 70.
+P2: tests/integration/inventory-closed-loop-routes.test.ts — real Hono routes
+    POST /week/plans/:id/shopping/complete, POST /recipes/:id/cook/complete,
+    GET /inventory (adopted; stale KV injected; replay/conflict/tenancy/no legacy batch).
+P2: race regression requires LotCommandError STALE_SNAPSHOT; no receipt/commands/
+    events/projection damage for the loser (integration + real D1).
+Route fix: completeAdoptedCooking replays durable cooked_meals receipt before
+    re-planning (response-loss retry regression found by the route proof).
+Verification: baseline 3,072/117 · 62 real D1 → freeze 3,085/119 · 70 real D1;
+    all gates PASS; clean detached exact-SHA checkout with EMPTY status. Migrations 30.
+UNKNOWN production readers/writers = 0. Remaining P0/P1: NONE.
+Next: Final Release Integration Review (separate; NOT started here). Do NOT deploy,
+    run remote D1, touch PayOS, or merge main from this thread.
+
+## Historical handoff — first T12 freeze (superseded)
 
 Program: Inventory Truth Layer — **T08–T12 release train COMPLETE**
 Task: T12 — closed-loop inventory integration & hardening (final train task)

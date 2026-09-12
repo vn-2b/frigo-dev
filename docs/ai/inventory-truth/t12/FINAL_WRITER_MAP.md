@@ -9,9 +9,9 @@ All adopted-household mutations resolve to T09 command authority; no new
 | `POST /inventory` (adopted) | `CREATE` | adopted manual create adapter → `executeInventoryLotCommand` | client-generated `body.id` (`create-*` client key) | lot create (no prior version) | T09 event per command | same-batch mirror | household-scoped SQL + id ownership guard | exact replay → replayed receipt; altered key → `IDEMPOTENCY_CONFLICT` |
 | `PATCH /inventory/:id` (adopted) | `CORRECT`/`MOVE` | adopted manual adapter (T09) | client request key | `expectedVersion` from client read | T09 events | same-batch mirror | household scope + lot scope | replay/conflict per T09 receipt semantics |
 | `DELETE /inventory/:id` (adopted) | `DISCARD` | adopted manual adapter | client request key | `expectedVersion` | T09 event | same-batch mirror | household scope | replay/conflict per T09 |
-| Cooking completion (adopted) | `USE`/FEFO | `completeAdoptedCooking` | cook action id | `expectedVersion` per consumed lot | T09 events | same-batch mirror | household scope | response-loss retry replays; never double-consumes |
+| Cooking completion (adopted) | `USE`/FEFO | `completeAdoptedCooking` | `Idempotency-Key` → stable `cookId` | `expectedVersion` per consumed lot | T09 events | same-batch mirror | household scope | replay-first: durable `cooked_meals` receipt replays before re-planning (fixed at `d156001`); altered key → `IDEMPOTENCY_CONFLICT`; proven route-level |
 | Scan confirm (adopted) | `CREATE`/`USE`/`DISCARD` per confirmation | `confirmAdoptedScan` (re-derives from `readAdoptedLotSnapshot`) | scan/confirmation id | snapshot versions | T09 events | same-batch mirror | household scope | duplicate scan same key → replay; changed payload → `IDEMPOTENCY_CONFLICT` |
-| Shopping import (adopted) | `CREATE` (+leases) | `completeAdoptedShoppingImport` | import/receipt id | create semantics | T09 events | same-batch mirror | household scope | idempotent retry never double-adds (closed-loop test); lease/race protections intact |
+| Shopping import (adopted) | `CREATE` (+leases) | `completeAdoptedShoppingImport` | `Idempotency-Key` → `shopping_import_commands` claim | create semantics + lease | T09 events | same-batch mirror | household scope + plan ownership (404 cross-tenant) | claim replay / conflict / in-progress; proven route-level at `d156001` |
 | T10 accepted reconciliation | `CORRECT`/`MOVE` (composed ≤1+≤1) | `confirmReconciliationDecision` → `composeInventoryLotCommands` | `decisionKey` (`#CORRECT`/`#MOVE` suffixed) | `expectedVersion` read at compose; claim fence on observation | T09 command events + decision receipt (exactly once) | same-batch mirror | household scope + observation scope | exact replay → replayed; altered proposals same key → `IDEMPOTENCY_CONFLICT`; concurrent loser → claim-guard rollback (closed-loop E2E test) |
 | Adoption execution | backfill/mapping | `executeInventoryAdoption` (explicit, controlled) | adoption request | snapshot `inventory_version` | adoption receipt | initial projection | household scope | receipted; re-adoption replays |
 | Legacy writers (non-adopted) | legacy add/edit/delete | `runLegacyInventoryBatch` fenced | client id / request | `inventory_items.version` CAS | legacy events | direct (non-adopted only) | household scope + fence abort under native authority | unchanged legacy semantics |
@@ -26,6 +26,7 @@ All adopted-household mutations resolve to T09 command authority; no new
 - Deterministic race coverage (barriers, no sleeps): READ vs CORRECT/MOVE/USE/
   DISCARD/FEFO/T10 (T11 suites + closed-loop suite), reconciliation vs
   reconciliation and vs DISMISS (T10 fence), reconciliation vs manual CORRECT
-  (T12 closed-loop), scan/lease races (T09 writer-fence suites).
+  (T12 closed-loop, integration + real D1; loser = explicit `STALE_SNAPSHOT`,
+  never `PERSISTENCE_FAILED`), scan/lease races (T09 writer-fence suites).
 - Reads during multi-statement mutations see a legal BEFORE or AFTER state
   (single D1 batch = one transaction; proven on real workerd/D1 in T11).
