@@ -76,7 +76,7 @@ function pauseAtWriteBarrier(db: SqliteD1, runWinner: () => Promise<unknown>, ma
 }
 
 describe('T10F controlled reconciliation concurrency matrix', () => {
-  it('F1 reconcile/reconcile same observation, same key: one winner, contender replays nothing, no duplicates', async () => {
+  it('F1 reconcile/reconcile same observation, same key: one winner, contender replays the committed twin, no duplicates', async () => {
     const db = database();
     const observation = await setup(db);
     const { gate } = pauseAtWriteBarrier(db,
@@ -84,7 +84,9 @@ describe('T10F controlled reconciliation concurrency matrix', () => {
       'INSERT INTO inventory_reconciliation_decisions');
     const contender = confirmReconciliationDecision(db, scope, decisionInput(observation.observationId, 'race-a'), later);
     await gate;
-    await expect(contender).rejects.toThrow();
+    // Same key + same fingerprint: the loser's batch rolls back and it returns
+    // the winner's committed receipt (response-loss semantics), never a duplicate.
+    await expect(contender).resolves.toMatchObject({ replayed: true });
     expect(lotState(db, 'eggs')).toMatchObject({ quantity_milli: 8_000, version: 2 });
     expect(db.query('SELECT count(*) AS n FROM inventory_reconciliation_decisions')[0]).toMatchObject({ n: 1 });
     expect(receiptEvents(db, 'race-a#CORRECT')).toHaveLength(1);

@@ -6,7 +6,7 @@ import {
 } from '../../domain/src/inventory-reconciliation';
 import { InventoryLotSchema, StorageLocationSchema } from '../../domain/src/inventory-truth';
 import {
-  authorizedHousehold, composeInventoryLotCommands, sortedJson,
+  authorizedHousehold, classifyLotCommandBatchFailure, composeInventoryLotCommands, sortedJson,
   type AnyLotCommandResult, type InventoryLotCommandScope, type LotCommandSpec,
 } from './inventory-lot-commands';
 import { parseObservationRow } from './inventory-observations';
@@ -240,6 +240,24 @@ function parseDecisionExecutions(resultJson: string): AnyLotCommandResult[] {
   }
 }
 
+async function readCommittedDecision(db: D1DatabaseBinding, householdId: string,
+  decisionKey: string): Promise<DecisionRow | null> {
+  return db.prepare(`SELECT id, household_id, observation_id, decision_key,
+    fingerprint, decision_type, proposed_verdict, actor_id, expected_observation_version,
+    command_id, result_json, created_at FROM inventory_reconciliation_decisions
+    WHERE household_id = ? AND decision_key = ?`).bind(householdId, decisionKey).first<DecisionRow>();
+}
+
+function replayDecision(existing: DecisionRow): ReconciliationDecisionExecution {
+  return {
+    decisionId: existing.id, decisionType: existing.decision_type as ReconciliationDecisionType,
+    observationId: existing.observation_id,
+    observationVersion: existing.expected_observation_version + 1,
+    executions: existing.result_json === null ? [] : parseDecisionExecutions(existing.result_json),
+    replayed: true,
+  };
+}
+
 export async function confirmReconciliationDecision(db: D1DatabaseBinding,
   inputScope: ReconciliationDecisionScope, input: ReconciliationDecisionInput,
   now: string): Promise<ReconciliationDecisionExecution> {
@@ -273,23 +291,13 @@ export async function confirmReconciliationDecision(db: D1DatabaseBinding,
     decisionType: decision.decisionType,
     proposals,
   });
-  const existing = await db.prepare(`SELECT id, household_id, observation_id, decision_key,
-    fingerprint, decision_type, proposed_verdict, actor_id, expected_observation_version,
-    command_id, result_json, created_at FROM inventory_reconciliation_decisions
-    WHERE household_id = ? AND decision_key = ?`).bind(scope.householdId, decision.decisionKey)
-    .first<DecisionRow>();
+  const existing = await readCommittedDecision(db, scope.householdId, decision.decisionKey);
   if (existing) {
     // Response-loss replay: an identical retry replays the committed result
     // without any further mutation, regardless of the observation's current
     // lifecycle. An altered semantic decision under the same key conflicts.
     if (existing.fingerprint !== decisionFingerprint) throw new ObservationError('IDEMPOTENCY_CONFLICT');
-    return {
-      decisionId: existing.id, decisionType: existing.decision_type as ReconciliationDecisionType,
-      observationId: existing.observation_id,
-      observationVersion: existing.expected_observation_version + 1,
-      executions: existing.result_json === null ? [] : parseDecisionExecutions(existing.result_json),
-      replayed: true,
-    };
+    return replayDecision(existing);
   }
   const observation = parseObservationRecord(observationRow);
   if (observation.status !== 'OPEN') throw new ObservationError('OBSERVATION_NOT_OPEN');
@@ -347,15 +355,59 @@ export async function confirmReconciliationDecision(db: D1DatabaseBinding,
     db.prepare(`UPDATE inventory_observations SET status = 'RECONCILED', version = version + 1,
       updated_at = ? WHERE id = ? AND household_id = ? AND status = 'OPEN' AND version = ?`)
       .bind(now, decision.observationId, scope.householdId, decision.expectedObservationVersion),
+    observationClaimGuard(db, scope.householdId),
   ];
-  // One atomic batch: if any T09 command or the decision/observation write
-  // fails, the whole reconciliation rolls back and nothing is marked applied.
-  await db.batch(statements);
+  // One atomic batch: if any T09 command, the decision write or the
+  // observation claim fails, the whole reconciliation rolls back and nothing
+  // is marked applied.
+  try {
+    await db.batch(statements);
+  } catch (error) {
+    const twin = await readCommittedDecision(db, scope.householdId, decision.decisionKey);
+    if (twin) {
+      // Same-key concurrent commit: the exact twin is a replay, an altered one
+      // conflicts — identical to the pre-batch idempotency path.
+      if (twin.fingerprint !== decisionFingerprint) throw new ObservationError('IDEMPOTENCY_CONFLICT');
+      return replayDecision(twin);
+    }
+    throw await classifyDecisionBatchFailure(db, scope, decision, error);
+  }
   return {
     decisionId, decisionType: decision.decisionType, observationId: decision.observationId,
     observationVersion: decision.expectedObservationVersion + 1,
     executions: parseDecisionExecutions(resultJson), replayed: false,
   };
+}
+
+// The OPEN/version -> RECONCILED/version+1 transition must be claimed by
+// exactly one decision. A zero-row UPDATE is a silent success in D1, so the
+// claim is proven inside the batch: when changes() of the immediately
+// preceding UPDATE is not 1, this statement inserts a row that violates the
+// NOT NULL constraint on inventory_events.inventory_item_id, which aborts the
+// whole batch and rolls back every earlier statement (the T09 write-guard
+// technique). It is the last statement, so a loser never commits anything.
+function observationClaimGuard(db: D1DatabaseBinding, householdId: string): D1PreparedStatement {
+  return db.prepare(`INSERT INTO inventory_events
+    (id, household_id, inventory_item_id, event_type, quantity_delta, unit)
+    SELECT ?, ?, NULL, 'T10_OBSERVATION_CLAIM_GUARD', 0, 'piece' WHERE changes() <> 1`)
+    .bind(crypto.randomUUID(), householdId);
+}
+
+// Classification after rollback: a committed twin of this exact decision
+// replays; an observation that is no longer OPEN at the expected version lost
+// the claim race; T09 CAS/authority failures keep their domain codes; anything
+// else is a persistence failure. No read here can authorize a write.
+async function classifyDecisionBatchFailure(db: D1DatabaseBinding, scope: ReconciliationDecisionScope,
+  decision: z.infer<typeof DecisionInput>, error: unknown): Promise<Error> {
+  if (error instanceof ObservationError) return error;
+  const current = await db.prepare(`SELECT status, version FROM inventory_observations
+    WHERE id = ? AND household_id = ?`).bind(decision.observationId, scope.householdId)
+    .first<{ status: string; version: number }>().catch(() => null);
+  if (!current) return new ObservationError('OBSERVATION_NOT_FOUND');
+  if (current.status !== 'OPEN' || current.version !== decision.expectedObservationVersion) {
+    return new ObservationError('OBSERVATION_VERSION_CONFLICT');
+  }
+  return classifyLotCommandBatchFailure(error);
 }
 
 export async function readReconciliationDecisions(db: D1DatabaseBinding, householdId: string,

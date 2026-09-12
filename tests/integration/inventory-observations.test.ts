@@ -341,7 +341,9 @@ describe('reconciliation decision authority (T10E)', () => {
       expectedObservationVersion: 1, decisionType: 'CORRECT',
       proposals: [{ type: 'CORRECT', lotId: 'eggs', expectedVersion: 1,
         changes: { quantity: 8, unit: 'piece' } }],
-    }, later)).rejects.toThrow('simulated D1 failure');
+    }, later)).rejects.toMatchObject({ code: 'PERSISTENCE_FAILED' });
+    // Infrastructure failures surface as the domain persistence code; the raw
+    // adapter error never leaks, and nothing was marked applied.
     db.hooks = {};
     expect(facts(db)).toEqual(before);
     // A clean retry still works after the failed batch.

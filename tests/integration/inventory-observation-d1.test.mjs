@@ -166,6 +166,71 @@ describe('T10 real local D1 observation/reconciliation semantics (no remote bind
     expect(invalidLink.status).toBe(409);
   });
 
+  it('proves the observation claim guard under real D1: a zero-row guarded UPDATE aborts and rolls back the whole batch', async () => {
+    // A guarded UPDATE that matches no row is a silent success in D1 (changes=0,
+    // success=true) — the exact hazard the T10 claim fence closes. The same
+    // batch with the changes() guard appended aborts and leaves nothing behind.
+    const observation = globalThis.t10ObservationId; // already RECONCILED (v2) by the earlier decision
+    const silent = await batch([
+      `UPDATE inventory_observations SET updated_at = updated_at WHERE id = '${observation}'
+         AND household_id = '${scope.householdId}' AND status = 'OPEN' AND version = 1`,
+    ]);
+    expect(silent.status).toBe(200);
+    expect(silent.results[0].success).toBe(true);
+    expect(silent.results[0].meta.changes).toBe(0);
+    const before = await batch([
+      'SELECT count(*) AS n FROM inventory_reconciliation_decisions',
+      'SELECT status, version FROM inventory_observations',
+      `SELECT count(*) AS n FROM inventory_events WHERE event_type LIKE 'T10_%'`,
+    ]);
+    const guarded = await batch([
+      `INSERT INTO inventory_reconciliation_decisions (id, household_id, observation_id, decision_key,
+        fingerprint, decision_type, proposed_verdict, actor_id, expected_observation_version, created_at)
+        SELECT 'fence-loser', '${scope.householdId}', '${observation}', 'fence-loser-key', '{}',
+        'DISMISS', 'NO_ACTION', '${scope.actorId}', 2, '${now}' WHERE 0`,
+      `UPDATE inventory_observations SET status = 'RECONCILED', version = version + 1, updated_at = '${now}'
+         WHERE id = '${observation}' AND household_id = '${scope.householdId}' AND status = 'OPEN' AND version = 1`,
+      `INSERT INTO inventory_events (id, household_id, inventory_item_id, event_type, quantity_delta, unit)
+         SELECT 'fence-guard', '${scope.householdId}', NULL, 'T10_OBSERVATION_CLAIM_GUARD', 0, 'piece' WHERE changes() <> 1`,
+    ]);
+    expect(guarded.status).toBe(409);
+    expect(guarded.error).toMatch(/NOT NULL constraint failed: inventory_events\.inventory_item_id/);
+    const after = await batch([
+      'SELECT count(*) AS n FROM inventory_reconciliation_decisions',
+      'SELECT status, version FROM inventory_observations',
+      `SELECT count(*) AS n FROM inventory_events WHERE event_type LIKE 'T10_%'`,
+    ]);
+    const rows = (state) => state.results.map((statement) => statement.results);
+    expect(rows(after)).toEqual(rows(before));
+    expect(rows(after)[2]).toEqual([{ n: 0 }]);
+  });
+
+  it('races two DISMISS decisions on one OPEN observation through real D1: one winner, loser OBSERVATION_VERSION_CONFLICT', async () => {
+    const id = randomUUID();
+    const observe = await post('observe', { scope, now, input: {
+      sourceType: 'MANUAL', sourceRef: `race-${id}`, observedAt: now, ingredientId: null, rawName: null,
+      lotId: globalThis.t10LotId, legacyItemId: null, evidence: 'OBSERVED', note: null,
+      claim: { quantity: 8, unit: 'piece', quantityMilli: 8_000, canonicalUnit: 'piece',
+        storage: null, expiryDate: null, expiryKind: null, openedAt: null },
+    } });
+    expect(observe.status).toBe(200);
+    const observationId = observe.observation.observationId;
+    const decision = (decisionKey) => ({ decisionKey, observationId, expectedObservationVersion: 1, decisionType: 'DISMISS' });
+    const race = await post('reconcile-race', { scope, now: later, contender: decision(`loser-${id}`), winner: decision(`winner-${id}`) });
+    expect(race.status).toBe(200);
+    expect(race.arrivals).toBe(1);
+    expect(race.winner.execution).toMatchObject({ replayed: false, decisionType: 'DISMISS' });
+    expect(race.contender.error).toBe('OBSERVATION_VERSION_CONFLICT');
+    const state = await batch([
+      { sql: 'SELECT decision_key FROM inventory_reconciliation_decisions WHERE observation_id = ? ORDER BY decision_key', values: [observationId] },
+      { sql: 'SELECT status, version FROM inventory_observations WHERE id = ?', values: [observationId] },
+      `SELECT count(*) AS n FROM inventory_events WHERE event_type LIKE 'T10_%'`,
+    ]);
+    expect(state.results[0].results).toEqual([{ decision_key: `winner-${id}` }]);
+    expect(state.results[1].results).toEqual([{ status: 'RECONCILED', version: 2 }]);
+    expect(state.results[2].results).toEqual([{ n: 0 }]);
+  });
+
   it('refuses a foreign-household lot reference at the real FK/trigger boundary', async () => {
     const foreign = { householdId: `foreign-${randomUUID()}`, actorId: `foreign-actor-${randomUUID()}` };
     const foreignId = foreign.householdId;
