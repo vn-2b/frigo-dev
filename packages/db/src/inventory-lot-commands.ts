@@ -45,7 +45,7 @@ interface ProjectionRow extends LegacyInventoryRow {
   added_date: string; category: string; data_source: string; freshness: string;
 }
 interface MappedLot { lot: InventoryLot; legacyItemId: string | null }
-interface MappedLotSnapshot {
+export interface MappedLotSnapshot {
   inventoryVersion: number;
   activationCommandId: string | null;
   adoptedMappings: AdoptedMapping[];
@@ -114,7 +114,7 @@ function readAdoptedMappings(row: AdoptionAuthorityRow | undefined, householdId:
   }
 }
 
-function authoritativeMapping(lot: InventoryLot, legacyItemId: string, mappings: AdoptedMapping[]): boolean {
+export function authoritativeMapping(lot: InventoryLot, legacyItemId: string, mappings: AdoptedMapping[]): boolean {
   if (lot.sourceType !== 'LEGACY_BACKFILL') return lot.id === legacyItemId;
   const evidence = mappings.find((entry) => entry.lotId === lot.id && entry.legacyItemId === legacyItemId);
   return evidence !== undefined && lot.sourceId === legacyItemId && lot.householdId === evidence.after.householdId
@@ -349,7 +349,7 @@ function replay(receipt: ReceiptRow, fingerprint: string, scope: InventoryLotCom
   }
 }
 
-function exactLegacyQuantity(milli: number, unit: InventoryLot['canonicalUnit']): number {
+export function exactLegacyQuantity(milli: number, unit: InventoryLot['canonicalUnit']): number {
   const quantity = milli / 1000;
   try {
     if (toLotQuantity(Math.abs(quantity), unit).quantityMilli === Math.abs(milli)) return quantity;

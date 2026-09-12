@@ -1,6 +1,28 @@
 # Inventory Truth current state
 
-## Current authoritative T10 observation claim fence — 2026-09-11
+## Current authoritative T11 read authority hardening — 2026-09-12
+
+**New T11 application freeze `c15c9a81fc4367b3506a7e2693798ebe1424b0a9`** (supersedes `657201f`). Real-D1 T11
+proof (11 cases, 62 real D1 total), adopted-but-empty regression on three
+surfaces, READ vs MOVE/DISCARD/FEFO barrier tests, `activeCount` fix, explicit
+kg/l display-alias compatibility (authority canonical), fail-closed freshness.
+3,063 full/116; all gates PASS from the clean exact-SHA checkout. No migration.
+Main NOT merged; production NOT deployed; T12 NOT STARTED.
+**T11 COMPLETE — READY FOR INDEPENDENT REVIEW.**
+
+## Historical T11 read authority — first freeze (superseded)
+
+`hoplite/himera-6d3eda84-t10-observation-reconciliation-t11-inventory-read-authority`.
+**T11 application freeze `657201f3a12f18dd96cc96adeac0dd1d3b75e6f4`** (PR #3; corrective `4553b8a` after the
+platform auto-committed the workspace overlay). The read side is cut over:
+adopted households read canonical lot authority through
+`packages/db/src/inventory-read-authority.ts`; the projection is
+parity-checked, never trusted; production read consumers classified with
+UNKNOWN=0. Gates: 3,041 full/115; 51 real D1; all static gates PASS from the
+clean exact-SHA checkout. No migration. Main NOT merged; T12 NOT STARTED.
+**T11 COMPLETE — READY FOR INDEPENDENT REVIEW.**
+
+## Historical T10 observation claim fence — superseded by T11
 
 `hoplite/himera-6d3eda84-t10-observation-reconciliation`. **New T10 application freeze
 `7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b`** (published/fetched; local == remote == clean-checkout SHA) supersedes

@@ -1,6 +1,23 @@
 # Inventory Truth task board
 
-## Current authoritative T10 observation claim fence — 2026-09-11
+## Current authoritative T11 read authority hardening — 2026-09-12: COMPLETE
+
+Findings A–F closed at new freeze **`c15c9a81fc4367b3506a7e2693798ebe1424b0a9`** (`657201f` superseded): real D1
+62/62 incl. 11 T11 cases; adopted-empty proven; concurrency matrix
+CORRECT/MOVE/USE/DISCARD/FEFO/T10 complete; activeCount fixed; display aliases
+decided; freshness fail-closed. 3,063 full/116; all gates PASS from the clean
+exact-SHA checkout. Remaining P0/P1: NONE. Main NOT merged; T12 NOT STARTED.
+
+## Historical T11 board — first freeze (superseded)
+
+Application freeze **`657201f3a12f18dd96cc96adeac0dd1d3b75e6f4`** (PR #3; corrective `4553b8a`). Read consumer
+audit UNKNOWN=0; canonical read service + parity checker + adoption gate;
+funnel cutover for GET /inventory, recipes, scans list reads, weekly planner,
+notifications; 17 new tests; 3,041 full/115; 51 real D1; all gates PASS from
+the clean exact-SHA checkout. Remaining P0/P1: NONE.
+**T11 COMPLETE — READY FOR INDEPENDENT REVIEW.** T12 NOT STARTED.
+
+## Historical T10 observation claim fence — superseded
 
 Concurrency P1 REPRODUCED → FIXED → VERIFIED at new published/fetched application freeze
 **`7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b`** (supersedes `4c414fa`). In-batch changes() claim guard; atomic loser rollback;
