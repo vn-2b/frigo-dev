@@ -514,6 +514,6 @@ No main merge/modification; no deploy; no remote D1; PayOS untouched; no migrati
 change or 0031; no application refactor or fix; `MEAL_PLANNER_ENABLED` not enabled;
 no rebase/squash/force-push; workspace overlay `.hoplite/settings.json` never staged.
 Application tree at the audit docs HEAD is byte-identical to `64c5501`
-(`git diff 64c5501 <ROADMAP_AUDIT_HEAD> -- . ':(exclude)docs'` empty — verified in the
-final report). Docs added/updated only: this file, `T13_PROPOSED_SCOPE.md`,
+(`ROADMAP_AUDIT_HEAD = 3fce917ad6e079f76cf3bdd55e354ce0e35054bf`;
+`git diff 64c5501 3fce917 -- . ':(exclude)docs'` empty; `git merge-base --is-ancestor 1cae11e 3fce917` PASS). Docs added/updated only: this file, `T13_PROPOSED_SCOPE.md`,
 `docs/ai/{CURRENT_STATE,TASK_BOARD,HANDOFF}.md`, `docs/ai/inventory-truth/{CURRENT_STATE,TASK_BOARD}.md`.

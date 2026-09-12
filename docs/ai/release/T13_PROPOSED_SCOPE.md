@@ -11,8 +11,9 @@ remediation) is **out of scope and must not be reopened**.
 
 ## Starting SHA
 
-**T13 starts from the final docs HEAD of the reconciliation audit** (`ROADMAP_AUDIT_HEAD`,
-recorded in `docs/ai/HANDOFF.md` and the audit report), which descends from
+**T13 starts from the final docs HEAD of the reconciliation audit** (`ROADMAP_AUDIT_HEAD` =
+`3fce917ad6e079f76cf3bdd55e354ce0e35054bf`, plus the SHA-recording docs commit that follows it on
+the same branch — use the branch tip named in `docs/ai/HANDOFF.md`), which descends from
 `1cae11ee2e5acdc1d6c76266ad72b3ef744d7797` and carries the application tree of certified RC
 `64c5501ab0110658718b3752bd84e537f0854e12` unchanged. **Not main** (`d1b0673`), **not**
 `64c5501` directly. If the owner merges `64c5501` to main before T13 begins, T13 must be

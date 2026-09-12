@@ -9,8 +9,8 @@ Repository: vn-2g/frigo-dev (repository ID 1364064929; earlier owner names redir
 Audit branch: hoplite/delphoi-499ad774 (requested logical name hoplite/inventory-truth-roadmap-reconciliation)
 Base: exact 1cae11ee2e5acdc1d6c76266ad72b3ef744d7797 (re-certification docs HEAD) · Application RC: 64c5501ab0110658718b3752bd84e537f0854e12 (unchanged)
 origin/main: d1b06732f8a80db4e77986df31ff28d9f04641fa (NOT advanced)
-ROADMAP_AUDIT_HEAD: recorded in the final operator report (docs-only commit on this branch; verify
-    `git diff 64c5501 <HEAD> -- . ':(exclude)docs'` is empty and `git merge-base --is-ancestor 1cae11e <HEAD>`).
+ROADMAP_AUDIT_HEAD: 3fce917ad6e079f76cf3bdd55e354ce0e35054bf (audit docs commit; verified: descends from 1cae11e,
+    `git diff 64c5501 3fce917 -- . ':(exclude)docs'` empty). This SHA-recording commit follows it on the same branch.
 Primary documents: docs/ai/release/INVENTORY_TRUTH_ROADMAP_RECONCILIATION.md (sources S1–S12, matrix R1–R12 / U1–U17,
     pipeline trace, materiality) and docs/ai/release/T13_PROPOSED_SCOPE.md (definition only; starting SHA = ROADMAP_AUDIT_HEAD).
 Executed checks (clean detached worktree /tmp/frigo-rc @ 64c5501, status empty): pnpm install --frozen-lockfile (lockfile
