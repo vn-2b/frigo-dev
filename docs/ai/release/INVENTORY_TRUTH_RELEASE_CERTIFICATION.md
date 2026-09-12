@@ -5,6 +5,14 @@ Review start: docs HEAD `5cb4caa0d5b3c86b00954d77cd40b16027c21df1` (exact, not m
 Application release candidate (RC): `d15600186c3e73faba011eb690ac6cd70e8d3d2d`
 Companion documents: `INVENTORY_TRUTH_ANCESTRY.md`, `INVENTORY_TRUTH_CHANGE_MANIFEST.md`.
 
+## Remediation status (2026-09-12, after this review)
+
+Defects D3/D1 were closed and D2 documented at application freeze
+`64c5501ab0110658718b3752bd84e537f0854e12` on
+`hoplite/inventory-truth-final-remediation` — see
+`INVENTORY_TRUTH_REMEDIATION.md`. The verdict below is the historical verdict
+for RC `d156001`; `64c5501` is the candidate for re-certification.
+
 ## Verdict
 
 **RELEASE CANDIDATE NOT READY.** No P0. **One P1 (D3, user-facing registration

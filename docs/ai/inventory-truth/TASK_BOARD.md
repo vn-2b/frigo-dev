@@ -1,5 +1,10 @@
 # Inventory Truth task board
 
+## Current board — Final RC targeted remediation, 2026-09-12
+
+- D3/D1 closed, D2 documented at `64c5501`; all gates PASS from a clean exact-SHA checkout.
+- Open follow-up: MEAL_PLANNER_AUTHORITY_CUTOVER (before enabling the planner flag for adopted households).
+
 ## Current board — Final Release Integration Review, 2026-09-12
 
 - RC `d156001` reviewed independently: NOT READY (D3 P1 guest-register dead-end; D1 P2

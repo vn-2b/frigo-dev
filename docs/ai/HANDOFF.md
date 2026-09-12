@@ -1,5 +1,28 @@
 # Frigo AI Handoff — isolated T09 development
 
+## Current authoritative handoff — Final RC targeted remediation, 2026-09-12
+
+Program: Inventory Truth Layer — T08–T12 release train
+Task: Targeted remediation of review defects D3 (P1), D1 (P2), D2 (P2)
+Status: REMEDIATION_COMPLETE — D3 closed, D1 closed, D2 documented; ready for re-certification
+Repository: vn-2f/frigo-dev (repository ID 1364064929; `vb-2f` redirects)
+Branch: hoplite/inventory-truth-final-remediation (base 32b6ec1 → 5cb4caa → d156001; main d1b0673 unchanged)
+NEW_APPLICATION_FREEZE: 64c5501ab0110658718b3752bd84e537f0854e12
+Docs HEAD: docs-only commit on top; exact SHA in the final report
+Application delta vs d156001: .hoplite/settings.json (A, main blob 3818a00), src/web/pages/AuthPage.tsx,
+    src/web/services/auth.ts, src/web/services/http.ts, tests/integration/inventory-guest-transfer.test.ts (+1),
+    tests/unit/auth-guest-transfer-deferred.test.tsx (new, 6). No server, migration, dependency or config change.
+Executed checks (clean detached /tmp/hoplite/remed-clean @ 64c5501): pnpm install --frozen-lockfile (Node v24.19.0,
+    pnpm 10.26.0, lockfile unchanged); pnpm test 3,092/3,092 · 120 files · 191.47 s; D3 suites 32/32; real D1 70/70;
+    T09 654/654; T10 98/98; T11 39/39; T12 22/22; pnpm lint/typecheck/build PASS; pnpm check:migrations ok (30);
+    wrangler d1 migrations apply --local + pnpm schema:check:local PASS; git diff --check clean; git status --porcelain empty.
+    Browser: guest → register → deferral notice → “Tiếp tục không chuyển dữ liệu khách” → account session (isolated preview).
+Failures: none. Negative control: new UI suite fails 3/6 against the pre-fix AuthPage.
+Next action: independent re-certification of 64c5501 (repeat the §11 clean-checkout gates and the D3 browser check);
+    then main integration is a separate, explicitly authorized step. Follow-up MEAL_PLANNER_AUTHORITY_CUTOVER before
+    enabling MEAL_PLANNER_ENABLED for adopted households.
+Do NOT merge main, deploy, run remote D1, touch PayOS, rewrite migrations, enable MEAL_PLANNER_ENABLED, or commit the workspace overlay.
+
 ## Current authoritative handoff — Final Release Integration Review, 2026-09-12
 
 Program: Inventory Truth Layer — T08–T12 release train

@@ -7,6 +7,11 @@ added for the adopted shopping, cook and GET /inventory funnels). Base: T11 free
 Architecture: external evidence → observation (T10) → reconciliation (T10) →
 T09 command authority → `inventory_lots` → T11 read authority → product
 consumers. **UNKNOWN production readers = 0. UNKNOWN production writers = 0.**
+Re-audit 2026-09-12 (final release review, D2): one production reader — the
+flag-gated meal-planning snapshot — had been left out of this map; it is now
+classified `SAFE_DEFERRED` below with an explicit cutover condition
+(`MEAL_PLANNER_AUTHORITY_CUTOVER`). The count of 0 UNKNOWN holds only with that
+row present.
 
 ## Read classification (every production reader of stock)
 
@@ -26,6 +31,7 @@ consumers. **UNKNOWN production readers = 0. UNKNOWN production writers = 0.**
 | `GET_INVENTORY_ITEM` preflights (legacy PATCH/DELETE) | `LEGACY_COMPATIBILITY` | Adopted PATCH/DELETE divert to native adapters |
 | `readMappedLotSnapshot` legacy rows (T09 substrate) | `READ_AUTHORITY` input | Projection rows used for parity + retained unit label (label honored only while the row agrees with authority); never for quantity/state |
 | `inventory_events` reads (audit/history) | `OBSERVATION_ONLY` / audit | Event log is audit evidence, never a read model |
+| **Flag-gated meal-planning snapshot** — `packages/db/src/meal-planning-snapshot.ts:198–202` (`loadMealPlanningSnapshot`, `SELECT … FROM inventory_items WHERE household_id = ?`), consumed by `src/worker/services/meal-planning.ts` for every `/meal-planning/*` route (`src/worker/routes/meal-planning.ts`) | **`SAFE_DEFERRED`** | Reads the compatibility projection `inventory_items` (quantity/unit/freshness/expiry/storage) for planner ranking and shopping suggestions with **no adoption gate**: adopted households are reachable **if** `MEAL_PLANNER_ENABLED === 'true'`. Currently flag-gated/off (`MEAL_PLANNER_ENABLED` is not bound in `wrangler.jsonc`; routes return 404 `MEAL_PLANNER_DISABLED`). Read-only — never writes stock. For adopted households the rows are the T09 same-batch mirror, so they are normally coherent, but this reader is **not canonical authority and not drift-immune** (a tampered projection would be ranked as if true). Pre-existing on main, untouched by T08–T12. **Removal condition — `MEAL_PLANNER_AUTHORITY_CUTOVER`:** before `MEAL_PLANNER_ENABLED` can be enabled for adopted households, `loadMealPlanningSnapshot` inventory reads must be routed through the T11 Inventory Read Authority (`readInventoryAuthority` / `fetchHouseholdInventoryFromDb`) or an equivalent canonical authority adapter; the projection read may remain only for non-adopted households behind the same `readInventoryAuthorityMode` gate used by every other consumer. |
 | Ad-hoc scripts/tests | `TEST_ONLY` | Excluded from production classification |
 
 ## Write classification (every production stock writer)
@@ -39,6 +45,16 @@ consumers. **UNKNOWN production readers = 0. UNKNOWN production writers = 0.**
 | `executeInventoryAdoption` | `COMMAND_AUTHORITY` (controlled) | Explicit, receipted adoption; reads never adopt |
 | Legacy writers (`inventory.ts:645/843/1022`, `recipes.ts:484`, `scans.ts:1148/1171`, `week.ts:1440/1463`, `SQL.INSERT/UPDATE/DELETE_INVENTORY_ITEM`) | `LEGACY_COMPATIBILITY` | Behind `runLegacyInventoryBatch` (T09 fence aborts under native authority) + native diversions; cannot mutate truth for adopted households |
 | T09 projection mirror inside command batches | `COMMAND_AUTHORITY` | Same-batch projection coherence; drift triggers writer refuse (`DRIFT_DETECTED`) |
+
+## SAFE_DEFERRED entries
+
+1. **Meal-planning snapshot projection read** (`meal-planning-snapshot.ts:198–202`)
+   — why: pre-existing T02–T04 planner input, never cut over because the feature
+   is flag-gated off; reach: adopted households only if `MEAL_PLANNER_ENABLED`
+   is turned on; truth risk: ranking could trust a drifted projection (no
+   silent stock mutation is possible — read-only); removal:
+   `MEAL_PLANNER_AUTHORITY_CUTOVER` (route the snapshot's inventory read through
+   T11 authority for adopted households) **must land before the flag is enabled**.
 
 ## LEGACY_COMPATIBILITY entries — why / reach / removal / truth risk
 

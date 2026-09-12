@@ -1,5 +1,18 @@
 # Frigo task board
 
+## Current authoritative board — Final RC targeted remediation, 2026-09-12
+
+- D3 P1 CLOSED at app freeze `64c5501ab0110658718b3752bd84e537f0854e12` (client
+  deferral flow + 7 new tests; server DEC-012 unchanged). D1 P2 CLOSED (main blob of
+  `.hoplite/settings.json` restored). D2 P2 DOCUMENTED (SAFE_DEFERRED in T11/T12 maps).
+- Clean-checkout gates: 3,092/3,092 (120 files); real D1 70/70; T09 654 / T10 98 /
+  T11 39 / T12 22; lint/typecheck/build/migrations(30)/schema/diff-check PASS; status empty.
+- FOLLOW-UP (must land before `MEAL_PLANNER_ENABLED` is enabled for adopted
+  households): **MEAL_PLANNER_AUTHORITY_CUTOVER** — route `loadMealPlanningSnapshot`
+  inventory reads through T11 read authority / `fetchHouseholdInventoryFromDb`.
+- Next: re-certification of `64c5501` as the release candidate; main NOT merged;
+  production/staging NOT deployed; remote D1 NOT touched; PayOS untouched.
+
 ## Current authoritative board — Final Release Integration Review, 2026-09-12
 
 - Review of RC `d15600186c3e73faba011eb690ac6cd70e8d3d2d` from docs HEAD `5cb4caa`

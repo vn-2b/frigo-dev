@@ -16,3 +16,9 @@
   full; the §31 cache audit was completed from the visible requirement
   (adopted reads must bypass stale KV) and documented in FINAL_AUTHORITY_MAP.md.
   No post-T12 task was started.
+- **Post-review remediation (2026-09-12):** app freeze `64c5501ab0110658718b3752bd84e537f0854e12`
+  closes review defects D3 (guest→register client contract, DEC-015) and D1
+  (`.hoplite/settings.json` restored); D2 is documented as `SAFE_DEFERRED`.
+  **Follow-up `MEAL_PLANNER_AUTHORITY_CUTOVER`** must land before
+  `MEAL_PLANNER_ENABLED` is enabled for adopted households. See
+  `docs/ai/release/INVENTORY_TRUTH_REMEDIATION.md`.

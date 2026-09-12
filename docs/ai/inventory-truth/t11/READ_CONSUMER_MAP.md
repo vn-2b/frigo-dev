@@ -19,7 +19,7 @@ evidence, never a second read model.
 
 Classification legend: `AUTHORITY_LOT_READ`, `COMPATIBILITY_PROJECTION_READ`,
 `OBSERVATION_EVIDENCE_READ`, `EVENT_AUDIT_READ`, `INTENTIONAL_LEGACY_READ`,
-`TEST_ONLY`, `UNKNOWN`.
+`SAFE_DEFERRED`, `TEST_ONLY`, `UNKNOWN`.
 
 ## Production readers
 
@@ -40,13 +40,16 @@ Classification legend: `AUTHORITY_LOT_READ`, `COMPATIBILITY_PROJECTION_READ`,
 | Observation persistence/reads | `packages/db/src/inventory-observations.ts`, T10 routes | `OBSERVATION_EVIDENCE_READ` | unchanged — evidence, not truth |
 | Adoption backfill reader | `packages/db/src/inventory-truth.ts` (`LEGACY_SELECT`) | `INTENTIONAL_LEGACY_READ` | unchanged — explicitly the migration/adoption contract source |
 | Notifications / week / recipes remaining table references | searched: `JOIN inventory_items`, CTEs, raw SQL in `src/worker/**` | — | all covered above; none remain unclassified |
+| Flag-gated meal-planning snapshot (`/meal-planning/*`: generate / current / get / alternatives / explanation / regenerate / swap / shopping / feedback) | `packages/db/src/meal-planning-snapshot.ts:198–202` `loadMealPlanningSnapshot` → `SELECT … FROM inventory_items WHERE household_id = ?` (mapped by `packages/recipes/src/planner-inventory.ts`); called from `src/worker/services/meal-planning.ts`; routes mounted in `src/worker/routes/meal-planning.ts` behind `MEAL_PLANNER_ENABLED === 'true'` | `COMPATIBILITY_PROJECTION_READ` (pre-existing on main; **omitted from this map until the final release review — D2**) | **`SAFE_DEFERRED`** — reads the compatibility projection (quantity/unit/freshness/expiry/storage) for ranking and shopping suggestions; **no adoption gate**, so an adopted household IS reachable if the flag is ever enabled; currently off (`MEAL_PLANNER_ENABLED` is not bound in `wrangler.jsonc` → routes answer 404 `MEAL_PLANNER_DISABLED`); read-only, never mutates stock; for adopted households the rows are the T09 same-batch mirror (normally coherent) but this path is **not canonical authority and not drift-immune**. Removal condition (`MEAL_PLANNER_AUTHORITY_CUTOVER`): before `MEAL_PLANNER_ENABLED` may be enabled for adopted households, `loadMealPlanningSnapshot` inventory reads must be routed through the T11 read authority (`readInventoryAuthority` / `fetchHouseholdInventoryFromDb`) or an equivalent canonical authority adapter, with the legacy projection kept only for non-adopted households. |
 
 ## Non-production readers
 
 - `tests/**` — `TEST_ONLY`.
 - Web app (`src/web/**`) consumes HTTP APIs only; no direct inventory SQL.
 
-**Production `UNKNOWN` count: 0.**
+**Production `UNKNOWN` count: 0** (re-audited 2026-09-12 during the final release
+review: the planner snapshot reader above is now explicitly `SAFE_DEFERRED`; before
+that audit it was missing from this map while the count already claimed 0).
 
 ## Identity and version semantics (documented decisions)
 

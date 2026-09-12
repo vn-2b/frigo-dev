@@ -1,5 +1,25 @@
 # Frigo current state — isolated T09 development
 
+## Current authoritative state — Final RC targeted remediation (D3/D1/D2), 2026-09-12
+
+**NEW_APPLICATION_FREEZE `64c5501ab0110658718b3752bd84e537f0854e12`** on
+`hoplite/inventory-truth-final-remediation` (base `32b6ec1` → `5cb4caa` → `d156001`;
+main `d1b0673` unchanged, 57 ahead / 0 behind). D3 P1 closed: client-only fix —
+`ApiError.code`, `isInventoryTransferDeferred`, AuthPage deferral notice + explicit
+“Tiếp tục không chuyển dữ liệu khách” that retries the same OTP without
+`migrateFromHouseholdId`; guest session/outbox untouched until success; DEC-012
+server unchanged (DEC-015 addendum). D1 P2 closed: `.hoplite/settings.json`
+restored from main (blob `3818a00`, raw `48507643…`; overlay never committed).
+D2 P2 documented: planner snapshot reader = `SAFE_DEFERRED` in the T11/T12 maps
+with `MEAL_PLANNER_AUTHORITY_CUTOVER` as the removal condition; flag stays off.
+Clean detached checkout of `64c5501`: install frozen (lockfile unchanged); full
+**3,092/3,092 across 120 files**; D3 32/32; real D1 70/70; T09 654 · T10 98 ·
+T11 39 · T12 22; lint/typecheck/build/migration smoke (30)/schema gate/diff-check
+PASS; status empty. Browser reproduction of the guest→register flow PASS (no
+dead-end, no raw JSON, session switches only after the retry). Receipt:
+`docs/ai/release/INVENTORY_TRUTH_REMEDIATION.md`. Main NOT merged; nothing
+deployed; remote D1 NOT touched; PayOS untouched.
+
 ## Current authoritative state — Final Release Integration Review (T08→T12), 2026-09-12
 
 **Verdict: RELEASE CANDIDATE NOT READY** (docs: `docs/ai/release/INVENTORY_TRUTH_RELEASE_CERTIFICATION.md`,

@@ -1,5 +1,14 @@
 # Inventory Truth current state
 
+## Current checkpoint — Final RC targeted remediation, 2026-09-12
+
+App freeze `64c5501ab0110658718b3752bd84e537f0854e12`: D3 P1 closed (client
+deferral contract, DEC-015), D1 P2 closed (`.hoplite/settings.json` = main blob),
+D2 P2 documented (`SAFE_DEFERRED`, `MEAL_PLANNER_AUTHORITY_CUTOVER`). Inventory
+Truth semantics (T09/T10/T11), migrations (30) and authority maps otherwise
+unchanged. Clean-checkout gates: 3,092/3,092; real D1 70/70. Receipt:
+`docs/ai/release/INVENTORY_TRUTH_REMEDIATION.md`.
+
 ## Current checkpoint — Final Release Integration Review, 2026-09-12
 
 Independent review of RC `d15600186c3e73faba011eb690ac6cd70e8d3d2d` from docs HEAD

@@ -1,5 +1,36 @@
 # Inventory Truth architecture decisions
 
+## DEC-015 — Client contract for the deferred guest transfer (DEC-012 addendum)
+
+Final release review defect D3 (2026-09-12): the DEC-012 server refusal
+(`409 INVENTORY_TRANSFER_DEFERRED`, issued before OTP consumption, account
+activation or any side effect) was never mirrored in the web client, so every
+guest converting to an email account dead-ended at OTP verification.
+
+Decision: DEC-012 stays unchanged on the server. The client contract is:
+
+1. The first verification from a guest session still sends
+   `migrateFromHouseholdId` (the transfer request is the user's default intent).
+2. On `INVENTORY_TRANSFER_DEFERRED` (detected structurally through
+   `ApiError.code`, never by string-matching arbitrary server text), the client
+   does not treat it as an OTP failure. It shows a plain-language notice — the
+   guest data cannot be transferred safely yet, it is not deleted, the user may
+   continue creating the account without transferring it — and an explicit action
+   "Tiếp tục không chuyển dữ liệu khách".
+3. Nothing about the guest session changes at that point: identity, inventory
+   cache, offline outbox and scope stay exactly as they were; `rebindPendingOps`
+   never runs because no migration happened.
+4. Only the explicit user choice re-submits the same email/OTP/purpose **without**
+   `migrateFromHouseholdId`. Only a successful response establishes the account
+   session (`setAuthSession`). A failed retry leaves the guest session intact.
+5. The response never claims `migratedFromHouseholdId`; the existing rebind path
+   for a genuine future transfer contract remains, but is unreachable here.
+
+Proof: `tests/unit/auth-guest-transfer-deferred.test.tsx` (UI contract A–F) and
+`tests/integration/inventory-guest-transfer.test.ts` "D3 client contract"
+(route boundary: register → deferred 409 leaves the OTP unused → same OTP
+verifies without the field → guest stock stays in the guest household).
+
 ## DEC-014 — Authenticate distinct backfilled lot/projection identities
 
 Verified application: `df73bc035c2938b6fd082c57f6bca89a82d8e443` (2026-09-11).
