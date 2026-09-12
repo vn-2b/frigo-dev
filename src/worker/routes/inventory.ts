@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { Env, AuthContext } from '../types';
 import { SQL } from '@frigo/db';
 import { InventoryWriterAuthorityError, readInventoryAuthorityMode, runLegacyInventoryBatch } from '../../../packages/db/src/inventory-writer-fence';
+import { readInventoryAuthority } from '../../../packages/db/src/inventory-read-authority';
+import type { InventoryReadItem } from '../../../packages/domain/src/inventory-read-authority';
 import { executeInventoryAdoption } from '../../../packages/db/src/inventory-adoption-executor';
 import {
   composeInventoryLotCommands, prepareInventoryLotCommand, readAdoptedLotSnapshot,
@@ -410,6 +412,42 @@ inventoryRoutes.use(
   async (c, next) => (c.req.method === 'GET' ? next() : rateLimiter({ maxRequests: 60, windowSeconds: 60, prefix: 'rl_inv_w' })(c, next))
 );
 
+// T11: project an authority read item into the historical API row shape.
+// External identity stays the legacy projection id (backfilled lots) or the
+// lot id (native lots) — exactly the id the T09 authority writes into
+// inventory_items, resolved through retained mapping evidence, never by
+// assuming lot.id === legacy id. `version` keeps the legacy optimistic-CAS
+// meaning; authority versions are exposed additively.
+export function inventoryReadItemToApi(item: InventoryReadItem, inventoryVersion: number): Record<string, unknown> {
+  return {
+    id: item.legacyItemId ?? item.lotId,
+    lotId: item.lotId,
+    legacyItemId: item.legacyItemId,
+    householdId: item.householdId,
+    ingredientId: item.ingredientId || '',
+    normalizationStatus: item.ingredientId ? 'matched' : 'unmapped',
+    name: item.name,
+    quantity: item.quantity,
+    unit: item.unit,
+    category: item.category,
+    storage: item.storage,
+    expiryDate: item.expiryAt ?? item.estimatedExpiryAt,
+    estimatedExpiryDate: item.estimatedExpiryAt,
+    expiryKind: item.expiryKind,
+    state: item.state,
+    addedDate: item.createdAt,
+    freshness: item.freshness,
+    dataSource: item.sourceType === 'SCAN' || item.sourceType === 'RECEIPT' ? 'scan'
+      : item.sourceType === 'SHOPPING' ? 'shopping' : 'manual',
+    version: item.legacyVersion ?? item.version,
+    lotVersion: item.version,
+    quantityMilli: item.quantityMilli,
+    canonicalUnit: item.canonicalUnit,
+    inventoryVersion,
+    updatedAt: item.updatedAt,
+  };
+}
+
 /**
  * Fetch household inventory directly from D1 (Single Source of Truth) with KV caching
  */
@@ -419,6 +457,11 @@ export interface InventoryReadOptions {
    * empty inventory. The default remains permissive for legacy read callers.
    */
   strict?: boolean;
+  /**
+   * Authenticated actor for T11 authority reads (membership-checked). Legacy
+   * compatibility reads for not-yet-adopted households do not need it.
+   */
+  actorId?: string;
 }
 
 export class InventoryReadError extends Error {
@@ -439,6 +482,24 @@ export async function fetchHouseholdInventoryFromDb(
   if (!db) {
     if (options.strict) throw new InventoryReadError();
     return [];
+  }
+
+  // T11 read authority: adopted households read canonical lot truth through
+  // the read-authority service in one coherent batch. The compatibility
+  // projection is never consulted for content and the 1h KV cache is bypassed
+  // (a cache fallback would serve stale authority). Not-yet-adopted
+  // households keep the legacy compatibility read below — the T09 adoption
+  // gate is the explicit boundary. Any other authority failure fails closed
+  // and never degrades to a fabricated empty inventory.
+  if (await readInventoryAuthorityMode(db, householdId) === 'native') {
+    if (!options.actorId) throw new InventoryReadError('Authority read requires an authenticated actor');
+    try {
+      const authority = await readInventoryAuthority(db, { householdId, actorId: options.actorId });
+      return authority.items.map((item) => inventoryReadItemToApi(item, authority.inventoryVersion));
+    } catch (err) {
+      console.error('T11 authority read failed:', err);
+      throw new InventoryReadError(err instanceof Error ? err.message : 'Authority read failed');
+    }
   }
 
   try {
@@ -478,7 +539,7 @@ inventoryRoutes.get('/inventory', async (c) => {
   const kv = c.env.CACHE;
 
   try {
-    const items = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+    const items = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true, actorId: auth.userId });
     return c.json({ items });
   } catch (err) {
     console.error('GET inventory unavailable:', err);

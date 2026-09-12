@@ -579,9 +579,9 @@ async function commitPlan(c: any, plan: MealPlan, householdId: string, userId: s
   await publishPlanCache(c, plan);
 }
 
-async function fetchWeekInventory(db: any, householdId: string, kv: any): Promise<any[]> {
+async function fetchWeekInventory(db: any, householdId: string, kv: any, actorId?: string): Promise<any[]> {
   try {
-    return await fetchHouseholdInventoryFromDb(db, householdId, kv, { strict: true });
+    return await fetchHouseholdInventoryFromDb(db, householdId, kv, { strict: true, actorId });
   } catch (err) {
     throw new WeekDatabaseError(err instanceof Error ? err.message : 'Failed fetching inventory');
   }
@@ -1012,7 +1012,7 @@ weekRoutes.post('/week/plans', async (c) => {
   // Fetch REAL current inventory for household from D1
   let inventory: any[];
   try {
-    inventory = await fetchWeekInventory(c.env.DB, householdId, c.env.CACHE);
+    inventory = await fetchWeekInventory(c.env.DB, householdId, c.env.CACHE, auth?.userId);
   } catch (err) {
     console.error('Failed loading inventory for weekly plan:', err);
     return c.json({ error: 'Database service unavailable', code: 'DATABASE_UNAVAILABLE' }, 503);
@@ -1066,7 +1066,7 @@ weekRoutes.post('/week/plans/:id/generate', async (c) => {
 
   let inventory: any[];
   try {
-    inventory = await fetchWeekInventory(c.env.DB, auth.householdId, c.env.CACHE);
+    inventory = await fetchWeekInventory(c.env.DB, auth.householdId, c.env.CACHE, auth.userId);
   } catch (err) {
     console.error('Failed loading inventory for weekly regeneration:', err);
     return c.json({ error: 'Database service unavailable', code: 'DATABASE_UNAVAILABLE' }, 503);
@@ -1135,7 +1135,7 @@ weekRoutes.post('/week/plans/:id/meals/:mealId/swap', async (c) => {
   if (!recipeId) {
     let inventory: any[];
     try {
-      inventory = await fetchWeekInventory(c.env.DB, auth.householdId, c.env.CACHE);
+      inventory = await fetchWeekInventory(c.env.DB, auth.householdId, c.env.CACHE, auth.userId);
     } catch (err) {
       console.error('Failed loading inventory for meal alternatives:', err);
       return c.json({ error: 'Database service unavailable', code: 'DATABASE_UNAVAILABLE' }, 503);
@@ -1152,7 +1152,7 @@ weekRoutes.post('/week/plans/:id/meals/:mealId/swap', async (c) => {
 
   let inventory: any[];
   try {
-    inventory = await fetchWeekInventory(c.env.DB, auth.householdId, c.env.CACHE);
+    inventory = await fetchWeekInventory(c.env.DB, auth.householdId, c.env.CACHE, auth.userId);
   } catch (err) {
     console.error('Failed loading inventory for meal swap:', err);
     return c.json({ error: 'Database service unavailable', code: 'DATABASE_UNAVAILABLE' }, 503);

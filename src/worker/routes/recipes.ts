@@ -211,7 +211,7 @@ recipeRoutes.get('/recipes/:id', async (c) => {
     return c.json({ error: 'Recipe not found' }, 404);
   }
 
-  const inventory = await fetchHouseholdInventoryFromDb(c.env.DB, auth.householdId, c.env.CACHE);
+  const inventory = await fetchHouseholdInventoryFromDb(c.env.DB, auth.householdId, c.env.CACHE, { actorId: auth.userId });
   const evaluation = evaluateRecipeMatch(recipe, { inventory });
 
   return c.json({
@@ -231,7 +231,7 @@ recipeRoutes.get('/recommendations', async (c) => {
 
   const preferredCuisines = cuisineQuery ? (cuisineQuery.split(',') as CuisineType[]) : undefined;
 
-  const inventory = await fetchHouseholdInventoryFromDb(c.env.DB, auth.householdId, c.env.CACHE);
+  const inventory = await fetchHouseholdInventoryFromDb(c.env.DB, auth.householdId, c.env.CACHE, { actorId: auth.userId });
 
   let targetRecipes = ALL_RECIPES;
   if (categoryQuery) {
@@ -338,7 +338,7 @@ recipeRoutes.post('/recipes/:id/cook/complete', tenancyGuard, async (c) => {
   const requestFingerprint = cookingRequestFingerprint(recipe.id, servings, deductions);
 
   const currentInventory = async () =>
-    fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+    fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true, actorId: auth.userId });
   const allocations = new Map<string, StockAllocation>();
 
   // Adopted households cook through the lot authority: FEFO-ordered canonical
@@ -692,7 +692,7 @@ async function completeAdoptedCooking(c: any, db: any, kv: any, auth: AuthContex
     ];
     await db.batch([...composed.statements, ...batchStatements]);
     if (kv) await kv.delete(`inv_${auth.householdId}`).catch(() => {});
-    const updatedInventory = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+    const updatedInventory = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true, actorId: auth.userId });
     return c.json({
       success: true,
       cookId: plan.cookId,
@@ -713,7 +713,7 @@ async function completeAdoptedCooking(c: any, db: any, kv: any, auth: AuthContex
       if (storedCookingFingerprint(prior as { deductions_applied: string | null }) !== plan.requestFingerprint) {
         return c.json({ error: 'Idempotency-Key đã được dùng cho một lệnh nấu khác', code: 'IDEMPOTENCY_CONFLICT' }, 409);
       }
-      const inventory = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+      const inventory = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true, actorId: auth.userId });
       return c.json({
         success: true, idempotentReplay: true, cookId: plan.cookId,
         message: `Đã hoàn tất nấu món ${plan.recipe.title} và tự động cập nhật lại tủ lạnh!`,

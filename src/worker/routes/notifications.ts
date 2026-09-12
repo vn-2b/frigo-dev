@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 import { Env, AuthContext } from '../types';
+import { readInventoryAuthorityMode } from '../../../packages/db/src/inventory-writer-fence';
+import { readInventoryAuthority } from '../../../packages/db/src/inventory-read-authority';
 
 export const notificationRoutes = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 
@@ -10,13 +12,24 @@ notificationRoutes.get('/notifications', async (c) => {
 
   if (db) {
     try {
-      // 1. Check expiring items
-      const expiring = await db.prepare(
-        `SELECT name, quantity, unit, freshness FROM inventory_items WHERE household_id = ? AND (freshness = 'expiring' OR freshness = 'use_soon') LIMIT 3`
-      ).bind(auth.householdId).all();
+      // 1. Check expiring items — T11: adopted households derive freshness
+      // from canonical lot authority; the projection is never the source.
+      let expiringItems: Array<{ name: string; quantity: number; unit: string }>;
+      if (await readInventoryAuthorityMode(db, auth.householdId) === 'native') {
+        const { items } = await readInventoryAuthority(db, { householdId: auth.householdId, actorId: auth.userId });
+        expiringItems = items
+          .filter((item) => item.freshness === 'expiring' || item.freshness === 'use_soon')
+          .slice(0, 3)
+          .map((item) => ({ name: item.name, quantity: item.quantity, unit: item.unit }));
+      } else {
+        const expiring = await db.prepare(
+          `SELECT name, quantity, unit, freshness FROM inventory_items WHERE household_id = ? AND (freshness = 'expiring' OR freshness = 'use_soon') LIMIT 3`
+        ).bind(auth.householdId).all();
+        expiringItems = (expiring.results || []) as Array<{ name: string; quantity: number; unit: string }>;
+      }
 
-      if (expiring.results && expiring.results.length > 0) {
-        for (const it of expiring.results as any[]) {
+      if (expiringItems.length > 0) {
+        for (const it of expiringItems) {
           list.push({
             id: `notif_exp_${it.name}_${Date.now()}`,
             userId: auth.userId,

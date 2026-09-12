@@ -83,7 +83,7 @@ async function confirmAdoptedScan(c: Context<{ Bindings: Env; Variables: { auth:
         .bind(scanId, auth.householdId)
         .first();
       if ((committed as any)?.status === 'confirmed') {
-        const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+        const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true, actorId: auth.userId });
         return c.json({
           success: true, idempotentReplay: true, message: 'Bản quét này đã được xác nhận trước đó',
           inventoryCount: updatedList.length, items: updatedList,
@@ -92,7 +92,7 @@ async function confirmAdoptedScan(c: Context<{ Bindings: Env; Variables: { auth:
       throw new Error('Scan confirmation state transition did not commit');
     }
     if (kv) await kv.delete(`inv_${auth.householdId}`).catch(() => {});
-    const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+    const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true, actorId: auth.userId });
     return c.json({
       success: true, message: 'Đã cập nhật nguyên liệu vào tủ lạnh thành công',
       inventoryCount: updatedList.length, items: updatedList, confirmedItemIds: plan.selectedIds,
@@ -894,7 +894,7 @@ scanRoutes.post('/scans/:id/confirm', async (c) => {
     }
 
     if (scan.status === 'confirmed') {
-      const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+      const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true, actorId: auth.userId });
       return c.json({
         success: true,
         idempotentReplay: true,
@@ -1238,7 +1238,7 @@ scanRoutes.post('/scans/:id/confirm', async (c) => {
         .bind(id, auth.householdId)
         .first();
       if ((committed as any)?.status === 'confirmed') {
-        const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+        const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true, actorId: auth.userId });
         return c.json({
           success: true,
           idempotentReplay: true,
@@ -1255,7 +1255,7 @@ scanRoutes.post('/scans/:id/confirm', async (c) => {
     }
 
     // Fetch fresh updated inventory from D1
-    const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+    const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true, actorId: auth.userId });
 
     return c.json({
       success: true,
@@ -1280,7 +1280,7 @@ scanRoutes.post('/scans/:id/confirm', async (c) => {
         .bind(id, auth.householdId)
         .first();
       if ((committed as any)?.status === 'confirmed') {
-        const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+        const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true, actorId: auth.userId });
         return c.json({
           success: true,
           idempotentReplay: true,
