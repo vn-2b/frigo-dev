@@ -3,8 +3,9 @@ import { composeInventoryLotCommands, executeInventoryFefoCommand, executeInvent
   type InventoryLotCommandScope, type LotCommandSpec } from '../../packages/db/src/inventory-lot-commands';
 import { runLegacyInventoryBatch } from '../../packages/db/src/inventory-writer-fence';
 import { executeInventoryAdoption } from '../../packages/db/src/inventory-adoption-executor';
-import { confirmReconciliationDecision,
+import { confirmReconciliationDecision, planInventoryReconciliationForHousehold,
   type ReconciliationDecisionInput, type ReconciliationDecisionScope } from '../../packages/db/src/inventory-reconciliation';
+import type { InventoryObservation } from '../../packages/domain/src/inventory-observations';
 import { recordInventoryObservation, type InventoryObservationScope } from '../../packages/db/src/inventory-observations';
 import type { InventoryObservationInput } from '../../packages/domain/src/inventory-observations';
 import { assertProjectionParity, readInventoryAuthority, readInventoryLot, readInventorySummary } from '../../packages/db/src/inventory-read-authority';
@@ -147,6 +148,46 @@ async function controlledReadRace(db: D1DatabaseBinding, writer: CommandRequest,
   return { during, writer: writerOutcome, after };
 }
 
+async function controlledDecisionVsManual(db: D1DatabaseBinding, scope: ReconciliationDecisionScope, now: string,
+  decision: ReconciliationDecisionInput, manual: CommandRequest) {
+  let arrived!: () => void;
+  let release!: () => void;
+  const paused = new Promise<void>((resolve) => { arrived = resolve; });
+  const released = new Promise<void>((resolve) => { release = resolve; });
+  const native = new Map<D1PreparedStatement, D1PreparedStatement>();
+  const decisions = new Set<D1PreparedStatement>();
+  const wrap = (statement: D1PreparedStatement, isDecision: boolean): D1PreparedStatement => {
+    const proxy: D1PreparedStatement = {
+      bind: (...values) => wrap(statement.bind(...values), isDecision),
+      first: (column) => statement.first(column),
+      all: () => statement.all(),
+      run: () => statement.run(),
+    };
+    native.set(proxy, statement);
+    if (isDecision) decisions.add(proxy);
+    return proxy;
+  };
+  const held: D1DatabaseBinding = {
+    prepare: (sql) => wrap(db.prepare(sql), sql.includes('INSERT INTO inventory_reconciliation_decisions')),
+    exec: (sql) => db.exec(sql),
+    async batch(statements) {
+      if (statements.some((statement) => decisions.has(statement))) { arrived(); await released; }
+      return db.batch(statements.map((statement) => native.get(statement)!));
+    },
+  };
+  const pending = (async () => {
+    try { return { execution: await confirmReconciliationDecision(held, scope, decision, now) }; }
+    catch (error) { return { error: error instanceof Error ? error.message : 'Decision failed',
+      name: error instanceof Error ? error.name : 'Error', code: (error as { code?: string }).code ?? null }; }
+  })();
+  await Promise.race([paused, pending.then(() => { throw new Error('Decision never reached its batch'); })]);
+  let winner: unknown;
+  try { winner = { execution: await run(db, manual) }; }
+  catch (error) { winner = { error: error instanceof Error ? error.message : 'Manual failed' }; }
+  release();
+  return { winner, loser: await pending };
+}
+
 // Test-only Worker: never imported by the application or a deployment config.
 export default {
   async fetch(request: Request, env: { DB: D1DatabaseBinding; TEST_TOKEN: string }): Promise<Response> {
@@ -194,6 +235,18 @@ export default {
         const body = await request.json() as { scope: ReconciliationDecisionScope; now: string;
           contender: ReconciliationDecisionInput; winner: ReconciliationDecisionInput };
         return Response.json(await controlledDecisionRace(env.DB, body.scope, body.now, body.contender, body.winner));
+      }
+      if (new URL(request.url).pathname === '/plan') {
+        // T12: deterministic planner output for an OPEN observation.
+        const body = await request.json() as { householdId: string; observation: InventoryObservation };
+        return Response.json({ findings: await planInventoryReconciliationForHousehold(env.DB, body.householdId, [body.observation]) });
+      }
+      if (new URL(request.url).pathname === '/reconcile-vs-manual') {
+        // T12: pauses a reconciliation decision immediately before its decision
+        // batch, commits a manual T09 command while paused, then releases.
+        const body = await request.json() as { scope: ReconciliationDecisionScope; now: string;
+          decision: ReconciliationDecisionInput; manual: CommandRequest };
+        return Response.json(await controlledDecisionVsManual(env.DB, body.scope, body.now, body.decision, body.manual));
       }
       if (new URL(request.url).pathname === '/reconcile') {
         const body = await request.json() as { scope: ReconciliationDecisionScope; decision: ReconciliationDecisionInput; now: string };

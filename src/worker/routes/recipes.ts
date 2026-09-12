@@ -621,6 +621,26 @@ async function completeAdoptedCooking(c: any, db: any, kv: any, auth: AuthContex
 }) {
   const scope = { householdId: auth.householdId, actorId: auth.userId };
   try {
+    // Response-loss retry must replay the durable cooked_meals receipt before
+    // any re-planning: after the first commit the authority already holds the
+    // consumed poststate, so re-planning the same deductions would wrongly
+    // report INSUFFICIENT_INVENTORY instead of the idempotent replay.
+    const prior = await db
+      .prepare('SELECT id, recipe_id, servings_cooked, deductions_applied FROM cooked_meals WHERE id = ? AND household_id = ? LIMIT 1')
+      .bind(plan.cookId, auth.householdId)
+      .first();
+    if (prior) {
+      if (storedCookingFingerprint(prior as { deductions_applied: string | null }) !== plan.requestFingerprint) {
+        return c.json({ error: 'Idempotency-Key đã được dùng cho một lệnh nấu khác', code: 'IDEMPOTENCY_CONFLICT' }, 409);
+      }
+      const inventory = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true, actorId: auth.userId });
+      return c.json({
+        success: true, idempotentReplay: true, cookId: plan.cookId,
+        message: `Đã hoàn tất nấu món ${plan.recipe.title} và tự động cập nhật lại tủ lạnh!`,
+        recipeId: plan.recipe.id, deductionsApplied: plan.deductions,
+        remainingInventoryCount: inventory.length, inventory,
+      });
+    }
     const snapshot = await readAdoptedLotSnapshot(db, scope);
     const now = new Date().toISOString();
     type PlannedUse = { lotId: string; takeMilli: number; canonicalUnit: typeof snapshot.lots[number]['lot']['canonicalUnit'] };

@@ -231,7 +231,19 @@ describe('T12 closed loop — observation → reconciliation → T09 authority �
       decisionKey: 'race-7', observationId: observationRecord.observationId, expectedObservationVersion: 1,
       decisionType: 'CORRECT', proposals: finding.proposals }, later);
     await gate;
-    await expect(loser).rejects.toMatchObject({ code: expect.stringMatching(/^(STALE_SNAPSHOT|PERSISTENCE_FAILED)$/) }); // established stale loss, never a hybrid commit
+    // The loser must classify to the explicit T09 CAS loss (household
+    // inventory_version guard -> STALE_SNAPSHOT). A generic PERSISTENCE_FAILED
+    // is not acceptable for this known race.
+    await expect(loser).rejects.toMatchObject({ name: 'LotCommandError', code: 'STALE_SNAPSHOT' });
+    // Nothing of the loser committed: no decision receipt, no losing commands
+    // or events, observation still OPEN at v1 (re-plannable), projection intact.
+    expect(db.query('SELECT decision_key FROM inventory_reconciliation_decisions')).toEqual([]);
+    expect(db.query<{ client_key: string }>('SELECT client_key FROM inventory_commands ORDER BY client_key').map((r) => r.client_key))
+      .toEqual(['create-eggs', 'manual-9']);
+    expect(db.query<{ n: number }>("SELECT count(*) AS n FROM inventory_events e JOIN inventory_commands c ON c.id = e.command_id WHERE c.client_key LIKE 'race-7%'")[0].n).toBe(0);
+    expect(db.query<{ status: string; version: number }>('SELECT status, version FROM inventory_observations')[0]).toEqual({ status: 'OPEN', version: 1 });
+    const { assertProjectionParity } = await import('../../packages/db/src/inventory-read-authority');
+    expect(await assertProjectionParity(db, scope)).toEqual([]);
     // Manual T09 CORRECT wins the lot CAS while the decision batch was paused.
     expect(db.query<{ quantity_milli: number; version: number }>('SELECT quantity_milli, version FROM inventory_lots')[0])
       .toMatchObject({ quantity_milli: 9_000, version: 2 });
