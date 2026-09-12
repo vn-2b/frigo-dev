@@ -1,5 +1,23 @@
 # Frigo current state — isolated T09 development
 
+## Current authoritative state — Independent final re-certification of RC 64c5501, 2026-09-12
+
+**Verdict: RELEASE CANDIDATE `64c5501ab0110658718b3752bd84e537f0854e12` TECHNICALLY
+CERTIFIED** (docs HEAD reviewed `bc1532e`; receipt
+`docs/ai/release/INVENTORY_TRUTH_RECERTIFICATION.md`). Repository ID 1364064929
+(`vn-2f/frigo-dev`); `origin/main` still `d1b0673` (RC 57 ahead / 0 behind). Lineage
+16/16 ancestors, no rewrite; remediation delta exactly the six D3/D1 files; D3 code,
+tests (A–L incl. route boundary), negative control (3/6 fail on pre-fix AuthPage) and
+browser reproduction re-verified; D1 blob `3818a00` byte-identical to main; D2
+SAFE_DEFERRED with `MEAL_PLANNER_AUTHORITY_CUTOVER`; fresh reader/writer audits
+UNKNOWN = 0 (sets identical to `d156001`); no second ledger; task survival by tree
+comparison PASS. Clean detached checkout @ `64c5501`: install frozen (lockfile unchanged);
+full **3,092/3,092 across 120 files**; D3 32/32; real D1 70/70; T09 654 · T10 98 ·
+T11 39 · T12 22; lint/typecheck/build/migrations(30)/schema gate/diff-check PASS;
+status empty; fresh real-D1 0001→0030 replay and legacy-upgrade replay PASS. P0/P1/P2:
+none (two P3/informational notes). **Main NOT merged** — next is the separate ROADMAP
+RECONCILIATION / GAP AUDIT; nothing deployed; remote D1 NOT touched; PayOS untouched.
+
 ## Current authoritative state — Final RC targeted remediation (D3/D1/D2), 2026-09-12
 
 **NEW_APPLICATION_FREEZE `64c5501ab0110658718b3752bd84e537f0854e12`** on

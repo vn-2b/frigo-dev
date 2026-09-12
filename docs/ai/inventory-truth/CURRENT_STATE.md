@@ -1,5 +1,12 @@
 # Inventory Truth current state
 
+## Current checkpoint — Independent final re-certification, 2026-09-12
+
+RC `64c5501` technically certified (`docs/ai/release/INVENTORY_TRUTH_RECERTIFICATION.md`):
+lineage, remediation scope, D3/D1/D2, fresh reader/writer audits (UNKNOWN = 0), task
+survival, migrations (sqlite + real D1 fresh and legacy replays) and all clean-checkout
+gates PASS (3,092/3,092; real D1 70/70). Main NOT merged; roadmap gap audit is next.
+
 ## Current checkpoint — Final RC targeted remediation, 2026-09-12
 
 App freeze `64c5501ab0110658718b3752bd84e537f0854e12`: D3 P1 closed (client

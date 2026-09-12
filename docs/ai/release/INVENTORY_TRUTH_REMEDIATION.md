@@ -155,3 +155,6 @@ D3 CLOSED · D1 CLOSED · D2 DOCUMENTED (deferred cutover tracked as
 `MEAL_PLANNER_AUTHORITY_CUTOVER`). No P0/P1 known. Main NOT merged; nothing
 deployed; remote D1 NOT touched; PayOS untouched; T09/T10/T11 semantics unchanged;
 DEC-012 unchanged (DEC-015 records the client contract).
+
+Re-certification (2026-09-12): `64c5501` independently re-certified — see
+`INVENTORY_TRUTH_RECERTIFICATION.md`. Main still NOT merged.

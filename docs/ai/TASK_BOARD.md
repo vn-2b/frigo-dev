@@ -1,5 +1,15 @@
 # Frigo task board
 
+## Current authoritative board — Final re-certification, 2026-09-12
+
+- RC `64c5501` independently re-certified (technical): all gates PASS from a clean
+  exact-SHA checkout; no P0/P1/P2. Receipt: `docs/ai/release/INVENTORY_TRUTH_RECERTIFICATION.md`.
+- NEXT (separate task): ROADMAP RECONCILIATION / GAP AUDIT before any main integration.
+- OPEN follow-ups: `MEAL_PLANNER_AUTHORITY_CUTOVER` (before enabling `MEAL_PLANNER_ENABLED`
+  for adopted households); P3 UX note — AuthPage shows raw `err.message` for generic auth
+  errors (pre-existing on main).
+- Main NOT merged; production/staging NOT deployed; remote D1 NOT touched; PayOS untouched.
+
 ## Current authoritative board — Final RC targeted remediation, 2026-09-12
 
 - D3 P1 CLOSED at app freeze `64c5501ab0110658718b3752bd84e537f0854e12` (client

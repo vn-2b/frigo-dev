@@ -1,5 +1,10 @@
 # Inventory Truth task board
 
+## Current board — Independent final re-certification, 2026-09-12
+
+- RC `64c5501` TECHNICALLY CERTIFIED; no P0/P1/P2. Next: roadmap reconciliation / gap audit (separate).
+- Open: MEAL_PLANNER_AUTHORITY_CUTOVER before enabling the planner flag for adopted households.
+
 ## Current board — Final RC targeted remediation, 2026-09-12
 
 - D3/D1 closed, D2 documented at `64c5501`; all gates PASS from a clean exact-SHA checkout.

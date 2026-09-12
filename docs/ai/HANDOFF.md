@@ -1,5 +1,25 @@
 # Frigo AI Handoff — isolated T09 development
 
+## Current authoritative handoff — Independent final re-certification, 2026-09-12
+
+Program: Inventory Truth Layer — T08–T12 release train + D3/D1/D2 remediation
+Task: Independent final re-certification (audit only)
+Status: RECERTIFICATION_COMPLETE — RC 64c5501 TECHNICALLY CERTIFIED; main NOT merged
+Repository: vn-2f/frigo-dev (repository ID 1364064929; `vb-2f` redirects)
+Review branch: hoplite/akraiphia-akraiphnion-a03445c7--inventory-truth-final-recertification (base bc1532e; suggested name hoplite/inventory-truth-final-recertification)
+Application RC: 64c5501ab0110658718b3752bd84e537f0854e12 · Docs HEAD reviewed: bc1532ea406525dc7fa9e59c58d320fd525774d8
+origin/main: d1b06732f8a80db4e77986df31ff28d9f04641fa (unchanged)
+Executed checks (clean detached /tmp/hoplite/rc2 @ 64c5501): pnpm install --frozen-lockfile (Node v24.19.0, pnpm 10.26.0,
+    lockfile unchanged); pnpm test 3,092/3,092 · 120 files · 196.29 s; D3 32/32; auth regression selection 143/143;
+    T09 654/654; T10 98/98; T11 39/39; T12 22/22; T08 430/430; real D1 70/70; pnpm lint/typecheck/build PASS;
+    pnpm check:migrations ok (30); local D1 apply + pnpm schema:check:local PASS; git diff --check clean;
+    git status --porcelain empty. Fresh real-D1 replay 0001→0030 (30/30, 200 objects identical to d156001) and
+    legacy-upgrade replay (0001–0022 + legacy rows → 0023–0030) PASS. Negative control: 3/6 UI tests fail on the
+    pre-fix AuthPage (4/6 with all three pre-fix client files). Browser reproduction at 64c5501 PASS.
+Failures: none. Findings: P0/P1/P2 none; P3 N1 (pre-existing raw error text for generic auth errors), N2 maintainability note.
+Next action: ROADMAP RECONCILIATION / GAP AUDIT of 64c5501 (separate task). Do NOT merge main from this certification alone.
+Do NOT deploy, run remote D1, touch PayOS, rewrite migrations, enable MEAL_PLANNER_ENABLED, or commit the workspace overlay.
+
 ## Current authoritative handoff — Final RC targeted remediation, 2026-09-12
 
 Program: Inventory Truth Layer — T08–T12 release train
