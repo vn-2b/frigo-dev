@@ -1,5 +1,23 @@
 # Frigo task board
 
+## Current authoritative board — Final Release Integration Review, 2026-09-12
+
+- Review of RC `d15600186c3e73faba011eb690ac6cd70e8d3d2d` from docs HEAD `5cb4caa`
+  complete: **RELEASE CANDIDATE NOT READY** (0 P0, 1 P1, 2 P2). Evidence in
+  `docs/ai/release/INVENTORY_TRUTH_RELEASE_CERTIFICATION.md` (+ ANCESTRY, CHANGE_MANIFEST).
+- Certified PASS: lineage, main divergence (main still `d1b0673`), task survival,
+  architecture invariant, reader/writer audits, migration chain (sqlite + real D1),
+  legacy upgrade simulation, clean-checkout gates (3,085/3,085; real D1 70/70; all
+  static gates), smoke matrix, concurrency/idempotency/tenancy/fail-closed/cache,
+  API compatibility, dependency/config (no change).
+- OPEN — D3 (P1): guest→email registration dead-ends with `409
+  INVENTORY_TRANSFER_DEFERRED` in the shipped web client. Next: client-only successor
+  fix on the T12 branch (explicit “continue without transfer” retry), test, re-run gates.
+- OPEN — D1 (P2): restore main blob of `.hoplite/settings.json` on the T12 branch.
+- OPEN — D2 (P2): document `meal-planning-snapshot.ts` reader as SAFE_DEFERRED in the
+  T11/T12 maps; cut it over to read authority before enabling `MEAL_PLANNER_ENABLED`.
+- Main NOT merged; production/staging NOT deployed; remote D1 NOT touched; PayOS untouched.
+
 ## Current authoritative board — T12 runtime verification, 2026-09-12
 
 - Review findings P1/P2 closed at new freeze `d15600186c3e73faba011eb690ac6cd70e8d3d2d` (`22f675d` superseded):

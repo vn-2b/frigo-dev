@@ -1,5 +1,32 @@
 # Frigo AI Handoff — isolated T09 development
 
+## Current authoritative handoff — Final Release Integration Review, 2026-09-12
+
+Program: Inventory Truth Layer — T08–T12 release train
+Task: Final independent integration review / release-candidate certification
+Status: REVIEW_COMPLETE — verdict RELEASE CANDIDATE NOT READY (D3 P1, D1 P2, D2 P2; no P0)
+Repository: vn-2f/frigo-dev (repository ID 1364064929; packet name vb-2f redirects)
+Review HEAD: 5cb4caa0d5b3c86b00954d77cd40b16027c21df1 (T12 docs); RC: d15600186c3e73faba011eb690ac6cd70e8d3d2d
+origin/main: d1b06732f8a80db4e77986df31ff28d9f04641fa (unchanged; RC 54 ahead / 0 behind)
+Deliverables: docs/ai/release/INVENTORY_TRUTH_RELEASE_CERTIFICATION.md,
+    INVENTORY_TRUTH_ANCESTRY.md, INVENTORY_TRUTH_CHANGE_MANIFEST.md (docs only; no app code touched)
+Executed checks (clean detached /tmp/hoplite/rc-app @ d156001): pnpm install --frozen-lockfile
+    (Node v24.19.0, pnpm 10.26.0, lockfile unchanged); pnpm test 3,085/3,085 · 119 files · 199.68 s;
+    T09 654/654 (10 suites) and 1,432/1,432 (22 suites); T10 98/98; T11 39/39; T12 22/22;
+    real D1 70/70 (44+7+11+8); pnpm lint/typecheck/build PASS; pnpm check:migrations ok;
+    wrangler d1 migrations apply --local 30/30 on fresh + pnpm schema:check:local PASS;
+    fresh sqlite3 0001→0030 PASS; legacy-upgrade simulation on sqlite3 and real local D1 PASS;
+    git diff --check clean; git status --porcelain empty (ignored dist/, node_modules/, .wrangler/ only).
+Failures: none in gates. Defects found by review (not fixed here, per packet rules):
+    D3 P1 guest→register 409 INVENTORY_TRANSFER_DEFERRED dead-end in web UI (reproduced via curl
+    and browser on scripts/security-preview.mjs); D1 P2 .hoplite/settings.json deleted at 4553b8a;
+    D2 P2 meal-planning-snapshot.ts reader undocumented (SAFE_DEFERRED, flag unbound in wrangler.jsonc).
+Next action: targeted successor on the T12 branch — (1) AuthPage handles INVENTORY_TRANSFER_DEFERRED
+    with an explicit retry without migrateFromHouseholdId + test; (2) git checkout d1b0673 --
+    .hoplite/settings.json and commit that blob only; (3) update t11/READ_CONSUMER_MAP.md and
+    t12/FINAL_AUTHORITY_MAP.md for D2. Then re-run §11 gates and the D3 browser check on the new SHA.
+Do NOT merge main, deploy, run remote D1, touch PayOS, rewrite migrations, or edit the workspace overlay.
+
 ## Current authoritative handoff — T12 runtime verification fix, 2026-09-12
 
 Program: Inventory Truth Layer — T08–T12 release train

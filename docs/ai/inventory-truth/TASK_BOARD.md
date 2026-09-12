@@ -1,5 +1,12 @@
 # Inventory Truth task board
 
+## Current board — Final Release Integration Review, 2026-09-12
+
+- RC `d156001` reviewed independently: NOT READY (D3 P1 guest-register dead-end; D1 P2
+  settings.json deletion; D2 P2 undocumented planner reader). No P0. All gates PASS from a
+  clean exact-SHA checkout. See `docs/ai/release/`.
+- Next: targeted successor fix on the T12 branch for D3/D1/D2, then re-certify.
+
 ## Current authoritative T12 runtime verification — 2026-09-12: COMPLETE
 
 Review P1/P2 closed at freeze **`d15600186c3e73faba011eb690ac6cd70e8d3d2d`** (`22f675d` superseded): real D1 70/70

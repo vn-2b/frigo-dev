@@ -1,5 +1,32 @@
 # Frigo current state — isolated T09 development
 
+## Current authoritative state — Final Release Integration Review (T08→T12), 2026-09-12
+
+**Verdict: RELEASE CANDIDATE NOT READY** (docs: `docs/ai/release/INVENTORY_TRUTH_RELEASE_CERTIFICATION.md`,
+`INVENTORY_TRUTH_ANCESTRY.md`, `INVENTORY_TRUTH_CHANGE_MANIFEST.md`). Reviewed from
+exact docs HEAD `5cb4caa0d5b3c86b00954d77cd40b16027c21df1`; application RC
+`d15600186c3e73faba011eb690ac6cd70e8d3d2d`; repository ID 1364064929
+(`vn-2f/frigo-dev`; `vb-2f` now redirects). `origin/main` is still `d1b0673`
+(RC 54 ahead / 0 behind). Lineage 11/11 ancestors; no later task overwrote an
+earlier task; UNKNOWN production readers/writers = 0 after classification; no
+second stock ledger. Clean detached checkout of `d156001`: `pnpm install
+--frozen-lockfile` (Node v24.19.0, pnpm 10.26.0, lockfile unchanged); full
+**3,085/3,085 across 119 files (199.68 s)**; T09 654/654 (1,432 across all 22
+T09-lineage suites); T10 98/98; T11 39/39; T12 22/22; real local D1 **70/70**;
+lint/typecheck/build PASS; `migration-smoke=ok`; `pnpm schema:check:local` PASS;
+`git diff --check` clean; `git status --porcelain` empty. Fresh 0001→0030 replay
+on sqlite3 and on real workerd/D1 (30 applied; 200 schema objects identical);
+legacy-upgrade simulation (0001–0022 + legacy rows → 0023–0030) on real D1: no
+data loss, no automatic cutover, non-adopted writes still legal, FK clean.
+Defects: **D3 P1** — web guests cannot finish email registration on the RC
+(`AuthPage` always sends `migrateFromHouseholdId` for `hh_guest_*` sessions →
+`409 INVENTORY_TRANSFER_DEFERRED` with no retry-without-transfer UI; reproduced by
+curl and in the browser on the isolated preview); **D1 P2** — tracked
+`.hoplite/settings.json` deleted from the RC tree by `4553b8a`; **D2 P2** —
+flag-gated `/meal-planning` reader of `inventory_items` missing from the authority
+maps (classified SAFE_DEFERRED). No P0. Main NOT merged; nothing deployed; remote
+D1 NOT touched; PayOS untouched; no application code changed by this review.
+
 ## Current authoritative state — T12 closed-loop runtime verification, 2026-09-12
 
 **New T12 application freeze: `d15600186c3e73faba011eb690ac6cd70e8d3d2d`** — `fix(t12): complete

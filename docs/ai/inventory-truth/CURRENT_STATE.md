@@ -1,5 +1,17 @@
 # Inventory Truth current state
 
+## Current checkpoint — Final Release Integration Review, 2026-09-12
+
+Independent review of RC `d15600186c3e73faba011eb690ac6cd70e8d3d2d` from docs HEAD
+`5cb4caa`: **RELEASE CANDIDATE NOT READY** — D3 P1 (web guest email registration
+dead-ends on `409 INVENTORY_TRANSFER_DEFERRED`; DEC-012 server behaviour is correct,
+the client was never updated), D1 P2 (tracked `.hoplite/settings.json` deleted at
+`4553b8a`), D2 P2 (`meal-planning-snapshot.ts` projection reader missing from the
+authority maps → SAFE_DEFERRED). Architecture, migrations (sqlite + real D1 fresh
+replay and legacy upgrade), reader/writer audits, tenancy/idempotency/fail-closed/
+cache certifications and all clean-checkout gates PASS (3,085/3,085; real D1 70/70).
+Full receipt: `docs/ai/release/INVENTORY_TRUTH_RELEASE_CERTIFICATION.md`.
+
 ## Current authoritative T12 runtime verification — 2026-09-12
 
 **T12 application freeze `d15600186c3e73faba011eb690ac6cd70e8d3d2d`** (supersedes `22f675d`): real-D1 closed-loop
