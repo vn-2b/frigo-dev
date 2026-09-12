@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/useAuthStore';
 import { api } from '../services/api';
+import { isInventoryTransferDeferred } from '../services/auth';
 import { capturePrivateSession } from '../lib/private-session';
 import { Button } from '../components/common/Button';
 import { TurnstileWidget } from '../components/common/TurnstileWidget';
@@ -38,6 +39,9 @@ export const AuthPage: React.FC = () => {
   // reset code was requested so the user can still enter it and set a password.
   const [forgotOtpRequested, setForgotOtpRequested] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
+  // DEC-012: guest data transfer was refused by the server; the guest session
+  // stays intact until the user explicitly continues without a transfer.
+  const [transferDeferred, setTransferDeferred] = useState(false);
 
   // SEC-6: Turnstile bot protection (inactive when server has no site key)
   const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
@@ -148,6 +152,7 @@ export const AuthPage: React.FC = () => {
       if (err?.message?.includes('chưa kích hoạt OTP') || err?.requireOtp) {
         setOtpPurpose('register');
         if (err.devOtp) setDevOtp(err.devOtp);
+        setTransferDeferred(false);
         setMode('otp_verify');
         setResendCountdown(60);
       } else {
@@ -180,6 +185,7 @@ export const AuthPage: React.FC = () => {
       if (res.success) {
         if (res.devOtp) setDevOtp(res.devOtp);
         setOtpPurpose('register');
+        setTransferDeferred(false);
         setMode('otp_verify');
         setResendCountdown(60);
         setSuccessMessage('Mã OTP đã được gửi đến email của bạn!');
@@ -228,10 +234,12 @@ export const AuthPage: React.FC = () => {
     }
   };
 
-  // Handle OTP Submit
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  // Verify the entered OTP. `transferGuestData` asks the server to move the
+  // current guest household into the new account; the server may refuse that
+  // (DEC-012) without consuming the OTP, in which case the guest session is left
+  // untouched and the user decides whether to continue without a transfer.
+  const submitOtpVerification = async (transferGuestData: boolean) => {
     const isCurrent = capturePrivateSession();
-    e.preventDefault();
     const code = otpDigits.join('');
     if (code.length < 6) {
       setErrorMessage('Vui lòng nhập đủ 6 chữ số mã OTP');
@@ -246,12 +254,13 @@ export const AuthPage: React.FC = () => {
       // is actually in a guest session (server validates the hh_guest_ prefix).
       const authState = useAuthStore.getState();
       const guestHouseholdId =
-        otpPurpose === 'register' && authState.isGuest && authState.householdId.startsWith('hh_guest_')
+        transferGuestData && otpPurpose === 'register' && authState.isGuest && authState.householdId.startsWith('hh_guest_')
           ? authState.householdId
           : null;
       const res = await api.verifyOtp(email, code, otpPurpose, guestHouseholdId);
       if (!isCurrent()) return;
       if (res.success) {
+        setTransferDeferred(false);
         if (otpPurpose === 'register') {
           if (res.user) {
             setAuthSession({
@@ -271,10 +280,27 @@ export const AuthPage: React.FC = () => {
         }
       }
     } catch (err: any) {
+      if (transferGuestData && isInventoryTransferDeferred(err)) {
+        // Not an OTP failure: the code is still valid and nothing was changed.
+        if (isCurrent()) setTransferDeferred(true);
+        return;
+      }
       setErrorMessage(err?.message || 'Mã OTP không đúng hoặc đã hết hạn');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Handle OTP Submit
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitOtpVerification(true);
+  };
+
+  // Explicit user choice after a deferred transfer: keep the guest data where it
+  // is and finish creating the separate account with the same OTP.
+  const handleContinueWithoutTransfer = async () => {
+    await submitOtpVerification(false);
   };
 
   // Resend OTP
@@ -287,6 +313,7 @@ export const AuthPage: React.FC = () => {
       if (res.success) {
         if (res.devOtp) setDevOtp(res.devOtp);
         setResendCountdown(60);
+        setTransferDeferred(false);
         setSuccessMessage(res.message);
       }
     } catch (err: any) {
@@ -412,6 +439,7 @@ export const AuthPage: React.FC = () => {
                 setSuccessMessage(null);
                 setDevOtp(null);
                 setForgotOtpRequested(false);
+                setTransferDeferred(false);
                 setOtpDigits(['', '', '', '', '', '']);
               } else {
                 navigate(-1);
@@ -700,9 +728,29 @@ export const AuthPage: React.FC = () => {
                 ))}
               </div>
 
-              <Button fullWidth size="lg" type="submit" isLoading={isLoading}>
-                Xác thực & Hoàn tất
-              </Button>
+              {transferDeferred && otpPurpose === 'register' ? (
+                <div
+                  role="status"
+                  data-testid="transfer-deferred"
+                  className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs space-y-3 animate-in fade-in"
+                >
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                    <p className="leading-relaxed">
+                      Hiện Frigo chưa thể chuyển dữ liệu trong tủ khách sang tài khoản mới một cách an toàn.
+                      Bạn vẫn có thể tiếp tục tạo tài khoản: dữ liệu của phiên khách được giữ riêng trên
+                      hộ khách, không bị xóa và không được chuyển sang tài khoản mới.
+                    </p>
+                  </div>
+                  <Button fullWidth size="lg" type="button" isLoading={isLoading} onClick={handleContinueWithoutTransfer}>
+                    Tiếp tục không chuyển dữ liệu khách
+                  </Button>
+                </div>
+              ) : (
+                <Button fullWidth size="lg" type="submit" isLoading={isLoading}>
+                  Xác thực & Hoàn tất
+                </Button>
+              )}
 
               <div className="flex items-center justify-between text-xs pt-2">
                 <span className="text-slate-500">Chưa nhận được mã?</span>

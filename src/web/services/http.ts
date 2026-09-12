@@ -23,6 +23,18 @@ export class ApiError extends Error {
     this.status = status;
     this.retryable = options?.retryable;
   }
+
+  /** Machine-readable `code` from an `HTTP <status>: {json}` envelope, or null. */
+  get code(): string | null {
+    const envelope = /^HTTP \d{3}: ([\s\S]*)$/.exec(this.message);
+    if (!envelope) return null;
+    try {
+      const body: unknown = JSON.parse(envelope[1]);
+      return body && typeof body === 'object' && 'code' in body && typeof body.code === 'string' ? body.code : null;
+    } catch {
+      return null;
+    }
+  }
 }
 
 export function isOffline(err: unknown): boolean {

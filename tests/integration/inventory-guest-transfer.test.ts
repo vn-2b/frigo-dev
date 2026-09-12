@@ -258,6 +258,62 @@ describe('T09F guest transfer safe deferral', () => {
     expect(db.query('SELECT * FROM sessions_v2 WHERE user_id = ?', 'transferuser')).toHaveLength(1);
   });
 
+  it('D3 client contract: the exact OTP issued by /auth/register survives a deferred transfer and then verifies without the field', async () => {
+    // Full product sequence at the real route boundary (guest cookie present),
+    // for a brand-new email: register → verify with migrateFromHouseholdId
+    // (409, OTP untouched) → verify the SAME code without the field (200).
+    await sourceStock('legacy');
+    const email = 'guest-conversion@example.com';
+    const headers = { Cookie: `${SESSION_COOKIE}=${GUEST_TOKEN}` };
+    const devEnv = { ...env, ENVIRONMENT: 'development' as const };
+    const registered = await app.fetch(new Request(`${ORIGIN}/auth/register`, {
+      method: 'POST',
+      headers: { Origin: ORIGIN, 'Content-Type': 'application/json', 'CF-Connecting-IP': '198.51.100.222', ...headers },
+      body: JSON.stringify({ name: 'Guest Conversion', email, password: 'strong-password-1' }),
+    }), devEnv);
+    const issued = await registered.json() as { success: boolean; devOtp?: string };
+    expect(registered.status, JSON.stringify(issued)).toBe(200);
+    expect(issued.success).toBe(true);
+    expect(issued.devOtp).toMatch(/^\d{6}$/);
+    const account = db.query<{ user_id: string }>('SELECT user_id FROM auth_accounts WHERE email = ?', email);
+    expect(account).toHaveLength(1);
+    const userId = account[0].user_id;
+    const otpBefore = db.query('SELECT id, used, used_at, attempt_count FROM auth_otps WHERE email = ?', email);
+    expect(otpBefore).toHaveLength(1);
+    expect(otpBefore[0]).toMatchObject({ used: 0, used_at: null, attempt_count: 0 });
+    const inventoryBefore = snapshot(inventoryTables);
+    const attempt = (extra: Record<string, unknown>) =>
+      request('/auth/verify-otp', { email, code: issued.devOtp, purpose: 'register', ...extra }, headers);
+
+    const deferred = await attempt({ migrateFromHouseholdId: SOURCE });
+    expect(deferred.response.status).toBe(409);
+    expect(deferred.json).toEqual({ error: expect.any(String), code: 'INVENTORY_TRANSFER_DEFERRED' });
+    expect(deferred.response.headers.get('Set-Cookie')).toBeNull();
+    // Deferral consumed nothing: same OTP row, unused, no failed attempt recorded.
+    expect(db.query('SELECT id, used, used_at, attempt_count FROM auth_otps WHERE email = ?', email)).toEqual(otpBefore);
+    expect(db.query('SELECT is_verified FROM auth_accounts WHERE email = ?', email)).toEqual([{ is_verified: 0 }]);
+    expect(db.query('SELECT * FROM sessions_v2 WHERE user_id = ?', userId)).toEqual([]);
+    expect(snapshot(inventoryTables)).toBe(inventoryBefore);
+
+    const continued = await attempt({});
+    expect(continued.response.status).toBe(200);
+    expect(continued.json.success).toBe(true);
+    expect(continued.json).not.toHaveProperty('migratedFromHouseholdId');
+    expect(continued.json.user).toMatchObject({ id: userId, householdId: `hh_${userId}`, isGuest: false });
+    expect(continued.response.headers.get('Set-Cookie')).toMatch(new RegExp(`^${SESSION_COOKIE}=[a-f0-9]+;`));
+    expect(db.query('SELECT used FROM auth_otps WHERE email = ?', email)).toEqual([{ used: 1 }]);
+    expect(db.query('SELECT is_verified FROM auth_accounts WHERE email = ?', email)).toEqual([{ is_verified: 1 }]);
+    expect(db.query('SELECT * FROM sessions_v2 WHERE user_id = ?', userId)).toHaveLength(1);
+    // Guest stock stayed in the guest household; nothing moved to the account.
+    expect(snapshot(inventoryTables)).toBe(inventoryBefore);
+    expect(db.query('SELECT household_id FROM inventory_items WHERE id = ?', 'source-item')).toEqual([{ household_id: SOURCE }]);
+    expect(db.query('SELECT COUNT(*) AS count FROM inventory_items WHERE household_id = ?', `hh_${userId}`)).toEqual([{ count: 0 }]);
+    // The consumed OTP cannot be replayed, with or without the field.
+    expect((await attempt({})).response.status).toBe(400);
+    expect((await attempt({ migrateFromHouseholdId: SOURCE })).response.status).toBe(400);
+    expect(db.query('SELECT * FROM sessions_v2 WHERE user_id = ?', userId)).toHaveLength(1);
+  });
+
   it('leaves forgot-password preliminary verification and final reset unchanged even with a transfer field', async () => {
     await sourceStock('native');
     db.execute("UPDATE auth_accounts SET is_verified = 1 WHERE id = 'pending'");
