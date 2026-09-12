@@ -1,6 +1,25 @@
 # Frigo current state — isolated T09 development
 
-## Current authoritative state — T10 observation claim fence, 2026-09-11
+## Current authoritative state — T11 inventory read authority, 2026-09-12
+
+Branch `hoplite/himera-6d3eda84-t10-observation-reconciliation-t11-inventory-read-authority`
+(start_branch successor; base = train merge `30ce4ea` containing exactly the
+required T10 docs HEAD `c71692a`). **T11 application freeze: `657201f3a12f18dd96cc96adeac0dd1d3b75e6f4`**
+published as **PR #3** (base `hoplite/kydonia-2785bb72` — the release train,
+NOT main); corrective `4553b8a` removed the platform auto-committed
+workspace overlay (`c7e2296`; overlay preserved byte-for-byte uncommitted).
+The T09/T10 truth layer is now the canonical READ authority: adopted
+households read `inventory_lots` + validated mapping evidence through
+`packages/db/src/inventory-read-authority.ts`; `inventory_items` never decides
+truth; no dual-truth fallback; corruption fails closed; reads never write.
+Read consumer audit: production UNKNOWN=0 (`docs/ai/inventory-truth/t11/
+READ_CONSUMER_MAP.md`). Gates: full 3,041/3,041 across 115 files; real D1
+51/51; lint/typecheck/build/30-migration smoke/local schema/diff PASS —
+repeated from a clean detached exact-SHA checkout with empty status. No
+migration. Main NOT merged. Production NOT deployed. Remote D1 NOT touched.
+T12 NOT STARTED. **T11 COMPLETE — READY FOR INDEPENDENT REVIEW.**
+
+## Historical T10 state — observation claim fence (superseded by T11)
 
 Branch `hoplite/himera-6d3eda84-t10-observation-reconciliation`. **New T10 application
 freeze: `7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b`** — `fix(t10): atomically fence competing reconciliation

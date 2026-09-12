@@ -1,6 +1,21 @@
 # Frigo task board
 
-## Current authoritative T10 board — observation claim fence, 2026-09-11
+## Current authoritative T11 board — inventory read authority, 2026-09-12
+
+- Canonical read authority: REPRODUCED the dual-truth risk (all product reads
+  funnelled through the `inventory_items` projection + 1h KV cache) → CUT OVER
+  (`fetchHouseholdInventoryFromDb` authority-backed for adopted households; KV
+  bypassed; fail-closed; legacy path preserved behind the adoption gate) →
+  VERIFIED from a clean published checkout.
+- Read consumer audit: production UNKNOWN = 0 (READ_CONSUMER_MAP.md).
+- Application freeze: `657201f3a12f18dd96cc96adeac0dd1d3b75e6f4` (PR #3; corrective `4553b8a`).
+- 3,041 full/115 files; 51 real local-D1; lint/typecheck/build/30-migration
+  smoke/local schema/diff PASS; clean exact-SHA checkout repeats all.
+- No migration; PayOS untouched. Main NOT merged; production NOT deployed;
+  T12 NOT STARTED.
+- Remaining P0/P1: NONE. Verdict: **T11 COMPLETE — READY FOR INDEPENDENT REVIEW.**
+
+## Historical T10 board — observation claim fence (superseded)
 
 - Concurrency P1 (competing decisions on one OPEN observation): REPRODUCED (silent zero-row
   UPDATE; trigger-dependent; double commit without trigger) → FIXED (in-batch changes() claim

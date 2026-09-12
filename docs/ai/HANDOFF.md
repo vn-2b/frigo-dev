@@ -1,6 +1,35 @@
 # Frigo AI Handoff — isolated T09 development
 
-## Current authoritative handoff — T10 observation claim fence, 2026-09-11
+## Current authoritative handoff — T11 inventory read authority, 2026-09-12
+
+Program: Inventory Truth Layer
+Task: T11 — Inventory Read Authority & Projection Cutover
+Status: COMPLETE; T11_READY_FOR_INDEPENDENT_REVIEW (PR #3, base = release train, main NOT a target)
+Repository: vb-2f/frigo-dev (repository ID 1364064929)
+Branch: hoplite/himera-6d3eda84-t10-observation-reconciliation-t11-inventory-read-authority
+T11 base: train merge 30ce4ea (contains exact T10 docs HEAD c71692a)
+T11 application freeze: 657201f3a12f18dd96cc96adeac0dd1d3b75e6f4
+Docs HEAD: docs-only commit on the branch; exact SHA in the final report
+Platform overlay auto-commit c7e2296 corrected by 4553b8a (workspace file preserved byte-for-byte, uncommitted).
+Canonical answer: adopted households read inventory_lots + validated authority
+metadata via readInventoryAuthority/readInventoryLot/readInventorySummary;
+inventory_items is checked-for-parity compatibility, never a fallback; reads
+are single-batch coherent snapshots, bounded (1000), deterministic, tenancy-
+fenced, fail-closed on corruption; observations/events never decide truth.
+Cutover: fetchHouseholdInventoryFromDb (GET /inventory, recipes, scans list
+reads, weekly planner, notifications) + adoption gate; legacy-only raw reads
+documented INTENTIONAL_LEGACY_READ. API ids/version semantics preserved
+additively (READ_CONSUMER_MAP.md §identity).
+Verification: baseline 3,024/3,024 · 114 files on the base tree; freeze full
+3,041/3,041 · 115 files; real D1 51/51; lint/typecheck/build/30-migration
+smoke/local schema/diff PASS; clean detached exact-SHA checkout repeats all
+with EMPTY status. No migration (0023–0030 untouched).
+Note: the T11 packet arrived truncated mid-§32; visible §0–31 + the §32
+adoption gate were implemented; train conventions used for completion.
+Next: independent review of PR #3. Do NOT merge main, deploy, run remote D1,
+touch PayOS, or start T12.
+
+## Historical handoff — T10 observation claim fence (superseded)
 
 Program: Inventory Truth Layer
 Task: T10 — P1 concurrency/integrity fix: atomically fence competing reconciliation decisions

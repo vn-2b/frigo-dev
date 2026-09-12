@@ -1,6 +1,19 @@
 # Inventory Truth Layer — repository authority
 
-Current checkpoint: **T10 observations and reconciliation COMPLETE** —
+Current checkpoint: **T11 read authority COMPLETE** —
+`hoplite/himera-6d3eda84-t10-observation-reconciliation-t11-inventory-read-authority`,
+application freeze `657201f3a12f18dd96cc96adeac0dd1d3b75e6f4` (PR #3; corrective `4553b8a` after platform
+overlay auto-commit `c7e2296`). Inventory Lot Authority is now the canonical
+READ authority for adopted households: `readInventoryAuthority`/
+`readInventoryLot`/`readInventorySummary` (packages/db/src/inventory-read-
+authority.ts) serve `GET /inventory`, recipes, scans list reads, weekly
+planner and notifications from `inventory_lots` + validated mapping evidence;
+`inventory_items` is a checked-for-parity compatibility mirror, never a read
+fallback; observations stay evidence; the event log stays audit evidence.
+Full 3,041/3,041 across 115 files; real D1 51/51; all gates PASS from the
+clean exact-SHA checkout. No migration. Main NOT merged; production NOT
+deployed; remote D1 NOT touched. **T12 NOT STARTED.**
+Previous checkpoint: **T10 observations and reconciliation COMPLETE** —
 application freeze `6c28858acd0627d2d602998107c2e260c5e4f0d5`, published/fetched
 on `hoplite/himera-6d3eda84-t10-observation-reconciliation` (vb-2f/frigo-dev,
 repository ID 1364064929), descending from the verified T09 lineage (freeze
