@@ -1,5 +1,18 @@
 # Frigo task board
 
+## Final release integration review — 2026-09-12: RELEASE CANDIDATE NOT READY (2×P2, no P0/P1)
+
+Independent T08→T12 certification of app RC `d15600186c3e73faba011eb690ac6cd70e8d3d2d`
+(docs HEAD `5cb4caa0…`): lineage intact (11/11 ancestors), main unchanged at
+`d1b0673` (RC 54 ahead / 0 behind, fast-forward), migrations 0001–0030 additive and
+never mutated, real-D1 fresh replay 30/30, clean checkout 3,085/3,085 · 119 files,
+real D1 70/70, all static gates PASS, empty status. Defects: **D1 P2** —
+`.hoplite/settings.json` (tracked on main) deleted from the RC tree at `4553b8a`;
+**D2 P2** — flag-gated `/meal-planning` planner reads `inventory_items` without
+adoption gate and is missing from the authority maps (read-only, unreachable in
+deploy config). Remediation + report: `docs/ai/release/INVENTORY_TRUTH_RELEASE_CERTIFICATION.md`.
+Main NOT merged; nothing deployed; remote D1 untouched.
+
 ## Current authoritative board — T12 runtime verification, 2026-09-12
 
 - Review findings P1/P2 closed at new freeze `d15600186c3e73faba011eb690ac6cd70e8d3d2d` (`22f675d` superseded):
