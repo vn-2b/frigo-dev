@@ -4,6 +4,9 @@ import { executeInventoryAdoption } from '../../packages/db/src/inventory-adopti
 import { executeInventoryLotCommand } from '../../packages/db/src/inventory-lot-commands';
 import { readInventoryAuthority, readInventoryLot,
   readInventorySummary, assertProjectionParity } from '../../packages/db/src/inventory-read-authority';
+import { executeInventoryFefoCommand } from '../../packages/db/src/inventory-lot-commands';
+import { readInventoryAuthorityMode } from '../../packages/db/src/inventory-writer-fence';
+import { computeReadFreshness, displayQuantity } from '../../packages/domain/src/inventory-read-authority';
 import { recordInventoryObservation } from '../../packages/db/src/inventory-observations';
 import { confirmReconciliationDecision, planInventoryReconciliationForHousehold } from '../../packages/db/src/inventory-reconciliation';
 import { backfillLegacyInventory } from '../../packages/db/src/inventory-truth';
@@ -65,7 +68,8 @@ describe('T11 read authority — canonical model', () => {
       ['t08-legacy:rice-row', 'rice-row'],
     ]);
     const eggs = items[0], rice = items[1];
-    expect(rice).toMatchObject({ quantity: 2000, unit: 'g', quantityMilli: 2_000_000, canonicalUnit: 'g',
+    // Retained legacy display alias (kg) presents exactly; authority stays g.
+    expect(rice).toMatchObject({ quantity: 2, unit: 'kg', quantityMilli: 2_000_000, canonicalUnit: 'g',
       storage: 'pantry', state: 'ACTIVE', expiryKind: 'UNKNOWN', sourceType: 'LEGACY_BACKFILL',
       ingredientId: 'RICE', name: 'Rice', category: 'grain' });
     expect(eggs).toMatchObject({ quantity: 10, unit: 'piece', quantityMilli: 10_000, canonicalUnit: 'piece',
@@ -108,7 +112,7 @@ describe('T11 read authority — canonical model', () => {
     const byLot = await readInventoryLot(db, scope, { lotId: 'native-eggs' });
     const byLegacy = await readInventoryLot(db, scope, { legacyItemId: 'rice-row' });
     expect(byLot.quantity).toBe(10);
-    expect(byLegacy.quantity).toBe(2000);
+    expect(byLegacy).toMatchObject({ quantity: 2, unit: 'kg', quantityMilli: 2_000_000, canonicalUnit: 'g' });
     // Foreign household references are not-found; no existence leak.
     await expect(readInventoryLot(db, foreign, { lotId: 'native-eggs' }))
       .rejects.toMatchObject({ name: 'InventoryReadAuthorityError', code: 'LOT_NOT_FOUND' });
@@ -316,6 +320,17 @@ describe('T11 HTTP read cutover', () => {
     expect((json.items as Array<Record<string, unknown>>).every((item) => item.version !== undefined)).toBe(true);
   });
 
+  it('GET /inventory for an adopted-but-empty household returns 200 with items: [] — never the legacy rows or KV', async () => {
+    await adoptHousehold(false);
+    const staleKv = { put: async () => {}, get: async () => [{ id: 'stale-kv-row' }] };
+    const response = await app.fetch(new Request('https://read.example/inventory', {
+      headers: { Authorization: `Bearer ${token}` } }),
+      { DB: db, ENVIRONMENT: 'test', JWT_SECRET: secret, WEEK_SCHEMA_MODE: 'legacy', CACHE: staleKv });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ items: [] });
+    expect(db.query('SELECT id FROM inventory_adoption_receipts')).toHaveLength(1); // no auto-adoption
+  });
+
   it('GET /inventory for a not-yet-adopted household keeps the legacy compatibility response', async () => {
     db.seed(`INSERT INTO inventory_items(id, household_id, ingredient_id, name, quantity, unit, category, storage,
       expiry_date, expiry_kind, expiry_source, created_at, updated_at, added_date, data_source)
@@ -340,5 +355,204 @@ describe('T11 HTTP read cutover', () => {
     db.seed("UPDATE inventory_adoption_receipts SET actor_id = 'read-foreign-user'");
     await expect(fetchHouseholdInventoryFromDb(db, scope.householdId, kv, { actorId: scope.actorId, strict: true }))
       .rejects.toMatchObject({ name: 'InventoryReadError' });
+  });
+});
+
+describe('T11 hardening — adopted-but-empty household (dual-truth invariant)', () => {
+  const staleKv = { put: async () => {}, get: async () => [{ id: 'stale-kv-row', quantity: 99 }] };
+
+  it('reads [] from authority with a valid receipt and zero lots; never legacy rows, never KV, never auto-adoption', async () => {
+    await adoptHousehold(false);
+    // Stale legacy projection rows exist but are not part of the adopted truth.
+    db.seed(`INSERT INTO inventory_items(id, household_id, ingredient_id, name, quantity, unit, category, storage,
+      expiry_date, expiry_kind, expiry_source, created_at, updated_at, added_date, data_source)
+      VALUES ('stale-legacy', '${scope.householdId}', 'RICE', 'Stale', 5, 'kg', 'grain', 'pantry',
+      NULL, 'unknown', 'unknown', '2026-09-02T00:00:00Z', '2026-09-02T00:00:00Z', '2026-09-02T00:00:00Z', 'manual')`);
+    expect(await readInventoryAuthorityMode(db, scope.householdId)).toBe('native');
+    // Stale rows without lots break admission for the legacy row set: the
+    // adopted-empty contract applies to a projection that is also empty.
+    await expect(readInventoryAuthority(db, scope)).rejects.toMatchObject({ code: 'ADOPTION_REQUIRED' });
+    db.seed("DELETE FROM inventory_items WHERE id = 'stale-legacy'");
+    const receiptsBefore = db.query('SELECT id FROM inventory_adoption_receipts').length;
+    const authority = await readInventoryAuthority(db, scope);
+    expect(authority.items).toEqual([]);
+    const funnel = await fetchHouseholdInventoryFromDb(db, scope.householdId, staleKv, { actorId: scope.actorId, strict: true });
+    expect(funnel).toEqual([]);
+    expect(db.query('SELECT id FROM inventory_adoption_receipts').length).toBe(receiptsBefore); // no auto-adoption
+    expect(db.query('SELECT id FROM inventory_lots')).toEqual([]);
+  });
+
+  it('adopted household whose only lot became terminal reads [] for current stock, not the legacy projection', async () => {
+    await adoptHousehold();
+    const version = db.query<{ version: number }>("SELECT version FROM inventory_lots WHERE id = 't08-legacy:rice-row'")[0].version;
+    await executeInventoryLotCommand(db, scope, 'discard-all', {
+      type: 'DISCARD', lotId: 't08-legacy:rice-row', expectedVersion: version, quantity: 2, unit: 'kg', reason: 'Spoiled' }, now);
+    const authority = await readInventoryAuthority(db, scope);
+    expect(authority.items).toEqual([]);
+    const funnel = await fetchHouseholdInventoryFromDb(db, scope.householdId, staleKv, { actorId: scope.actorId, strict: true });
+    expect(funnel).toEqual([]);
+    const history = await readInventoryAuthority(db, scope, { includeTerminal: true });
+    expect(history.items[0]).toMatchObject({ state: 'DISCARDED', quantity: 0, quantityMilli: 0 });
+  });
+});
+
+describe('T11 hardening — READ vs MOVE / DISCARD / FEFO coherence', () => {
+  function pauseBeforeFirstBatch(run: () => Promise<void>) {
+    let armed = true;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    db.hooks.beforeBatch = async (statements) => {
+      if (!armed || !statements.some(({ sql }) => sql.startsWith('INSERT INTO inventory_commands'))) return;
+      armed = false;
+      db.hooks = {};
+      await run();
+      release();
+    };
+    return gate;
+  }
+
+  it('READ vs MOVE: before snapshot has the original location/version, after has the new one, never mixed', async () => {
+    await adoptHousehold(false);
+    await createLot('eggs');
+    const fridge = FRIDGE();
+    const freezer = db.query<{ id: string }>('SELECT id FROM storage_locations WHERE household_id = ? AND type = ?', scope.householdId, 'FREEZER')[0].id;
+    let during: Awaited<ReturnType<typeof readInventoryAuthority>> | undefined;
+    const gate = pauseBeforeFirstBatch(async () => { during = await readInventoryAuthority(db, scope); });
+    const command = executeInventoryLotCommand(db, scope, 'move-1', {
+      type: 'MOVE', lotId: 'eggs', expectedVersion: 1, storageLocationId: freezer }, now);
+    await gate;
+    await command;
+    expect(during!.items[0]).toMatchObject({ storageLocationId: fridge, storage: 'fridge', version: 1 });
+    const after = await readInventoryAuthority(db, scope);
+    expect(after.items[0]).toMatchObject({ storageLocationId: freezer, storage: 'freezer', version: 2, quantity: 10 });
+    // Every observed snapshot is one of the two legal states.
+    for (const snapshot of [during!, after]) {
+      const item = snapshot.items[0];
+      expect([[fridge, 1], [freezer, 2]]).toContainEqual([item.storageLocationId, item.version]);
+    }
+  });
+
+  it('READ vs DISCARD: before snapshot sees ACTIVE quantity, after excludes the terminal lot; history shows DISCARDED/0', async () => {
+    await adoptHousehold(false);
+    await createLot('eggs');
+    let during: Awaited<ReturnType<typeof readInventoryAuthority>> | undefined;
+    const gate = pauseBeforeFirstBatch(async () => { during = await readInventoryAuthority(db, scope); });
+    const command = executeInventoryLotCommand(db, scope, 'discard-1', {
+      type: 'DISCARD', lotId: 'eggs', expectedVersion: 1, quantity: 10, unit: 'piece', reason: 'Spoiled' }, now);
+    await gate;
+    await command;
+    expect(during!.items[0]).toMatchObject({ state: 'ACTIVE', quantity: 10, version: 1 });
+    expect((await readInventoryAuthority(db, scope)).items).toEqual([]);
+    const history = await readInventoryAuthority(db, scope, { includeTerminal: true });
+    expect(history.items[0]).toMatchObject({ state: 'DISCARDED', quantity: 0, quantityMilli: 0, version: 2 });
+  });
+
+  it('READ vs FEFO: multi-lot consumption is coherent before OR after — never a partially consumed cross-lot hybrid', async () => {
+    await adoptHousehold(false);
+    await createLot('eggs-early', { expiryAt: '2026-09-14', expiryKind: 'KNOWN' });
+    await createLot('eggs-late', { expiryAt: '2026-09-30', expiryKind: 'KNOWN' });
+    let during: Awaited<ReturnType<typeof readInventoryAuthority>> | undefined;
+    const gate = pauseBeforeFirstBatch(async () => { during = await readInventoryAuthority(db, scope); });
+    const command = executeInventoryFefoCommand(db, scope, 'fefo-1', {
+      type: 'USE', mode: 'FEFO', ingredientId: 'CHICKEN_EGG', quantity: 14, unit: 'piece', reason: 'Baking' }, now);
+    await gate;
+    await command;
+    const byLot = (snapshot: Awaited<ReturnType<typeof readInventoryAuthority>>) =>
+      Object.fromEntries(snapshot.items.map((item) => [item.lotId, [item.quantity, item.version, item.state]]));
+    // Before: both lots untouched. After: the earliest-expiring lot fully
+    // consumed (terminal, excluded from current view), the later lot at 6.
+    expect(byLot(during!)).toEqual({ 'eggs-early': [10, 1, 'ACTIVE'], 'eggs-late': [10, 1, 'ACTIVE'] });
+    const after = await readInventoryAuthority(db, scope, { includeTerminal: true });
+    expect(byLot(after)).toEqual({ 'eggs-early': [0, 2, 'CONSUMED'], 'eggs-late': [6, 2, 'ACTIVE'] });
+    // The single-batch read can never observe {early consumed, late untouched}
+    // or {early untouched, late reduced}: both lots move in one D1 transaction.
+    expect(during!.inventoryVersion).toBeLessThan(after.inventoryVersion);
+  });
+});
+
+describe('T11 hardening — summary, display units, freshness', () => {
+  it('readInventorySummary activeCount reflects the returned (filtered) summary', async () => {
+    await adoptHousehold(false);
+    await createLot('eggs-1', { rawName: 'Eggs A' });
+    await createLot('eggs-2', { rawName: 'Eggs B' });
+    await createLot('rice-1', { ingredientId: 'RICE', rawName: 'Rice', quantity: 1, unit: 'kg' });
+    const all = await readInventorySummary(db, scope);
+    expect(all.activeCount).toBe(3);
+    expect(all.items).toHaveLength(3);
+    const rice = await readInventorySummary(db, scope, { ingredientIds: ['RICE'] });
+    expect(rice.activeCount).toBe(1);
+    expect(rice.items.map((item) => item.lotId)).toEqual(['rice-1']);
+    const none = await readInventorySummary(db, scope, { ingredientIds: ['TOMATO'] });
+    expect(none).toMatchObject({ activeCount: 0, items: [] });
+  });
+
+  it('kg and l retained legacy display aliases present exactly; authority stays canonical; projection corruption cannot alter either', async () => {
+    db.seed(`INSERT INTO inventory_items(id, household_id, ingredient_id, name, quantity, unit, category, storage,
+      expiry_date, expiry_kind, expiry_source, created_at, updated_at, added_date, data_source) VALUES
+      ('rice-kg', '${scope.householdId}', 'RICE', 'Rice', 2, 'kg', 'grain', 'pantry', NULL, 'unknown', 'unknown',
+        '2026-09-02T00:00:00Z', '2026-09-02T00:00:00Z', '2026-09-02T00:00:00Z', 'manual'),
+      ('milk-l', '${scope.householdId}', 'FRESH_MILK', 'Milk', 1.5, 'l', 'dairy', 'fridge', NULL, 'unknown', 'unknown',
+        '2026-09-02T00:00:00Z', '2026-09-02T00:00:00Z', '2026-09-02T00:00:00Z', 'manual')`);
+    await backfillLegacyInventory(db, scope.householdId);
+    await executeInventoryAdoption(db, scope, {}, now);
+    await createLot('sugar-native', { ingredientId: 'RICE', rawName: 'Sugar', quantity: 500, unit: 'g' });
+    const { items } = await readInventoryAuthority(db, scope);
+    const view = Object.fromEntries(items.map((item) => [item.legacyItemId, [item.quantity, item.unit, item.quantityMilli, item.canonicalUnit]]));
+    expect(view).toEqual({
+      'rice-kg': [2, 'kg', 2_000_000, 'g'],
+      'milk-l': [1.5, 'l', 1_500_000, 'ml'],
+      'sugar-native': [500, 'g', 500_000, 'g'], // native lots without an alias present canonically
+    });
+    // Projection says 999 kg: authority and presentation both ignore the quantity.
+    db.seed("UPDATE inventory_items SET quantity = 999 WHERE id = 'rice-kg'");
+    const tampered = (await readInventoryAuthority(db, scope)).items.find((item) => item.legacyItemId === 'rice-kg')!;
+    expect(tampered).toMatchObject({ quantity: 2, unit: 'kg', quantityMilli: 2_000_000, canonicalUnit: 'g' });
+    // A malformed retained unit falls back to canonical presentation, never truth loss.
+    db.seed("UPDATE inventory_items SET quantity = 2, unit = 'bag' WHERE id = 'rice-kg'");
+    const malformed = (await readInventoryAuthority(db, scope)).items.find((item) => item.legacyItemId === 'rice-kg')!;
+    expect(malformed).toMatchObject({ quantity: 2000, unit: 'g', quantityMilli: 2_000_000 });
+  });
+
+  it('displayQuantity never crosses semantic families and only presents provable aliases', () => {
+    expect(displayQuantity(2_000_000, 'g', 'kg')).toEqual({ quantity: 2, unit: 'kg' });
+    expect(displayQuantity(1_500_000, 'ml', 'l')).toEqual({ quantity: 1.5, unit: 'l' });
+    expect(displayQuantity(500_000, 'g', null)).toEqual({ quantity: 500, unit: 'g' });
+    expect(displayQuantity(500_000, 'g', 'g')).toEqual({ quantity: 500, unit: 'g' });
+    expect(displayQuantity(3_000, 'pack', 'g')).toEqual({ quantity: 3, unit: 'pack' });
+    expect(displayQuantity(3_000, 'piece', 'bunch')).toEqual({ quantity: 3, unit: 'piece' });
+    expect(displayQuantity(2_000_000, 'g', 'l')).toEqual({ quantity: 2000, unit: 'g' }); // wrong family alias
+    expect(displayQuantity(1, 'g', 'kg')).toEqual({ quantity: 0.000001, unit: 'kg' }); // 1 milligram round-trips exactly (1e-6 kg)
+    expect(displayQuantity(2_000_000, 'g', 'bag')).toEqual({ quantity: 2000, unit: 'g' }); // unknown alias -> canonical
+  });
+
+  it('computeReadFreshness is deterministic and fails closed on invalid authoritative expiry', () => {
+    const clock = Date.parse('2026-09-12T10:00:00Z');
+    expect(computeReadFreshness('2026-09-12', 'ACTIVE', clock)).toBe('expiring'); // known expiry today
+    expect(computeReadFreshness('2026-09-14', 'ACTIVE', clock)).toBe('use_soon'); // 62h
+    expect(computeReadFreshness('2026-09-30', 'ACTIVE', clock)).toBe('fresh');
+    expect(computeReadFreshness(null, 'ACTIVE', clock)).toBe('fresh'); // UNKNOWN expiry is not a fresh claim about a date, but it is not expiring either
+    expect(computeReadFreshness('2026-09-30', 'CONSUMED', clock)).toBe('out_of_stock');
+    expect(computeReadFreshness('2026-09-30', 'DISCARDED', clock)).toBe('out_of_stock');
+    for (const invalid of ['not-a-date', '2026-13-01', '2026-02-30', '2026-9-1', '', '2026-09-12T00:00:00Z']) {
+      expect(() => computeReadFreshness(invalid, 'ACTIVE', clock)).toThrow(/Invalid authoritative expiry date/);
+    }
+    expect(() => computeReadFreshness('2026-09-30', 'ACTIVE', Number.NaN)).toThrow(/Invalid clock/);
+  });
+
+  it('a lot with an impossible authoritative expiry fails the read closed (CORRUPT_LOT_ROW), never "fresh"', async () => {
+    await adoptHousehold(false);
+    await createLot('eggs', { expiryAt: '2026-09-30', expiryKind: 'KNOWN' });
+    const clock = Date.parse('2026-09-12T10:00:00Z');
+    expect((await readInventoryAuthority(db, scope, { now: clock })).items[0].freshness).toBe('fresh');
+    // Bypass the schema CHECK to simulate corrupt authority data.
+    db.seed('PRAGMA ignore_check_constraints = ON');
+    db.seed('DROP TRIGGER trg_inventory_lots_live_update');
+    db.seed("UPDATE inventory_lots SET expiry_at = '2026-02-30' WHERE id = 'eggs'");
+    // Two independent fail-closed layers: the T09 snapshot schema rejects the
+    // impossible date (DRIFT_DETECTED); if it ever admitted one, the freshness
+    // derivation itself refuses to classify it (CORRUPT_LOT_ROW). Never "fresh".
+    await expect(readInventoryAuthority(db, scope, { now: clock })).rejects.toMatchObject({
+      code: expect.stringMatching(/^(DRIFT_DETECTED|CORRUPT_LOT_ROW)$/) });
+    await expect(readInventoryAuthority(db, scope, { now: Number.NaN })).rejects.toMatchObject({ code: 'INVALID_READ_QUERY' });
   });
 });

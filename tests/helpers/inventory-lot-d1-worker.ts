@@ -7,6 +7,10 @@ import { confirmReconciliationDecision,
   type ReconciliationDecisionInput, type ReconciliationDecisionScope } from '../../packages/db/src/inventory-reconciliation';
 import { recordInventoryObservation, type InventoryObservationScope } from '../../packages/db/src/inventory-observations';
 import type { InventoryObservationInput } from '../../packages/domain/src/inventory-observations';
+import { assertProjectionParity, readInventoryAuthority, readInventoryLot, readInventorySummary } from '../../packages/db/src/inventory-read-authority';
+import { readInventoryAuthorityMode } from '../../packages/db/src/inventory-writer-fence';
+import { fetchHouseholdInventoryFromDb } from '../../src/worker/routes/inventory';
+import type { InventoryReadQuery } from '../../packages/domain/src/inventory-read-authority';
 
 interface CommandRequest { scope: InventoryLotCommandScope; key: string; input: unknown; now: string }
 const run = (db: D1DatabaseBinding, command: CommandRequest) =>
@@ -102,11 +106,75 @@ async function controlledDecisionRace(db: D1DatabaseBinding, scope: Reconciliati
   return { arrivals, winner: committed, contender: await pending };
 }
 
+// T11: pauses a writer immediately before its command batch, takes an
+// authority read while it is paused, releases the writer, then reads again.
+// Proves single-batch snapshot coherence on real D1 without sleeps.
+async function controlledReadRace(db: D1DatabaseBinding, writer: CommandRequest, query: InventoryReadQuery) {
+  let arrived!: () => void;
+  let release!: () => void;
+  const paused = new Promise<void>((resolve) => { arrived = resolve; });
+  const released = new Promise<void>((resolve) => { release = resolve; });
+  const native = new Map<D1PreparedStatement, D1PreparedStatement>();
+  const writes = new Set<D1PreparedStatement>();
+  const wrap = (statement: D1PreparedStatement, isWrite: boolean): D1PreparedStatement => {
+    const proxy: D1PreparedStatement = {
+      bind: (...values) => wrap(statement.bind(...values), isWrite),
+      first: (column) => statement.first(column),
+      all: () => statement.all(),
+      run: () => statement.run(),
+    };
+    native.set(proxy, statement);
+    if (isWrite) writes.add(proxy);
+    return proxy;
+  };
+  const held: D1DatabaseBinding = {
+    prepare: (sql) => wrap(db.prepare(sql), sql.startsWith('INSERT INTO inventory_commands')),
+    exec: (sql) => db.exec(sql),
+    async batch(statements) {
+      if (statements.some((statement) => writes.has(statement))) { arrived(); await released; }
+      return db.batch(statements.map((statement) => native.get(statement)!));
+    },
+  };
+  const pending = (async () => {
+    try { return { execution: await run(held, writer) }; }
+    catch (error) { return { error: error instanceof Error ? error.message : 'Command failed' }; }
+  })();
+  await Promise.race([paused, pending.then(() => { throw new Error('Writer never reached write barrier'); })]);
+  const during = await readInventoryAuthority(db, writer.scope, query);
+  release();
+  const writerOutcome = await pending;
+  const after = await readInventoryAuthority(db, writer.scope, query);
+  return { during, writer: writerOutcome, after };
+}
+
 // Test-only Worker: never imported by the application or a deployment config.
 export default {
   async fetch(request: Request, env: { DB: D1DatabaseBinding; TEST_TOKEN: string }): Promise<Response> {
     if (request.headers.get('x-test-token') !== env.TEST_TOKEN) return new Response('Forbidden', { status: 403 });
     try {
+      if (new URL(request.url).pathname === '/read') {
+        const body = await request.json() as { scope: InventoryLotCommandScope; query?: InventoryReadQuery;
+          lot?: { lotId?: string; legacyItemId?: string }; summary?: { ingredientIds?: string[] } };
+        const mode = await readInventoryAuthorityMode(env.DB, body.scope.householdId);
+        const authority = await readInventoryAuthority(env.DB, body.scope, body.query ?? {});
+        const parity = await assertProjectionParity(env.DB, body.scope);
+        const lot = body.lot ? await readInventoryLot(env.DB, body.scope, body.lot) : null;
+        const summary = body.summary ? await readInventorySummary(env.DB, body.scope, body.summary) : null;
+        return Response.json({ mode, authority, parity, lot, summary });
+      }
+      if (new URL(request.url).pathname === '/funnel') {
+        // The product funnel with a deliberately stale KV: adopted households
+        // must neither read nor write it.
+        const body = await request.json() as { scope: InventoryLotCommandScope };
+        const kvWrites: string[] = [];
+        const kv = { put: async (key: string) => { kvWrites.push(key); }, get: async () => [{ id: 'stale-kv', quantity: 99 }] };
+        const items = await fetchHouseholdInventoryFromDb(env.DB, body.scope.householdId, kv, { strict: true, actorId: body.scope.actorId });
+        return Response.json({ items, kvWrites });
+      }
+      if (new URL(request.url).pathname === '/read-race') {
+        const body = await request.json() as { writer: CommandRequest; query?: InventoryReadQuery };
+        return Response.json(await controlledReadRace(env.DB, body.writer, body.query ?? {}));
+      }
       if (new URL(request.url).pathname === '/adopt') {
         const body = await request.json() as { scope: InventoryLotCommandScope; now: string };
         return Response.json(await executeInventoryAdoption(env.DB, body.scope, {}, body.now));

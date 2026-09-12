@@ -1,4 +1,5 @@
-import { InventoryReadItemSchema, type InventoryReadAuthorityResult, type InventoryReadItem,
+import { InventoryReadItemSchema, InventoryReadFreshnessError, computeReadFreshness, displayQuantity,
+  type InventoryReadAuthorityResult, type InventoryReadItem,
   type InventoryReadQuery, type ProjectionParityDiagnostic } from '../../domain/src/inventory-read-authority';
 import { toLotQuantity, type InventoryLot } from '../../domain/src/inventory-truth';
 import type { D1DatabaseBinding } from './index';
@@ -37,7 +38,8 @@ function displayStorage(snapshot: MappedLotSnapshot, lot: InventoryLot): string 
   return location.type.toLowerCase();
 }
 
-function toReadItem(snapshot: MappedLotSnapshot, mapped: { lot: InventoryLot; legacyItemId: string | null }): InventoryReadItem {
+function toReadItem(snapshot: MappedLotSnapshot, mapped: { lot: InventoryLot; legacyItemId: string | null },
+  now: number): InventoryReadItem {
   const { lot, legacyItemId } = mapped;
   if (lot.state === 'ACTIVE' && lot.quantityMilli <= 0) {
     throw new InventoryReadAuthorityError('CORRUPT_LOT_ROW', `Lot ${lot.id}: ${READ_STATE_QUANTITY}`);
@@ -53,12 +55,23 @@ function toReadItem(snapshot: MappedLotSnapshot, mapped: { lot: InventoryLot; le
   }
   const expiry = expiryProjection(lot);
   const category = snapshot.ingredients.find((ingredient) => ingredient.id === lot.ingredientId)?.category ?? 'other';
-  const hours = expiry.expiry_date === null ? Infinity : (Date.parse(expiry.expiry_date) - Date.now()) / 3_600_000;
-  const freshness = lot.state !== 'ACTIVE' ? 'out_of_stock' : hours <= 24 ? 'expiring' : hours <= 72 ? 'use_soon' : 'fresh';
+  let freshness: InventoryReadItem['freshness'];
+  try {
+    freshness = computeReadFreshness(expiry.expiry_date, lot.state, now);
+  } catch (error) {
+    if (error instanceof InventoryReadFreshnessError) throw new InventoryReadAuthorityError('CORRUPT_LOT_ROW', `Lot ${lot.id}: ${error.message}`);
+    throw error;
+  }
+  // Exact canonical display first (fails closed on lossy REAL projections),
+  // then the retained legacy display alias when it round-trips exactly. The
+  // projection row supplies only the *unit label*, never a quantity.
+  const canonicalDisplay = exactLegacyQuantity(lot.quantityMilli, lot.canonicalUnit);
+  const retainedUnit = snapshot.legacyRows.find((row) => row.id === legacyItemId)?.unit ?? null;
+  const display = displayQuantity(lot.quantityMilli, lot.canonicalUnit, retainedUnit);
   return InventoryReadItemSchema.parse({
     lotId: lot.id, legacyItemId, householdId: lot.householdId, ingredientId: lot.ingredientId,
     name: lot.rawName, quantityMilli: lot.quantityMilli, canonicalUnit: lot.canonicalUnit,
-    quantity: exactLegacyQuantity(lot.quantityMilli, lot.canonicalUnit), unit: lot.canonicalUnit,
+    quantity: display.unit === lot.canonicalUnit ? canonicalDisplay : display.quantity, unit: display.unit,
     storageLocationId: lot.storageLocationId, storage: displayStorage(snapshot, lot),
     purchasedAt: lot.purchasedAt, openedAt: lot.openedAt, expiryAt: lot.expiryAt,
     estimatedExpiryAt: lot.estimatedExpiryAt, expiryKind: lot.expiryKind, state: lot.state,
@@ -79,6 +92,8 @@ function validateSnapshot(snapshot: MappedLotSnapshot): void {
 export async function readInventoryAuthority(db: D1DatabaseBinding,
   scope: { householdId: string; actorId: string }, query: InventoryReadQuery = {}
 ): Promise<InventoryReadAuthorityResult> {
+  const now = query.now ?? Date.now();
+  if (!Number.isFinite(now)) throw new InventoryReadAuthorityError('INVALID_READ_QUERY', 'now must be a finite epoch millisecond');
   const limit = query.limit ?? MAX_READ_AUTHORITY_LOTS;
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_READ_AUTHORITY_LOTS) {
     throw new InventoryReadAuthorityError('INVALID_READ_QUERY', `limit must be 1..${MAX_READ_AUTHORITY_LOTS}`);
@@ -91,7 +106,7 @@ export async function readInventoryAuthority(db: D1DatabaseBinding,
     `Inventory view exceeds the read bound of ${limit} lots`);
   return {
     inventoryVersion: snapshot.inventoryVersion,
-    items: active.map((mapped) => toReadItem(snapshot, mapped)),
+    items: active.map((mapped) => toReadItem(snapshot, mapped, now)),
   };
 }
 
@@ -125,7 +140,9 @@ export async function readInventorySummary(db: D1DatabaseBinding,
       throw new InventoryReadAuthorityError('INVALID_READ_QUERY', 'ingredientIds must be short strings');
     }
     const wanted = new Set(ingredientIds);
-    return { inventoryVersion, activeCount: items.length, items: items.filter((item) => item.ingredientId !== null && wanted.has(item.ingredientId)) };
+    const filtered = items.filter((item) => item.ingredientId !== null && wanted.has(item.ingredientId));
+    // activeCount always describes the returned summary, never a hidden superset.
+    return { inventoryVersion, activeCount: filtered.length, items: filtered };
   }
   return { inventoryVersion, activeCount: items.length, items };
 }
