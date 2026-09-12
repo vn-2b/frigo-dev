@@ -1,6 +1,39 @@
 # Frigo AI Handoff — isolated T09 development
 
-## Current authoritative handoff — T10 multi-field reconciliation fix, 2026-09-11
+## Current authoritative handoff — T10 observation claim fence, 2026-09-11
+
+Program: Inventory Truth Layer
+Task: T10 — P1 concurrency/integrity fix: atomically fence competing reconciliation decisions
+Status: P1_REPRODUCED_FIXED_AND_FULLY_VERIFIED; T10_PASS_READY_FOR_INDEPENDENT_REVIEW
+Repository: vb-2f/frigo-dev (repository ID 1364064929)
+Branch: hoplite/himera-6d3eda84-t10-observation-reconciliation
+Starting reviewed HEAD: bf86efb40e4eb13120a34679225aa24881a356b4
+Previous application freeze (superseded): 4c414fa7eb33329ee12936c0899644af67e48f07
+NEW T10 application freeze: 7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b
+Docs HEAD: docs-only commit on top of the freeze; exact SHA in the final report
+T09 ancestors intact (docs d522769…, application bf391c5…). Main d1b0673… NOT merged.
+Root cause: the decision batch ended with `UPDATE inventory_observations … WHERE status='OPEN'
+AND version=?`; a zero-row match is a silent D1 success (proven: success=true, changes=0), so the
+batch never proved the claim. Losers were only stopped by the 0030 receipt trigger (raw SQLite
+error leaked); without that trigger two DISMISS decisions both committed.
+Fix: `observationClaimGuard` — last batch statement, INSERT INTO inventory_events with NULL
+inventory_item_id WHERE changes() <> 1 → NOT NULL abort → D1 rolls back the entire batch (T09
+commands, events, projection, decision receipt, observation). Loser classification:
+committed same-key exact twin → replay; altered → IDEMPOTENCY_CONFLICT; observation not OPEN at
+expected version → OBSERVATION_VERSION_CONFLICT; T09 CAS → STALE_SNAPSHOT/STALE_VERSION; else
+PERSISTENCE_FAILED. Pre-batch exact replay still precedes OPEN/version rejection. No
+process-local locks; the mechanism is D1's own atomic batch + changes().
+Regressions: fence suite 13 (all fail pre-fix); real-D1 zero-row proof + controlled workerd race.
+Verification: full 3,024/3,024 (114 files); T10 focused 98/98; T09 focused 323/323; real D1
+51/51; lint/typecheck/build/30-migration smoke/local schema/diff PASS; clean detached exact-SHA
+checkout repeats everything with EMPTY status. No GitHub CI configured for the branch.
+Preserved: multi-field composition (≤1 CORRECT + ≤1 MOVE, same lot/version, boundary
+fail-closed, CORRECT+MOVE atomic via useCurrentLotVersion, unique #CORRECT/#MOVE keys,
+explicit terminalState, fresh-plan authority, native/backfilled coherence).
+Remaining P0/P1: NONE. Merge-blocking P2: NONE.
+Next: independent review. Do NOT merge main, deploy, run remote D1, touch PayOS, or start T11.
+
+## Historical handoff — composition fix 4c414fa (superseded)
 
 Program: Inventory Truth Layer
 Task: T10 — final targeted multi-field reconciliation composition fix

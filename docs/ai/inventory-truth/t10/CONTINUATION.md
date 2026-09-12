@@ -29,13 +29,21 @@ is untouched and NOT merged).
   this docs follow-up is recorded in the final operator report. The overlay
   remains uncommitted, byte-for-byte (same SHA-256 as above).
 - Docs follow-up: `aa17aeed18b61cad97a2f4f976046a102969a23a`
-- **T10 application freeze (current): `4c414fa7eb33329ee12936c0899644af67e48f07`** —
+- Historical T10 freeze: `4c414fa7eb33329ee12936c0899644af67e48f07` —
   `fix(t10): compose multi-field reconciliation commands atomically` —
   published/fetched, local == remote == clean-checkout SHA. Reproduced P1
   (multi-field claims produced 2–3 CORRECT proposals per lot; mixed claims took an
   expiry-only verdict) fixed in the planner and defended at the decision boundary;
   19 permanent regressions. Full 3,009/113; real D1 49/49; 30 migrations.
-- Docs HEAD after this fix: the docs-only commit on top; exact SHA in the final report.
+- Docs checkpoint after the composition fix: `bf86efb40e4eb13120a34679225aa24881a356b4`
+- **T10 application freeze (current): `7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b`** —
+  `fix(t10): atomically fence competing reconciliation decisions` — published/fetched,
+  local == remote == clean-checkout SHA. P1: two decision keys could race one OPEN
+  observation; the guarded UPDATE's zero-row outcome was a silent D1 success and only the
+  0030 trigger happened to abort losers (with raw SQLite errors; without the trigger both
+  committed). Fixed with an in-batch `changes()` claim guard + domain classification
+  (`OBSERVATION_VERSION_CONFLICT`); 13 regressions (13 fail pre-fix); real-D1 proofs.
+- Docs HEAD after the fence fix: docs-only commit on top; exact SHA in the final report.
 
 ## Baseline before edits (from the T10 branch at the T09 tree)
 
@@ -63,9 +71,9 @@ migrations, touch PayOS, or start T11 from this packet. T11 is NOT STARTED.
 
 - repo: vb-2f/frigo-dev (1364064929)
 - branch: hoplite/himera-6d3eda84-t10-observation-reconciliation
-- last application SHA: 4c414fa7eb33329ee12936c0899644af67e48f07
+- last application SHA: 7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b
 - completed phases: T10A–T10G all COMPLETE
-- test status: full 3,009/3,009; real D1 49/49; all static gates PASS
+- test status: full 3,024/3,024; real D1 51/51; all static gates PASS
 - remaining phase: none in T10; T11 next (requires its own authorization)
 - exact next action: independent review; then docs HEAD publication of any
   review follow-ups

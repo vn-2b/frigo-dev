@@ -1,5 +1,18 @@
 # T10 change manifest
 
+## Claim-fence freeze `7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b` (6 files)
+
+| File | Change |
+| --- | --- |
+| `packages/db/src/inventory-reconciliation.ts` | `observationClaimGuard` appended to the decision batch (changes() ≠ 1 → NOT NULL abort → full rollback); `classifyDecisionBatchFailure` (twin replay / `IDEMPOTENCY_CONFLICT` / `OBSERVATION_VERSION_CONFLICT` / T09 codes / `PERSISTENCE_FAILED`); `readCommittedDecision` + `replayDecision` helpers shared by the pre-batch and post-failure replay paths |
+| `tests/integration/inventory-reconciliation-fence.test.ts` | New — 13 race regressions (13 fail pre-fix) |
+| `tests/integration/inventory-observation-d1.test.mjs` | +2 real-D1 proofs (zero-row guarded UPDATE semantics; controlled two-DISMISS race) |
+| `tests/helpers/inventory-lot-d1-worker.ts` | Test-only `/reconcile-race` endpoint (controlled decision race under workerd) |
+| `tests/integration/inventory-observation-concurrency.test.ts` | F1 same-key race now asserts the intended replay semantics |
+| `tests/integration/inventory-observations.test.ts` | Injected adapter failure now asserts the domain `PERSISTENCE_FAILED` code |
+
+No migration; 0023–0030 untouched (count 30).
+
 ## Composition fix freeze `4c414fa7eb33329ee12936c0899644af67e48f07` (3 files)
 
 | File | Change |

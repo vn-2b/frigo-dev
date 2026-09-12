@@ -1,6 +1,14 @@
 # Inventory Truth task board
 
-## Current authoritative T10 multi-field reconciliation fix — 2026-09-11
+## Current authoritative T10 observation claim fence — 2026-09-11
+
+Concurrency P1 REPRODUCED → FIXED → VERIFIED at new published/fetched application freeze
+**`7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b`** (supersedes `4c414fa`). In-batch changes() claim guard; atomic loser rollback;
+`OBSERVATION_VERSION_CONFLICT`; same-key twin replay preserved. 3,024 full/114; T10 98/98;
+T09 323/323; 51 real D1; all gates PASS from the clean exact-SHA checkout. No migration.
+Remaining P0/P1: NONE. **T10 PASS — READY FOR INDEPENDENT REVIEW.** Main NOT merged; T11 NOT STARTED.
+
+## Historical T10 composition fix 4c414fa — superseded
 
 Multi-field composition P1 REPRODUCED → FIXED → VERIFIED at new published/fetched application
 freeze **`4c414fa7eb33329ee12936c0899644af67e48f07`** (supersedes `6c28858`). ≤1 merged CORRECT + ≤1 MOVE per finding; boundary

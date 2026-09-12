@@ -1,6 +1,25 @@
 # Frigo current state — isolated T09 development
 
-## Current authoritative state — T10 multi-field reconciliation fix, 2026-09-11
+## Current authoritative state — T10 observation claim fence, 2026-09-11
+
+Branch `hoplite/himera-6d3eda84-t10-observation-reconciliation`. **New T10 application
+freeze: `7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b`** — `fix(t10): atomically fence competing reconciliation
+decisions` — published/fetched, local == remote == clean-checkout SHA; `4c414fa` is
+superseded (historical ancestor). Reproduced P1: two decision keys racing one OPEN
+observation relied on a trigger side effect — the final guarded observation UPDATE with zero
+rows is a silent D1 success, losers surfaced raw SQLite errors, and with the 0030 receipt
+trigger absent both decisions committed. Fix: an in-batch `changes()` claim guard (T09
+write-guard technique) makes a lost OPEN/vN → RECONCILED/vN+1 claim abort the whole atomic
+batch (T09 commands, events, projection, receipt, observation all roll back); losers get
+`OBSERVATION_VERSION_CONFLICT`; a committed same-key twin replays (response-loss preserved),
+altered twin → `IDEMPOTENCY_CONFLICT`. 13 regressions (13 fail pre-fix) + 2 real-D1 proofs
+incl. a controlled race under workerd. Gates: full 3,024/3,024 across 114 files; T10
+focused 98/98; T09 focused 323/323; real local D1 51/51; lint/typecheck/build/30-migration
+smoke/local schema/diff PASS — repeated from the clean detached exact-SHA checkout. No
+migration. Main NOT merged. Production NOT deployed. Remote D1 NOT touched. T11 NOT STARTED.
+Verdict: **T10 PASS — READY FOR INDEPENDENT REVIEW.**
+
+## Historical T10 state — composition fix 4c414fa (superseded by 7393edc)
 
 Branch `hoplite/himera-6d3eda84-t10-observation-reconciliation`.
 **New T10 application freeze: `4c414fa7eb33329ee12936c0899644af67e48f07`** — `fix(t10): compose multi-field

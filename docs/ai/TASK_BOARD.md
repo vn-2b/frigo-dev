@@ -1,6 +1,18 @@
 # Frigo task board
 
-## Current authoritative T10 board — multi-field reconciliation fix, 2026-09-11
+## Current authoritative T10 board — observation claim fence, 2026-09-11
+
+- Concurrency P1 (competing decisions on one OPEN observation): REPRODUCED (silent zero-row
+  UPDATE; trigger-dependent; double commit without trigger) → FIXED (in-batch changes() claim
+  guard, atomic loser rollback, `OBSERVATION_VERSION_CONFLICT`, twin replay preserved) →
+  VERIFIED from a clean published checkout.
+- New application freeze: `7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b`; `4c414fa` superseded.
+- 3,024 full/114 files; T10 focused 98/98; T09 focused 323/323; 51 real local-D1;
+  lint/typecheck/build/30-migration smoke/local schema/diff PASS; clean exact-SHA checkout repeats all.
+- No migration; PayOS untouched; no PR created/updated. Main NOT merged; T11 NOT STARTED.
+- Remaining P0/P1: NONE. Verdict: **T10 PASS — READY FOR INDEPENDENT REVIEW**.
+
+## Historical T10 board — composition fix 4c414fa (superseded)
 
 - Multi-field composition P1: REPRODUCED (2–3 CORRECT per lot; expiry-only verdict on mixed
   claims) → FIXED (single merged CORRECT + ≤1 MOVE; boundary invariant; T09 atomic compose)

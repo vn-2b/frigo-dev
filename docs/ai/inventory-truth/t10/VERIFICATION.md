@@ -1,5 +1,85 @@
 # T10 verification receipt
 
+## Current authoritative freeze — observation claim fence (P1 concurrency fix)
+
+**T10 application freeze: `7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b`** —
+`fix(t10): atomically fence competing reconciliation decisions` — published/fetched,
+local == remote == clean-checkout SHA. Supersedes `4c414fa` (historical ancestor).
+
+### Reproduced defect (pre-fix, at `4c414fa`)
+
+Controlled barrier races of two different decision keys on one OPEN observation
+(SqliteD1, `beforeBatch` pause on the contender's decision batch):
+
+| Race | Pre-fix loser outcome | Pre-fix state |
+| --- | --- | --- |
+| DISMISS vs DISMISS | raw `ERR_SQLITE_ERROR` (0030 receipt trigger abort), no domain code | one decision (by luck of the trigger) |
+| DISMISS vs CORRECT / CORRECT vs DISMISS / CORRECT-A vs CORRECT-B | raw SQLite errors (trigger or `NOT NULL … inventory_events`) | one decision |
+| DISMISS vs DISMISS **with the 0030 receipt trigger dropped** | **loser RESOLVED** — **two** decision rows for one observation | double commit |
+| same key racing itself | raw `Inventory command receipt already exists` instead of replay | — |
+
+Root cause: the final `UPDATE inventory_observations … WHERE status='OPEN' AND version=?`
+affecting zero rows is a **silent success** in D1 (`success=true, meta.changes=0`,
+proven under real workerd D1 in `inventory-observation-d1.test.mjs`), and nothing in the
+batch proved the claim. Correctness was resting entirely on a trigger side effect and
+losing contenders leaked raw SQLite errors.
+
+### Fix — in-batch observation claim guard
+
+`observationClaimGuard` is appended as the **last** statement of the decision batch:
+`INSERT INTO inventory_events (…, inventory_item_id, …) SELECT ?, ?, NULL, 'T10_OBSERVATION_CLAIM_GUARD', 0, 'piece' WHERE changes() <> 1`.
+If the immediately preceding observation UPDATE did not claim exactly one row, the guard
+row violates `inventory_events.inventory_item_id NOT NULL`, the statement fails and D1
+rolls back the entire batch (T09 receipts/events, lot CAS, projection writes, decision
+receipt, observation). It is the T09 `writeGuard` technique, which D1 already honours in
+production (`changes()` is tied to the top-level write despite revision triggers —
+proven in `inventory-lot-d1.test.mjs`). The guard row itself can never commit.
+Loser classification after rollback: committed same-key twin with equal fingerprint →
+**replay** (response-loss preserved); altered twin → `IDEMPOTENCY_CONFLICT`; observation
+not OPEN at expected version → **`OBSERVATION_VERSION_CONFLICT`**; T09 CAS/authority →
+existing `STALE_SNAPSHOT`/`STALE_VERSION` codes; otherwise `PERSISTENCE_FAILED`. No raw
+SQLite/D1 error reaches callers. The pre-batch exact-replay lookup still precedes the
+OPEN/version rejection path. No migration; 0023–0030 untouched (30 migrations).
+
+### Regressions (`tests/integration/inventory-reconciliation-fence.test.ts`, 13 tests)
+
+Race matrix DISMISS/DISMISS, DISMISS/CORRECT, CORRECT/DISMISS, CORRECT-A/CORRECT-B on the
+native lot; CORRECT+MOVE vs DISMISS and DISMISS vs CORRECT+MOVE; backfilled synthetic lot
+CORRECT/CORRECT, CORRECT+MOVE/DISMISS, DISMISS/DISMISS (projection coherent); trigger-dropped
+DISMISS/DISMISS and CORRECT/CORRECT (in-batch proof independent of 0030); same key exact →
+replay; same key altered → `IDEMPOTENCY_CONFLICT`. Each race asserts: single winner, loser
+`OBSERVATION_VERSION_CONFLICT`, one receipt, RECONCILED v2, zero `T10_*` guard rows, no
+losing commands/events/lot/projection change, winner exact replay byte-identical, winner
+key altered → conflict, loser retry and fresh key → `OBSERVATION_NOT_OPEN`.
+**13/13 fail on the pre-fix source** (stash proof). Real D1 adds: zero-row guarded UPDATE
+silent-success proof + guard-abort rollback proof, and a controlled two-DISMISS race through
+workerd (`/reconcile-race`) → winner commits, loser `OBSERVATION_VERSION_CONFLICT`.
+Two existing assertions were aligned to the intended semantics: same-key/same-fingerprint
+race now **replays** (was "rejects anything"); injected adapter failure surfaces as
+`PERSISTENCE_FAILED` (was raw message).
+
+### Gates at the fence freeze (working tree)
+
+| Gate | Result |
+| --- | --- |
+| Full tests | **3,024/3,024 across 114 files** (179.15s) |
+| T10 focused (6 suites incl. fence + real D1) | 98/98 |
+| T09 focused (8 suites incl. real D1) | 323/323 |
+| Lint / typecheck / build | PASS / PASS / PASS |
+| Migration smoke | `migration-smoke=ok`, 30 migrations |
+| Local schema gate | PASS |
+| Real local D1 (44 + 7) | 51/51 |
+| `git diff --check` | clean |
+
+### Clean detached checkout at exact remote SHA `7393edc`
+
+`git worktree add --detach /tmp/frigo-t10-fence 7393edc…` + `pnpm install --frozen-lockfile`:
+full **3,024/3,024 across 114 files** (178.33s); lint/typecheck/build PASS;
+`migration-smoke=ok` (30); local D1 apply then schema gate PASS; real local D1 51/51;
+`git diff --check` clean; `git status --porcelain` **empty**.
+
+## Historical receipt — composition fix freeze `4c414fa7eb33329ee12936c0899644af67e48f07` (superseded)
+
 ## Current authoritative freeze — multi-field reconciliation composition fix
 
 **T10 application freeze: `4c414fa7eb33329ee12936c0899644af67e48f07`** —

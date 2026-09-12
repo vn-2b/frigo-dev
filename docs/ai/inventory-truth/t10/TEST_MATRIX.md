@@ -1,6 +1,29 @@
 # T10 test matrix
 
-All rows PASS at application freeze `4c414fa7eb33329ee12936c0899644af67e48f07` (composition fix; `6c28858` historical).
+All rows PASS at application freeze `7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b` (claim fence; `4c414fa`/`6c28858` historical).
+Suites add `tests/integration/inventory-reconciliation-fence.test.ts` (13) and two real-D1 cases.
+
+## Observation claim fence regressions (fence freeze)
+
+| Requirement | Test | Result |
+| --- | --- | --- |
+| DISMISS vs DISMISS | native + backfilled + trigger-dropped | PASS |
+| DISMISS vs CORRECT | native | PASS |
+| CORRECT vs DISMISS | native | PASS |
+| CORRECT(key A) vs CORRECT(key B) | native + backfilled + trigger-dropped | PASS |
+| CORRECT+MOVE vs DISMISS / DISMISS vs CORRECT+MOVE | native + backfilled | PASS |
+| exactly one winner; loser `OBSERVATION_VERSION_CONFLICT` | every race | PASS |
+| exactly one decision receipt; observation RECONCILED v2 (one increment) | every race | PASS |
+| zero losing commands / events / lot / projection mutation; zero guard rows | every race | PASS |
+| winner exact response-loss replay (byte-identical facts) | every race | PASS |
+| winner key with altered semantics → `IDEMPOTENCY_CONFLICT` | every race | PASS |
+| loser retry / fresh key after reconciliation → `OBSERVATION_NOT_OPEN`, no mutation | every race | PASS |
+| same key racing itself → loser replays committed twin | dedicated | PASS |
+| same key altered → loser `IDEMPOTENCY_CONFLICT` | dedicated | PASS |
+| real D1: zero-row guarded UPDATE is a silent success; guard aborts and rolls back batch | d1 suite | PASS |
+| real D1: controlled two-DISMISS race → one winner, `OBSERVATION_VERSION_CONFLICT` | d1 suite | PASS |
+
+Composition matrix (previous fix, unchanged, still PASS):
 Suites add `tests/integration/inventory-reconciliation-composition.test.ts` (19).
 
 ## Multi-field composition regressions (fix freeze)

@@ -1,6 +1,20 @@
 # Inventory Truth current state
 
-## Current authoritative T10 multi-field reconciliation fix — 2026-09-11
+## Current authoritative T10 observation claim fence — 2026-09-11
+
+`hoplite/himera-6d3eda84-t10-observation-reconciliation`. **New T10 application freeze
+`7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b`** (published/fetched; local == remote == clean-checkout SHA) supersedes
+`4c414fa`. Reproduced P1: competing decision keys on one OPEN observation were only
+separated by a trigger side effect (guarded UPDATE with zero rows = silent D1 success; raw
+SQLite errors leaked; double commit without the trigger). Fixed with an in-batch `changes()`
+claim guard that aborts and rolls back the losing batch atomically; losers receive
+`OBSERVATION_VERSION_CONFLICT`; exact same-key twins replay. 13 regressions (13 fail pre-fix),
+2 real-D1 proofs. Gates: 3,024 full/114; T10 98/98; T09 323/323; 51 real D1; all static/
+30-migration/schema gates PASS from the clean exact-SHA checkout. No migration. Main NOT merged;
+production NOT deployed; remote D1 NOT touched. **T10 PASS — READY FOR INDEPENDENT REVIEW.**
+T11/T12 NOT STARTED.
+
+## Historical T10 composition fix 4c414fa — superseded by 7393edc
 
 `hoplite/himera-6d3eda84-t10-observation-reconciliation`. **New T10 application freeze
 `4c414fa7eb33329ee12936c0899644af67e48f07`** (published/fetched; local == remote == clean-checkout SHA) supersedes
