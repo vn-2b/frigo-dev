@@ -3,7 +3,7 @@
 ## Current authoritative state — Final RC targeted remediation (D3/D1/D2), 2026-09-12
 
 **NEW_APPLICATION_FREEZE `64c5501ab0110658718b3752bd84e537f0854e12`** on
-`hoplite/inventory-truth-final-remediation` (base `32b6ec1` → `5cb4caa` → `d156001`;
+`hoplite/akraiphia-akraiphnion-a03445c7--inventory-truth-final-remediation` (published; requested name `hoplite/inventory-truth-final-remediation`; base `32b6ec1` → `5cb4caa` → `d156001`;
 main `d1b0673` unchanged, 57 ahead / 0 behind). D3 P1 closed: client-only fix —
 `ApiError.code`, `isInventoryTransferDeferred`, AuthPage deferral notice + explicit
 “Tiếp tục không chuyển dữ liệu khách” that retries the same OTP without

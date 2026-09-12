@@ -9,7 +9,7 @@ Companion documents: `INVENTORY_TRUTH_ANCESTRY.md`, `INVENTORY_TRUTH_CHANGE_MANI
 
 Defects D3/D1 were closed and D2 documented at application freeze
 `64c5501ab0110658718b3752bd84e537f0854e12` on
-`hoplite/inventory-truth-final-remediation` — see
+`hoplite/akraiphia-akraiphnion-a03445c7--inventory-truth-final-remediation` — see
 `INVENTORY_TRUTH_REMEDIATION.md`. The verdict below is the historical verdict
 for RC `d156001`; `64c5501` is the candidate for re-certification.
 

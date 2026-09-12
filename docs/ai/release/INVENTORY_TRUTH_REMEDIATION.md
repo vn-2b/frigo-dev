@@ -1,6 +1,6 @@
 # Inventory Truth release train — final RC targeted remediation (D3 P1 + D1 P2 + D2 P2)
 
-Date: 2026-09-12 · Branch: `hoplite/inventory-truth-final-remediation`
+Date: 2026-09-12 · Branch: `hoplite/akraiphia-akraiphnion-a03445c7--inventory-truth-final-remediation` (requested name `hoplite/inventory-truth-final-remediation`; the platform publishes only under this thread's branch namespace)
 Base: `32b6ec103c6c38b1903b8af12118018a61f5088d` (independent review record; docs-only
 descendant of T12 docs HEAD `5cb4caa`, itself the direct child of T12 app freeze `d156001`).
 Ancestry gates before any edit: `d156001 → HEAD` PASS, `5cb4caa → HEAD` PASS,

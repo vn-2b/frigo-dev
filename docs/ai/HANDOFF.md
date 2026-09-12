@@ -6,7 +6,7 @@ Program: Inventory Truth Layer — T08–T12 release train
 Task: Targeted remediation of review defects D3 (P1), D1 (P2), D2 (P2)
 Status: REMEDIATION_COMPLETE — D3 closed, D1 closed, D2 documented; ready for re-certification
 Repository: vn-2f/frigo-dev (repository ID 1364064929; `vb-2f` redirects)
-Branch: hoplite/inventory-truth-final-remediation (base 32b6ec1 → 5cb4caa → d156001; main d1b0673 unchanged)
+Branch: hoplite/akraiphia-akraiphnion-a03445c7--inventory-truth-final-remediation (published; requested name hoplite/inventory-truth-final-remediation) — base 32b6ec1 → 5cb4caa → d156001; main d1b0673 unchanged
 NEW_APPLICATION_FREEZE: 64c5501ab0110658718b3752bd84e537f0854e12
 Docs HEAD: docs-only commit on top; exact SHA in the final report
 Application delta vs d156001: .hoplite/settings.json (A, main blob 3818a00), src/web/pages/AuthPage.tsx,
