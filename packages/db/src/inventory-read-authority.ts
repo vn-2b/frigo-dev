@@ -64,9 +64,23 @@ function toReadItem(snapshot: MappedLotSnapshot, mapped: { lot: InventoryLot; le
   }
   // Exact canonical display first (fails closed on lossy REAL projections),
   // then the retained legacy display alias when it round-trips exactly. The
-  // projection row supplies only the *unit label*, never a quantity.
+  // projection row supplies only the *unit label*, never a quantity — and the
+  // label is honored only while the row itself still agrees with authority
+  // (its quantity must round-trip to the authoritative milli value through
+  // that unit). A tampered row therefore drops to canonical presentation
+  // instead of lending its corruption a plausible alias.
   const canonicalDisplay = exactLegacyQuantity(lot.quantityMilli, lot.canonicalUnit);
-  const retainedUnit = snapshot.legacyRows.find((row) => row.id === legacyItemId)?.unit ?? null;
+  let retainedUnit: string | null = null;
+  const retainedRow = snapshot.legacyRows.find((row) => row.id === legacyItemId);
+  if (retainedRow && Number.isFinite(retainedRow.quantity)) {
+    try {
+      if (toLotQuantity(retainedRow.quantity, retainedRow.unit).quantityMilli === lot.quantityMilli) {
+        retainedUnit = retainedRow.unit;
+      }
+    } catch {
+      retainedUnit = null;
+    }
+  }
   const display = displayQuantity(lot.quantityMilli, lot.canonicalUnit, retainedUnit);
   return InventoryReadItemSchema.parse({
     lotId: lot.id, legacyItemId, householdId: lot.householdId, ingredientId: lot.ingredientId,

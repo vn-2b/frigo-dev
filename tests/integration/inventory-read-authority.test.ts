@@ -503,10 +503,12 @@ describe('T11 hardening — summary, display units, freshness', () => {
       'milk-l': [1.5, 'l', 1_500_000, 'ml'],
       'sugar-native': [500, 'g', 500_000, 'g'], // native lots without an alias present canonically
     });
-    // Projection says 999 kg: authority and presentation both ignore the quantity.
+    // Projection says 999 kg: the row no longer agrees with authority, so the
+    // kg alias is dropped and presentation falls back to canonical. Authority
+    // and value are untouched either way.
     db.seed("UPDATE inventory_items SET quantity = 999 WHERE id = 'rice-kg'");
     const tampered = (await readInventoryAuthority(db, scope)).items.find((item) => item.legacyItemId === 'rice-kg')!;
-    expect(tampered).toMatchObject({ quantity: 2, unit: 'kg', quantityMilli: 2_000_000, canonicalUnit: 'g' });
+    expect(tampered).toMatchObject({ quantity: 2000, unit: 'g', quantityMilli: 2_000_000, canonicalUnit: 'g' });
     // A malformed retained unit falls back to canonical presentation, never truth loss.
     db.seed("UPDATE inventory_items SET quantity = 2, unit = 'bag' WHERE id = 'rice-kg'");
     const malformed = (await readInventoryAuthority(db, scope)).items.find((item) => item.legacyItemId === 'rice-kg')!;
