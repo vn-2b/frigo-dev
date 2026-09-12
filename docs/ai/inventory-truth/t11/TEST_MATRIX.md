@@ -1,7 +1,34 @@
 # T11 test matrix — read authority
 
-All rows PASS at application freeze `657201f3a12f18dd96cc96adeac0dd1d3b75e6f4`
-(`tests/integration/inventory-read-authority.test.ts`, 17 tests).
+All rows PASS at application freeze `c15c9a81fc4367b3506a7e2693798ebe1424b0a9` (`657201f` historical).
+Suites: `tests/integration/inventory-read-authority.test.ts` (28) and
+`tests/integration/inventory-read-authority-d1.test.mjs` (11, real workerd/D1).
+
+## Hardening rows (new freeze)
+
+| Requirement | Test | Result |
+| --- | --- | --- |
+| adopted-but-empty: receipt + zero lots → native, `[]`, no legacy/KV/auto-adoption | integration | PASS |
+| adopted-but-empty: HTTP `GET /inventory` → 200 `{ items: [] }` | integration (Hono) | PASS |
+| adopted-but-empty: real D1 mode/authority/funnel/no side effects | real D1 B | PASS |
+| adopted household whose only lot became terminal → current `[]`, history DISCARDED/0 | integration + real D1 B2 | PASS |
+| READ vs MOVE (before location/version, after new, never mixed) | integration + real D1 E2 | PASS |
+| READ vs DISCARD (ACTIVE before, excluded after, history DISCARDED/0) | integration + real D1 E3 | PASS |
+| READ vs FEFO (multi-lot; coherent before OR after; no cross-lot hybrid) | integration + real D1 E4 | PASS |
+| READ vs CORRECT on real D1 | real D1 E | PASS |
+| `activeCount` reflects filtered summary | integration | PASS |
+| legacy 2 kg → 2 000 000 milli/g → API 2 kg; 1.5 l → 1 500 000/ml → 1.5 l; native 500 g → 500 g | integration + real D1 C | PASS |
+| projection `999 kg` / malformed `bag` cannot alter authority or presentation | integration | PASS |
+| `displayQuantity` never crosses semantic families | unit-style | PASS |
+| `computeReadFreshness` deterministic; 6 invalid inputs never `fresh`; NaN clock rejected | unit-style | PASS |
+| corrupt authoritative expiry in a lot row fails the read closed | integration | PASS |
+| real D1: adopted native read, no legacy/KV fallback | real D1 A | PASS |
+| real D1: synthetic LEGACY_BACKFILL mapping, API identity | real D1 C | PASS |
+| real D1: projection quantity + storage drift immunity + parity diagnostics | real D1 D | PASS |
+| real D1: tenancy (`LOT_NOT_FOUND` for foreign lot/legacy id) | real D1 F | PASS |
+| real D1: non-adopted → `ADOPTION_REQUIRED` for authority, legacy funnel preserved | real D1 G | PASS |
+
+Original rows (first freeze, still PASS):
 
 | Requirement | Test | Result |
 | --- | --- | --- |

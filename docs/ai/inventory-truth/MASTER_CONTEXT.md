@@ -1,6 +1,7 @@
 # Inventory Truth Layer — repository authority
 
-Current checkpoint: **T11 read authority COMPLETE** —
+Current checkpoint: **T11 read authority COMPLETE (hardened)** — application freeze `c15c9a81fc4367b3506a7e2693798ebe1424b0a9` (real D1 62/62 incl. 11 T11 cases; adopted-empty, MOVE/DISCARD/FEFO races, activeCount, kg/l aliases, fail-closed freshness) —
+First T11 checkpoint (superseded): **T11 read authority COMPLETE** —
 `hoplite/himera-6d3eda84-t10-observation-reconciliation-t11-inventory-read-authority`,
 application freeze `657201f3a12f18dd96cc96adeac0dd1d3b75e6f4` (PR #3; corrective `4553b8a` after platform
 overlay auto-commit `c7e2296`). Inventory Lot Authority is now the canonical

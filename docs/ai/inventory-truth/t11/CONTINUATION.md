@@ -1,6 +1,6 @@
 # T11 continuation state
 
-- **T11 application freeze: `657201f3a12f18dd96cc96adeac0dd1d3b75e6f4`** —
+- Historical first T11 freeze: `657201f3a12f18dd96cc96adeac0dd1d3b75e6f4` —
   `feat(t11): canonical inventory read authority with projection cutover` —
   published on
   `hoplite/himera-6d3eda84-t10-observation-reconciliation-t11-inventory-read-authority`
@@ -13,8 +13,15 @@
   `d1b0673` untouched, NOT merged.
 - Docs HEAD: docs-only commit on top of the branch tip; exact SHA in the final
   report.
-- last application SHA: 657201f3a12f18dd96cc96adeac0dd1d3b75e6f4
-- test status: full 3,041/3,041 across 115 files; real D1 51/51; all static
+- **T11 application freeze (current): `c15c9a81fc4367b3506a7e2693798ebe1424b0a9`** —
+  `fix(t11): complete read authority runtime hardening` — published/fetched,
+  local == remote == clean-checkout SHA. Closes: real-D1 T11 proof (11 cases),
+  adopted-but-empty regression (integration + real D1 + HTTP), READ vs
+  MOVE/DISCARD/FEFO barrier tests, `activeCount` semantics, explicit kg/l
+  display-alias compatibility (authority stays canonical), freshness
+  fail-closed hardening. Not published through PR tooling (overlay safety).
+- last application SHA: c15c9a81fc4367b3506a7e2693798ebe1424b0a9
+- test status: full 3,063/3,063 across 116 files; real D1 62/62; all static
   gates PASS (lint, typecheck, build, 30-migration smoke, local schema gate);
   `git diff --check` clean; clean detached checkout at the exact freeze SHA
   repeats everything with EMPTY status (receipt in VERIFICATION.md/final

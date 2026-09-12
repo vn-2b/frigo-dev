@@ -1,5 +1,57 @@
 # T11 verification receipt
 
+## Current authoritative freeze — runtime hardening fix
+
+**T11 application freeze: `c15c9a81fc4367b3506a7e2693798ebe1424b0a9`** —
+`fix(t11): complete read authority runtime hardening` — published/fetched,
+local == remote == clean-checkout SHA. Supersedes `657201f` (historical ancestor).
+Starting docs HEAD for this fix: `e64ee7749d3110ecc7b1eb08216062fc404918d5`.
+
+### Findings closed
+
+| Finding | Resolution | Proof |
+| --- | --- | --- |
+| A. No real-D1 proof of T11 | New `tests/integration/inventory-read-authority-d1.test.mjs` (11 cases) through test-only worker endpoints `/read`, `/funnel`, `/read-race` on actual local workerd/D1 (isolated DB, fresh 0001→0030 chain) | Real D1 **51 → 62** |
+| B. Adopted-but-empty regression | Integration + real D1 + HTTP `GET /inventory`: valid receipt, zero lots → mode `native`, `[]`; stale KV neither read nor written; no auto-adoption; stale projection rows without lots → `ADOPTION_REQUIRED` (fail closed, never served) | PASS ×3 surfaces |
+| C. READ vs MOVE / DISCARD / FEFO | Deterministic barrier tests in both harnesses (SqliteD1 `beforeBatch`; real-D1 `/read-race` pauses the writer before its command batch, reads, releases, reads again) | every snapshot is a legal before/after state; FEFO never a cross-lot hybrid |
+| D. `readInventorySummary.activeCount` | Now equals the returned (filtered) summary length | 3 lots / RICE filter → `activeCount 1`, `items 1`; no match → `0/[]` |
+| E. Display-unit compatibility | `displayQuantity`: retained legacy alias (kg↔g, l↔ml) presented only when the projection supplies the unit *label* and the alias round-trips exactly via `toLotQuantity`; count/contextual units never convert; unprovable alias → canonical; projection quantity never consulted | legacy 2 kg → authority 2 000 000 milli/g → API `2 kg`; 1.5 l → 1 500 000/ml → `1.5 l`; native 500 g → `500 g`; projection `999 kg` → still `2 kg`; malformed `bag` → `2000 g` |
+| F. Freshness hardening | `computeReadFreshness(expiry, state, now)` deterministic + injectable; invalid/impossible dates throw → `CORRUPT_LOT_ROW`; non-finite clock → `INVALID_READ_QUERY`; T09 snapshot schema rejects impossible dates one layer earlier (`DRIFT_DETECTED`) | 6 invalid inputs never classify `fresh` |
+
+### Re-audits
+
+- Readers: production `UNKNOWN = 0` (`READ_CONSUMER_MAP.md`, `LEGACY_READ_MAP.md`); no new dual-truth fallback.
+- Writers: production `UNKNOWN = 0`; T11 hardening adds no `inventory_items` writer (`LEGACY_READ_MAP.md`).
+- Migrations: 30, 0023–0030 untouched.
+
+### Baseline before this fix (branch tip `e64ee77`)
+
+Full **3,041/3,041 across 115 files**; real D1 **51/51**; lint/typecheck/build PASS;
+`migration-smoke=ok` (30); local schema gate PASS.
+
+### Gates at the new freeze (working tree)
+
+| Gate | Result |
+| --- | --- |
+| T11 focused (read-authority + real D1) | 39/39 |
+| T09 focused (10 suites incl. real D1) | 654/654 |
+| T10 focused (6 suites incl. real D1) | 98/98 |
+| Full tests | **3,063/3,063 across 116 files** (166.41s) |
+| Lint / typecheck / build | PASS / PASS / PASS |
+| Migration smoke | `migration-smoke=ok`, 30 migrations |
+| Local schema gate | PASS |
+| All real local D1 (44 T09 + 7 T10 + 11 T11) | **62/62** |
+| `git diff --check` | clean |
+
+### Clean detached checkout at exact remote SHA `c15c9a8`
+
+`git worktree add --detach /tmp/frigo-t11-final c15c9a8…` + `pnpm install --frozen-lockfile`:
+full **3,063/3,063 across 116 files** (164.68s); lint/typecheck/build PASS;
+`migration-smoke=ok` (30); local D1 apply then schema gate PASS; all real local D1
+**62/62**; `git diff --check` clean; `git status --porcelain` **empty**.
+
+## Historical receipt — first T11 freeze `657201f3a12f18dd96cc96adeac0dd1d3b75e6f4` (superseded)
+
 ## Application freeze
 
 **T11 application freeze: `657201f3a12f18dd96cc96adeac0dd1d3b75e6f4`** —

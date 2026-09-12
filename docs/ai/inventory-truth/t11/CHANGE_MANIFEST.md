@@ -1,5 +1,18 @@
 # T11 change manifest
 
+## Hardening freeze `c15c9a81fc4367b3506a7e2693798ebe1424b0a9` (5 files + docs)
+
+| File | Change |
+| --- | --- |
+| `packages/domain/src/inventory-read-authority.ts` | `computeReadFreshness` (deterministic, injectable, fail-closed), `displayQuantity` (exact retained-alias presentation), `InventoryReadFreshnessError`, `InventoryReadQuery.now` |
+| `packages/db/src/inventory-read-authority.ts` | Uses the helpers; `activeCount` reflects the filtered summary; injectable `now` validated |
+| `tests/helpers/inventory-lot-d1-worker.ts` | Test-only endpoints `/read`, `/funnel`, `/read-race` (controlled read-vs-writer barrier) |
+| `tests/integration/inventory-read-authority.test.ts` | 17 → 28 tests (adopted-empty ×2 + HTTP, MOVE/DISCARD/FEFO races, activeCount, kg/l aliases, displayQuantity, freshness ×2) |
+| `tests/integration/inventory-read-authority-d1.test.mjs` | New — 11 real workerd/D1 cases |
+| `docs/ai/inventory-truth/t11/LEGACY_READ_MAP.md` | New — remaining projection reads/writes with their fences; unit/freshness/adopted-empty decisions |
+
+No migration (count stays 30); no writer changes; no PayOS touch.
+
 ## Claim: canonical inventory read authority (freeze `657201f`)
 
 | File | Change |

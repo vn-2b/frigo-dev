@@ -1,6 +1,31 @@
 # Frigo AI Handoff — isolated T09 development
 
-## Current authoritative handoff — T11 inventory read authority, 2026-09-12
+## Current authoritative handoff — T11 read authority hardening, 2026-09-12
+
+Program: Inventory Truth Layer
+Task: T11 — final targeted hardening fix (findings A–F)
+Status: COMPLETE; T11_READY_FOR_INDEPENDENT_REVIEW
+Repository: vb-2f/frigo-dev (repository ID 1364064929)
+Branch: hoplite/himera-6d3eda84-t10-observation-reconciliation-t11-inventory-read-authority
+Starting docs HEAD: e64ee7749d3110ecc7b1eb08216062fc404918d5
+Previous application freeze (superseded): 657201f3a12f18dd96cc96adeac0dd1d3b75e6f4
+NEW T11 application freeze: c15c9a81fc4367b3506a7e2693798ebe1424b0a9
+Docs HEAD: docs-only commit on top; exact SHA in the final report
+Published by direct commit publication (no PR tooling; overlay preserved
+byte-for-byte uncommitted, SHA-256 6d8f5b45…). PR #3 left untouched.
+A: real workerd/D1 T11 suite (11) via /read, /funnel, /read-race — real D1 62/62.
+B: adopted-but-empty → native, [], no legacy/KV/auto-adoption (integration, real D1, HTTP).
+C: READ vs MOVE/DISCARD/FEFO barrier tests (both harnesses); matrix complete.
+D: readInventorySummary.activeCount = filtered length.
+E: displayQuantity — retained kg/l alias only when label present + exact round trip;
+   authority canonical; projection quantity never consulted; families never cross.
+F: computeReadFreshness(expiry, state, now) deterministic; invalid → CORRUPT_LOT_ROW.
+Verification: baseline 3,041/115 · 51 real D1 → freeze 3,063/116 · 62 real D1; all gates
+PASS; clean detached exact-SHA checkout repeats all with EMPTY status. Migrations 30.
+Remaining P0/P1: NONE. Merge-blocking P2: NONE.
+Next: independent review. Do NOT merge main, deploy, run remote D1, touch PayOS, or start T12.
+
+## Historical handoff — first T11 freeze (superseded)
 
 Program: Inventory Truth Layer
 Task: T11 — Inventory Read Authority & Projection Cutover

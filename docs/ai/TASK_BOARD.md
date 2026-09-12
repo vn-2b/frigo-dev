@@ -1,6 +1,16 @@
 # Frigo task board
 
-## Current authoritative T11 board — inventory read authority, 2026-09-12
+## Current authoritative T11 board — read authority hardening, 2026-09-12
+
+- Findings A–F closed (real-D1 proof, adopted-empty, MOVE/DISCARD/FEFO races,
+  activeCount, display aliases, freshness fail-closed) → VERIFIED from a clean
+  published checkout. New freeze `c15c9a81fc4367b3506a7e2693798ebe1424b0a9`; `657201f` superseded.
+- 3,063 full/116 files; 62 real local-D1; all static/30-migration/schema gates PASS.
+- No migration; no new writers; PayOS untouched; PR #3 left alone (no PR tooling).
+  Main NOT merged; production NOT deployed; T12 NOT STARTED.
+- Remaining P0/P1: NONE. Verdict: **T11 COMPLETE — READY FOR INDEPENDENT REVIEW.**
+
+## Historical T11 board — first freeze (superseded)
 
 - Canonical read authority: REPRODUCED the dual-truth risk (all product reads
   funnelled through the `inventory_items` projection + 1h KV cache) → CUT OVER

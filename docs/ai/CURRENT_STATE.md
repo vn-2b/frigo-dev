@@ -1,6 +1,24 @@
 # Frigo current state — isolated T09 development
 
-## Current authoritative state — T11 inventory read authority, 2026-09-12
+## Current authoritative state — T11 read authority hardening, 2026-09-12
+
+**New T11 application freeze: `c15c9a81fc4367b3506a7e2693798ebe1424b0a9`** — `fix(t11): complete read
+authority runtime hardening` — published/fetched (direct commit publication,
+no PR tooling), local == remote == clean-checkout SHA; `657201f` superseded.
+Closed: real workerd/D1 proof of T11 (11 cases; real D1 51 → 62), adopted-but-
+empty regression on integration + real D1 + HTTP (native mode, `[]`, no legacy/
+KV/auto-adoption), READ vs MOVE/DISCARD/FEFO barrier coverage (matrix now
+CORRECT/MOVE/USE/DISCARD/FEFO/T10), `activeCount` = filtered summary, explicit
+kg↔g / l↔ml display-alias compatibility with canonical authority intact, and
+fail-closed freshness (`computeReadFreshness`, invalid dates → CORRUPT_LOT_ROW).
+Gates: full 3,063/3,063 across 116 files; T09 654/654; T10 98/98; T11 39/39;
+real D1 62/62; lint/typecheck/build/30-migration smoke/local schema/diff PASS —
+repeated from the clean detached exact-SHA checkout with empty status. Readers/
+writers UNKNOWN = 0. No migration. Main NOT merged. Production NOT deployed.
+Remote D1 NOT touched. T12 NOT STARTED. **T11 COMPLETE — READY FOR INDEPENDENT
+REVIEW.**
+
+## Historical T11 state — first freeze 657201f (superseded)
 
 Branch `hoplite/himera-6d3eda84-t10-observation-reconciliation-t11-inventory-read-authority`
 (start_branch successor; base = train merge `30ce4ea` containing exactly the

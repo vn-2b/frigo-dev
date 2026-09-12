@@ -1,5 +1,11 @@
 # T11 read consumer map — inventory read authority audit (2026-09-12)
 
+Re-audited at the hardening freeze `c15c9a8`: production UNKNOWN readers = 0,
+production UNKNOWN writers = 0, no new dual-truth fallback. Per-site fences for
+every remaining projection touch are enumerated in `LEGACY_READ_MAP.md`, together
+with the display-unit (kg/l alias), freshness fail-closed and adopted-but-empty
+decisions.
+
 Question T11 answers deterministically: **"When any Frigo product flow asks what
 inventory currently exists, what exact authority does it read?"**
 
