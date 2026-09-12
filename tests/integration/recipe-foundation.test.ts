@@ -53,7 +53,7 @@ describe('recipe domain foundation migration and catalog', () => {
 
   it('replays the full migration chain and keeps TypeScript unit definitions synchronized with SQLite', () => {
     const db = database();
-    expect(db.migrations.at(-1)).toBe('0029_inventory_fefo_backfill_compatibility.sql');
+    expect(db.migrations.at(-1)).toBe('0030_inventory_observation_reconciliation.sql');
     expect(db.query('PRAGMA integrity_check')).toEqual([{ integrity_check: 'ok' }]);
     expect(db.query('PRAGMA foreign_key_check')).toEqual([]);
 

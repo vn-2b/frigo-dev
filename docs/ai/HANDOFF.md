@@ -1,5 +1,109 @@
 # Frigo AI Handoff — isolated T09 development
 
+## Current authoritative handoff — T10 observation claim fence, 2026-09-11
+
+Program: Inventory Truth Layer
+Task: T10 — P1 concurrency/integrity fix: atomically fence competing reconciliation decisions
+Status: P1_REPRODUCED_FIXED_AND_FULLY_VERIFIED; T10_PASS_READY_FOR_INDEPENDENT_REVIEW
+Repository: vb-2f/frigo-dev (repository ID 1364064929)
+Branch: hoplite/himera-6d3eda84-t10-observation-reconciliation
+Starting reviewed HEAD: bf86efb40e4eb13120a34679225aa24881a356b4
+Previous application freeze (superseded): 4c414fa7eb33329ee12936c0899644af67e48f07
+NEW T10 application freeze: 7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b
+Docs HEAD: docs-only commit on top of the freeze; exact SHA in the final report
+T09 ancestors intact (docs d522769…, application bf391c5…). Main d1b0673… NOT merged.
+Root cause: the decision batch ended with `UPDATE inventory_observations … WHERE status='OPEN'
+AND version=?`; a zero-row match is a silent D1 success (proven: success=true, changes=0), so the
+batch never proved the claim. Losers were only stopped by the 0030 receipt trigger (raw SQLite
+error leaked); without that trigger two DISMISS decisions both committed.
+Fix: `observationClaimGuard` — last batch statement, INSERT INTO inventory_events with NULL
+inventory_item_id WHERE changes() <> 1 → NOT NULL abort → D1 rolls back the entire batch (T09
+commands, events, projection, decision receipt, observation). Loser classification:
+committed same-key exact twin → replay; altered → IDEMPOTENCY_CONFLICT; observation not OPEN at
+expected version → OBSERVATION_VERSION_CONFLICT; T09 CAS → STALE_SNAPSHOT/STALE_VERSION; else
+PERSISTENCE_FAILED. Pre-batch exact replay still precedes OPEN/version rejection. No
+process-local locks; the mechanism is D1's own atomic batch + changes().
+Regressions: fence suite 13 (all fail pre-fix); real-D1 zero-row proof + controlled workerd race.
+Verification: full 3,024/3,024 (114 files); T10 focused 98/98; T09 focused 323/323; real D1
+51/51; lint/typecheck/build/30-migration smoke/local schema/diff PASS; clean detached exact-SHA
+checkout repeats everything with EMPTY status. No GitHub CI configured for the branch.
+Preserved: multi-field composition (≤1 CORRECT + ≤1 MOVE, same lot/version, boundary
+fail-closed, CORRECT+MOVE atomic via useCurrentLotVersion, unique #CORRECT/#MOVE keys,
+explicit terminalState, fresh-plan authority, native/backfilled coherence).
+Remaining P0/P1: NONE. Merge-blocking P2: NONE.
+Next: independent review. Do NOT merge main, deploy, run remote D1, touch PayOS, or start T11.
+
+## Historical handoff — composition fix 4c414fa (superseded)
+
+Program: Inventory Truth Layer
+Task: T10 — final targeted multi-field reconciliation composition fix
+Status: P1_REPRODUCED_FIXED_AND_FULLY_VERIFIED; T10_COMPLETE_READY_FOR_INDEPENDENT_REVIEW
+Repository: vb-2f/frigo-dev (repository ID 1364064929)
+Branch: hoplite/himera-6d3eda84-t10-observation-reconciliation
+Starting docs HEAD: aa17aeed18b61cad97a2f4f976046a102969a23a
+Previous application freeze (superseded): 6c28858acd0627d2d602998107c2e260c5e4f0d5
+NEW T10 application freeze: 4c414fa7eb33329ee12936c0899644af67e48f07
+Docs HEAD: docs-only commit on top of the freeze; exact SHA in the final report
+T09 ancestors: docs d522769ae89496fd4b3f26419f1fdfe23d9e926a, application
+bf391c5fdcdd9e9c2f2257db515815e082cb4381 (both intact)
+Main SHA: d1b06732f8a80db4e77986df31ff28d9f04641fa (NOT merged)
+Reproduction (pre-fix): quantity+expiry → 2 CORRECT (verdict EXPIRY_UPDATE);
+quantity+opened → 2 CORRECT; quantity+expiry+opened → 3 CORRECT; quantity+storage →
+1 CORRECT + 1 MOVE; quantity+expiry+storage → 2 CORRECT + 1 MOVE (3 proposals).
+Fix: planner merges into ≤1 CORRECT + ≤1 MOVE (contradiction → CONFLICT); decision
+boundary enforces the same invariant and fails closed on malformed caller proposals;
+decisionCommandSpecs re-asserts uniqueness and composes MOVE via useCurrentLotVersion.
+Verification: 19 new regressions (16 fail pre-fix); full 3,009/3,009 (113 files);
+T10 focused 78/78; real local D1 49/49; lint/typecheck/build/30-migration smoke/local
+schema/diff PASS; clean detached exact-SHA checkout repeats everything with EMPTY status.
+No migration; 0023–0030 untouched; PayOS untouched; no PR created/updated for this fix.
+Remaining P0/P1: NONE. Merge-blocking P2: NONE.
+Next action: independent review. Do NOT merge main, deploy, run remote D1 migrations,
+touch PayOS, or start T11. Settings overlay preserved byte-for-byte/uncommitted.
+
+## Historical handoff — initial T10 freeze 6c28858 (superseded)
+
+Program: Inventory Truth Layer
+Task: T10 — observations, evidence and reconciliation authority
+Status: T10G COMPLETE; T10_COMPLETE_READY_FOR_INDEPENDENT_REVIEW
+Repository: vb-2f/frigo-dev (repository ID 1364064929; task lineage vn-2e/frigo-dev)
+Branch: hoplite/himera-6d3eda84-t10-observation-reconciliation (platform start-branch
+successor, dashed to avoid the GitHub ref conflict with the live parent branch name)
+Starting T09 docs SHA: d522769ae89496fd4b3f26419f1fdfe23d9e926a
+T09 application ancestor: bf391c5fdcdd9e9c2f2257db515815e082cb4381 (intact)
+Train merge: 668920fa462524e65a79d31a7b0844720baf38e0 (PR #1 himera -> kydonia,
+internal base ONLY; main NOT merged)
+PR tooling overlay-commit correction: 09f13c41beb826b9dd0b53037935947d6b09fd7f
+(settings.json restored; overlay itself uncommitted and byte-preserved,
+SHA-256 6d8f5b45041a5f41bfa6463a5f88fe1e0f5602822ecb403a5d949961f00bbee7)
+T10 application freeze: 6c28858acd0627d2d602998107c2e260c5e4f0d5 (published/fetched,
+local == remote == clean-checkout SHA)
+T10 docs HEAD: docs-only commit on top of the freeze; exact SHA in the final report
+Main SHA: d1b06732f8a80db4e77986df31ff28d9f04641fa (unchanged, NOT merged)
+Baseline (pre-edit, T09 tree): 2,926 tests/108 files; 44 real local-D1; all static
+gates PASS.
+Verification: full 2,990/2,990 (112 files, 177.04s working tree; 175.72s clean
+checkout); T10 focused 1,097/19 files; real local D1 49/49; lint/typecheck/build;
+30-migration smoke incl. 0030 + T10 object/behavioral asserts; local D1 schema gate
+requires 0030; fresh 0001->0030 and upgrade 0029->0030 local-only PASS;
+`git diff --check` clean; clean detached exact-SHA checkout repeats everything with
+EMPTY `git status --porcelain`. NO GITHUB CI STATUS for the branch.
+Key design: additive 0030 observations/decisions (evidence never mutates inventory);
+pure deterministic planner (9 verdicts, exact milli comparison, name-only matching
+refusal, contextual units UNSUPPORTED, confirmed-expiry precedence, stale detection
+by household inventory version); decision confirmation composes existing T09
+CORRECT/MOVE via composeInventoryLotCommands in ONE atomic D1 batch (decision receipt
++ T09 receipts/events + observation lifecycle); response-loss replay by decision
+fingerprint; altered semantics -> IDEMPOTENCY_CONFLICT; drift -> OBSERVATION_STALE
+fail-closed; no second stock ledger; NO new HTTP routes (T09 precedent; T11 owns UX).
+T11: NOT STARTED. T12: NOT STARTED.
+Remaining P0/P1: NONE. Relevant merge-blocking P2: NONE known.
+Next action: independent review of PR #2. Do NOT merge main, deploy, run remote D1
+migrations, touch PayOS/payment code, or start T11 from this packet.
+Details: inventory-truth/t10/{VERIFICATION,TEST_MATRIX,INVARIANT_MATRIX,CHANGE_MANIFEST,CONTINUATION}.md
+
+## Historical T09 handoff — superseded as current (freeze remains a verified ancestor)
+
 ## Current authoritative handoff — FEFO v2 backfill compatibility, 2026-09-11
 
 Program: Inventory Truth Layer

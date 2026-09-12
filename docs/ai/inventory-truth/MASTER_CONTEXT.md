@@ -1,12 +1,24 @@
 # Inventory Truth Layer — repository authority
 
-Current application checkpoint: **aa43e069edbff7843e9eb7532ff386b27be96a17**,
-published/fetched in **vn-2d/frigo-dev**, branch **hoplite/kos-2a686759**.
-Transfer/ancestry PASS. F pure adoption preparation and writer/retry safety have
-1,347 focused / 2,808 full tests and all static/build/local migration gates PASS.
-Actual adoption and functional adapters remain next; G/H are not started. See
-`t09/CONTINUATION.md` and `t09/F_ADOPTION_PLAN.md`. Earlier repository references
-and the following pre-transfer E checkpoint are historical provenance only.
+Current checkpoint: **T10 observations and reconciliation COMPLETE** —
+application freeze `6c28858acd0627d2d602998107c2e260c5e4f0d5`, published/fetched
+on `hoplite/himera-6d3eda84-t10-observation-reconciliation` (vb-2f/frigo-dev,
+repository ID 1364064929), descending from the verified T09 lineage (freeze
+`bf391c5fdcdd9e9c2f2257db515815e082cb4381`, docs `d522769ae89496fd4b3f26419f1fdfe23d9e926a`,
+internal train merge `668920fa462524e65a79d31a7b0844720baf38e0`; main
+`d1b06732f8a80db4e77986df31ff28d9f04641fa` untouched). 2,990 full / 112 files,
+1,097 focused / 19 files, 49 real local-D1, all static/build/30-migration/schema
+gates PASS from a clean detached exact-SHA checkout with empty status. T10 = the
+observation/evidence/reconciliation layer above T09 authority (additive 0030;
+pure planner; decisions compose T09 CORRECT/MOVE in one atomic batch; no second
+stock writer; no HTTP routes). **T10 COMPLETE — READY FOR INDEPENDENT REVIEW;
+T11 (receipt/vision truth + Inventory UX V2) and T12 (closed-loop integration)
+are NOT STARTED.** See `t10/README.md`, `t10/CONTINUATION.md` and
+`t10/VERIFICATION.md`. The T08/T09 sections below are historical provenance.
+
+Historical T09 checkpoint record: aa43e069edbff7843e9eb7532ff386b27be96a17 and
+later T09 freezes (9bf9ac0 → 2742738 → e796f69 → df73bc0 → bf391c5) — superseded
+as current by the T10 checkpoint above; all remain ancestors of the T10 branch.
 
 Current checkpoint (2026-09-11): published E application
 `9bd1e6bc000cd2e94121469babb1a5eb63a5047f`; successor fetch/equality and frozen-D

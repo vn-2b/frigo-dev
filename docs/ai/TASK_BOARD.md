@@ -1,6 +1,49 @@
 # Frigo task board
 
-## Current authoritative T09 board — FEFO v2 backfill compatibility, 2026-09-11
+## Current authoritative T10 board — observation claim fence, 2026-09-11
+
+- Concurrency P1 (competing decisions on one OPEN observation): REPRODUCED (silent zero-row
+  UPDATE; trigger-dependent; double commit without trigger) → FIXED (in-batch changes() claim
+  guard, atomic loser rollback, `OBSERVATION_VERSION_CONFLICT`, twin replay preserved) →
+  VERIFIED from a clean published checkout.
+- New application freeze: `7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b`; `4c414fa` superseded.
+- 3,024 full/114 files; T10 focused 98/98; T09 focused 323/323; 51 real local-D1;
+  lint/typecheck/build/30-migration smoke/local schema/diff PASS; clean exact-SHA checkout repeats all.
+- No migration; PayOS untouched; no PR created/updated. Main NOT merged; T11 NOT STARTED.
+- Remaining P0/P1: NONE. Verdict: **T10 PASS — READY FOR INDEPENDENT REVIEW**.
+
+## Historical T10 board — composition fix 4c414fa (superseded)
+
+- Multi-field composition P1: REPRODUCED (2–3 CORRECT per lot; expiry-only verdict on mixed
+  claims) → FIXED (single merged CORRECT + ≤1 MOVE; boundary invariant; T09 atomic compose)
+  → VERIFIED from a clean published checkout.
+- New application freeze: `4c414fa7eb33329ee12936c0899644af67e48f07`, published/fetched, local == remote.
+  Previous `6c28858` superseded.
+- 3,009 full/113 files; T10 focused 78/78; 49 real local-D1; lint/typecheck/build/
+  30-migration smoke/local schema/diff PASS; clean exact-SHA checkout repeats all.
+- No migration; historical migrations untouched. Main NOT merged; production NOT deployed;
+  remote D1 NOT touched. T11 NOT STARTED.
+- Remaining P0/P1: NONE. Verdict: **T10 COMPLETE — READY FOR INDEPENDENT REVIEW**.
+  Receipt: `inventory-truth/t10/VERIFICATION.md`.
+
+## Historical T10 board — initial freeze 6c28858 (superseded)
+
+- T10A source audit: COMPLETE (`inventory-truth/t10/OBSERVATION_SOURCE_MAP.md`).
+- T10B domain contracts: COMPLETE (categorical evidence, deterministic identity, pure planner).
+- T10C persistence: COMPLETE (additive 0030; evidence never mutates inventory; smoke + schema gate require 0030).
+- T10D reconciliation planner: COMPLETE (9 verdicts; exact quantities; no name matching; expiry precedence).
+- T10E decision authority: COMPLETE (T09 CORRECT/MOVE composition, one atomic batch, receipt replay, idempotency).
+- T10F concurrency/tenancy/corruption matrix: COMPLETE (F1–F5 races, real-D1 trigger battery).
+- T10G verification/freeze/handoff: COMPLETE.
+- Application freeze: `6c28858acd0627d2d602998107c2e260c5e4f0d5`, published/fetched,
+  local == remote == clean-checkout SHA. Full 2,990/112; focused 1,097/19; real D1 49/49;
+  lint/typecheck/build/migration/schema/diff PASS from the clean checkout (empty status).
+- Remaining P0/P1: NONE. Verdict: **T10 COMPLETE — READY FOR INDEPENDENT REVIEW**.
+- T11: NOT STARTED. T12: NOT STARTED.
+- Next: independent review of PR #2. No merge of main, no deploy, no remote D1, no PayOS.
+  Full receipt: `inventory-truth/t10/VERIFICATION.md`.
+
+## Historical T09 board — FEFO v2 backfill compatibility (train-merged internally; main merge remains human-gated)
 
 - Final FEFO backfill P1: REPRODUCED → FIXED (additive 0029 + executor mapping fix)
   → VERIFIED from a clean published checkout.

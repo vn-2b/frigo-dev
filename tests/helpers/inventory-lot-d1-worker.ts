@@ -3,6 +3,10 @@ import { composeInventoryLotCommands, executeInventoryFefoCommand, executeInvent
   type InventoryLotCommandScope, type LotCommandSpec } from '../../packages/db/src/inventory-lot-commands';
 import { runLegacyInventoryBatch } from '../../packages/db/src/inventory-writer-fence';
 import { executeInventoryAdoption } from '../../packages/db/src/inventory-adoption-executor';
+import { confirmReconciliationDecision,
+  type ReconciliationDecisionInput, type ReconciliationDecisionScope } from '../../packages/db/src/inventory-reconciliation';
+import { recordInventoryObservation, type InventoryObservationScope } from '../../packages/db/src/inventory-observations';
+import type { InventoryObservationInput } from '../../packages/domain/src/inventory-observations';
 
 interface CommandRequest { scope: InventoryLotCommandScope; key: string; input: unknown; now: string }
 const run = (db: D1DatabaseBinding, command: CommandRequest) =>
@@ -53,6 +57,51 @@ async function controlledRace(db: D1DatabaseBinding, contender: CommandRequest, 
   return { arrivals, winner: committed, contender: await pending };
 }
 
+// Pauses the contender immediately before its decision batch (the one carrying
+// the reconciliation receipt), commits the winner, then releases the contender.
+async function controlledDecisionRace(db: D1DatabaseBinding, scope: ReconciliationDecisionScope, now: string,
+  contender: ReconciliationDecisionInput, winner: ReconciliationDecisionInput) {
+  let arrived!: () => void;
+  let release!: () => void;
+  const paused = new Promise<void>((resolve) => { arrived = resolve; });
+  const released = new Promise<void>((resolve) => { release = resolve; });
+  const native = new Map<D1PreparedStatement, D1PreparedStatement>();
+  const decisionWrites = new Set<D1PreparedStatement>();
+  const wrap = (statement: D1PreparedStatement, isDecisionWrite: boolean): D1PreparedStatement => {
+    const proxy: D1PreparedStatement = {
+      bind: (...values) => wrap(statement.bind(...values), isDecisionWrite),
+      first: (column) => statement.first(column),
+      all: () => statement.all(),
+      run: () => statement.run(),
+    };
+    native.set(proxy, statement);
+    if (isDecisionWrite) decisionWrites.add(proxy);
+    return proxy;
+  };
+  let arrivals = 0;
+  const held: D1DatabaseBinding = {
+    prepare: (sql) => wrap(db.prepare(sql), sql.includes('INSERT INTO inventory_reconciliation_decisions')),
+    exec: (sql) => db.exec(sql),
+    async batch(statements) {
+      if (statements.some((statement) => decisionWrites.has(statement))) {
+        arrivals += 1;
+        arrived();
+        await released;
+      }
+      return db.batch(statements.map((statement) => native.get(statement)!));
+    },
+  };
+  const outcome = async (binding: D1DatabaseBinding, decision: ReconciliationDecisionInput) => {
+    try { return { execution: await confirmReconciliationDecision(binding, scope, decision, now) }; }
+    catch (error) { return { error: error instanceof Error && 'code' in error ? String((error as { code: unknown }).code) : error instanceof Error ? error.message : 'Decision failed' }; }
+  };
+  const pending = outcome(held, contender);
+  await Promise.race([paused, pending.then(() => { throw new Error('Contender never reached decision batch'); })]);
+  const committed = await outcome(db, winner);
+  release();
+  return { arrivals, winner: committed, contender: await pending };
+}
+
 // Test-only Worker: never imported by the application or a deployment config.
 export default {
   async fetch(request: Request, env: { DB: D1DatabaseBinding; TEST_TOKEN: string }): Promise<Response> {
@@ -68,6 +117,19 @@ export default {
         if (composed.statements.length) await env.DB.batch(composed.statements);
         const receipts = await Promise.all(body.specs.map(({ clientKey }) => readLotCommandReceipt(env.DB, body.scope, clientKey)));
         return Response.json({ receipts });
+      }
+      if (new URL(request.url).pathname === '/observe') {
+        const body = await request.json() as { scope: InventoryObservationScope; input: InventoryObservationInput; now: string };
+        return Response.json(await recordInventoryObservation(env.DB, body.scope, body.input, body.now));
+      }
+      if (new URL(request.url).pathname === '/reconcile-race') {
+        const body = await request.json() as { scope: ReconciliationDecisionScope; now: string;
+          contender: ReconciliationDecisionInput; winner: ReconciliationDecisionInput };
+        return Response.json(await controlledDecisionRace(env.DB, body.scope, body.now, body.contender, body.winner));
+      }
+      if (new URL(request.url).pathname === '/reconcile') {
+        const body = await request.json() as { scope: ReconciliationDecisionScope; decision: ReconciliationDecisionInput; now: string };
+        return Response.json(await confirmReconciliationDecision(env.DB, body.scope, body.decision, body.now));
       }
       if (new URL(request.url).pathname === '/command') {
         return Response.json(await run(env.DB, await request.json() as CommandRequest));

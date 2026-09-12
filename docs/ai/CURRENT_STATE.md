@@ -1,6 +1,70 @@
 # Frigo current state — isolated T09 development
 
-## Current authoritative state — FEFO v2 backfill compatibility, 2026-09-11
+## Current authoritative state — T10 observation claim fence, 2026-09-11
+
+Branch `hoplite/himera-6d3eda84-t10-observation-reconciliation`. **New T10 application
+freeze: `7393edcd4fb9cc8bb4df2a06628fb5dc57f8607b`** — `fix(t10): atomically fence competing reconciliation
+decisions` — published/fetched, local == remote == clean-checkout SHA; `4c414fa` is
+superseded (historical ancestor). Reproduced P1: two decision keys racing one OPEN
+observation relied on a trigger side effect — the final guarded observation UPDATE with zero
+rows is a silent D1 success, losers surfaced raw SQLite errors, and with the 0030 receipt
+trigger absent both decisions committed. Fix: an in-batch `changes()` claim guard (T09
+write-guard technique) makes a lost OPEN/vN → RECONCILED/vN+1 claim abort the whole atomic
+batch (T09 commands, events, projection, receipt, observation all roll back); losers get
+`OBSERVATION_VERSION_CONFLICT`; a committed same-key twin replays (response-loss preserved),
+altered twin → `IDEMPOTENCY_CONFLICT`. 13 regressions (13 fail pre-fix) + 2 real-D1 proofs
+incl. a controlled race under workerd. Gates: full 3,024/3,024 across 114 files; T10
+focused 98/98; T09 focused 323/323; real local D1 51/51; lint/typecheck/build/30-migration
+smoke/local schema/diff PASS — repeated from the clean detached exact-SHA checkout. No
+migration. Main NOT merged. Production NOT deployed. Remote D1 NOT touched. T11 NOT STARTED.
+Verdict: **T10 PASS — READY FOR INDEPENDENT REVIEW.**
+
+## Historical T10 state — composition fix 4c414fa (superseded by 7393edc)
+
+Branch `hoplite/himera-6d3eda84-t10-observation-reconciliation`.
+**New T10 application freeze: `4c414fa7eb33329ee12936c0899644af67e48f07`** — `fix(t10): compose multi-field
+reconciliation commands atomically` — published/fetched, local == remote ==
+clean-checkout SHA; the previous freeze `6c28858` is superseded (historical ancestor).
+Reproduced P1: the planner collected per-dimension proposals independently, so one
+lot could receive 2–3 CORRECT proposals (quantity/expiry/openedAt) plus a MOVE, mixed
+claims took an expiry-only verdict, and split CORRECTs shared the `<decisionKey>#CORRECT`
+client key (idempotency/CAS hazard). Fix: `composeProposals` merges all compatible
+CORRECT changes into exactly one CORRECT plus at most one MOVE bound to the matched
+lot/version (contradictions → CONFLICT `PROPOSAL_COMPOSITION_CONFLICT`); the decision
+boundary independently enforces max one CORRECT / one MOVE / same lot+version / type
+consistency and fails closed; CORRECT+MOVE composes through T09 `useCurrentLotVersion`
+atomically. 19 permanent regressions (16 fail pre-fix). Gates: full 3,009/3,009 across
+113 files; T10 focused 78/78; real local D1 49/49; lint/typecheck/build/30-migration
+smoke/local schema/diff PASS — repeated from the clean detached exact-SHA checkout.
+No migration; 0023–0030 untouched. Main NOT merged. Production NOT deployed. Remote D1
+NOT touched. **T10 COMPLETE — READY FOR INDEPENDENT REVIEW.** T11/T12 NOT STARTED.
+
+## Historical T10 state — initial freeze 6c28858 (superseded by 4c414fa)
+
+Repository `vb-2f/frigo-dev` (repository ID 1364064929; task lineage `vn-2e/frigo-dev`).
+Branch `hoplite/himera-6d3eda84-t10-observation-reconciliation`, the platform-verified
+successor created from the configured train base after PR #1 merged the frozen T09
+branch internally (train merge `668920fa462524e65a79d31a7b0844720baf38e0`; main
+`d1b06732f8a80db4e77986df31ff28d9f04641fa` is untouched and NOT merged).
+**T10 application freeze: `6c28858acd0627d2d602998107c2e260c5e4f0d5`** —
+`feat(t10): add inventory observation reconciliation authority` — published/fetched
+with local == remote == clean-checkout equality. T10 adds the observation/evidence/
+reconciliation layer above T09 authority without any second stock writer: additive
+`0030` observation/decision persistence (evidence never mutates inventory), a pure
+deterministic planner (MATCH / NO_ACTION / STALE / AMBIGUOUS / CONFLICT /
+PROPOSE_CORRECTION / PROPOSE_MOVE / PROPOSE_EXPIRY_UPDATE / UNSUPPORTED) with exact
+milli quantities, name-matching refusal, contextual-unit refusal and confirmed-expiry
+precedence, and a decision authority that composes existing T09 CORRECT/MOVE commands
+in one atomic batch with receipt-backed response-loss replay and IDEMPOTENCY_CONFLICT
+on altered semantics. Baseline before edits: 2,926/108 full, 44 real D1, all static
+gates PASS. At the freeze: 2,990 full/112 files; T10 focused 1,097/19 files; real
+local-D1 49/49; lint/typecheck/build/30-migration smoke/local schema gate (requires
+0030)/diff PASS — all repeated from the clean detached exact-remote-SHA checkout with
+empty status. No HTTP routes added (T09 precedent; T11 owns UX surfaces).
+**T10 COMPLETE — READY FOR INDEPENDENT REVIEW.** T11 and T12 are NOT STARTED.
+Exact evidence: `inventory-truth/t10/VERIFICATION.md`, `inventory-truth/t10/TEST_MATRIX.md`.
+
+## Historical T09 state — FEFO v2 backfill compatibility (superseded as current; freeze remains a verified ancestor)
 
 Repository `vn-2e/frigo-dev` (live origin `vb-2f/frigo-dev`, same lineage), branch
 `hoplite/himera-6d3eda84`, the platform-verified successor checked out at the exact

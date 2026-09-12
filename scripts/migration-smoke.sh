@@ -69,6 +69,7 @@ VALUES ('migration_smoke_req_only', 'migration_smoke_plan', 'GINGER', 'Gừng', 
 .read migrations/0027_inventory_fefo_authority.sql
 .read migrations/0028_inventory_adoption_authority.sql
 .read migrations/0029_inventory_fefo_backfill_compatibility.sql
+.read migrations/0030_inventory_observation_reconciliation.sql
 
 CREATE TEMP TABLE assert_zero (value INTEGER NOT NULL CHECK (value = 0));
 INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_foreign_key_check;
@@ -90,6 +91,20 @@ INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger'
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'inventory_adoption_receipts';
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_adoption_receipts_immutable_update';
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_adoption_receipts_immutable_delete';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'inventory_observations';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'inventory_reconciliation_decisions';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_observations') WHERE name = 'evidence';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_observations') WHERE name = 'authoritative_inventory_version';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_observations') WHERE name = 'quantity_milli';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_reconciliation_decisions') WHERE name = 'decision_key';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_reconciliation_decisions') WHERE name = 'expected_observation_version';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_observations_immutable_update';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_observations_immutable_delete';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_observations_lot_household_insert';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_observations_projection_household_insert';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_reconciliation_decisions_observation_guard';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_reconciliation_decisions_immutable_update';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_inventory_reconciliation_decisions_immutable_delete';
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'storage_locations';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('ingredient_aliases') WHERE name = 'normalized_alias';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_items') WHERE name = 'expiry_source';
@@ -161,6 +176,26 @@ INSERT INTO assert_one
 SELECT COUNT(*) FROM recipes
 WHERE id = 'vn-canh-01' AND title = 'Canh chua cá lóc Nam Bộ';
 INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_foreign_key_check;
+
+-- T10 observation evidence smoke: identity, optimistic lifecycle and the
+-- dismissal decision path (evidence-only; no stock mutation is possible here).
+INSERT INTO inventory_observations (id, household_id, source_type, source_ref, fingerprint,
+  observed_at, recorded_at, raw_name, quantity, unit, quantity_milli, canonical_unit,
+  evidence, authoritative_inventory_version, version, created_at, updated_at)
+VALUES ('migration_smoke_observation', 'demo_household_01', 'MANUAL', 'migration-smoke',
+  '{"claim":{"quantity":2,"unit":"kg"},"sourceRef":"migration-smoke","sourceType":"MANUAL"}',
+  '2026-09-11T10:00:00Z', '2026-09-11T10:00:00Z', 'Cà chua', 2.0, 'kg', 2000000, 'g',
+  'OBSERVED', 1, 1, '2026-09-11T10:00:00Z', '2026-09-11T10:00:00Z');
+INSERT INTO inventory_reconciliation_decisions (id, household_id, observation_id, decision_key,
+  fingerprint, decision_type, proposed_verdict, actor_id, expected_observation_version, created_at)
+VALUES ('migration_smoke_dismissal', 'demo_household_01', 'migration_smoke_observation',
+  'migration-smoke:dismiss', '{"decisionType":"DISMISS"}', 'DISMISS', 'NO_ACTION',
+  'demo_user_01', 1, '2026-09-11T10:05:00Z');
+INSERT INTO assert_one SELECT COUNT(*) FROM inventory_reconciliation_decisions
+  WHERE id = 'migration_smoke_dismissal' AND decision_type = 'DISMISS' AND command_id IS NULL;
+INSERT INTO assert_one SELECT COUNT(*) FROM inventory_observations
+  WHERE id = 'migration_smoke_observation' AND status = 'OPEN' AND version = 1
+    AND quantity_milli = 2000000 AND canonical_unit = 'g';
 
 SELECT 'migration-smoke=ok';
 SQL
