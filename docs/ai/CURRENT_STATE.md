@@ -1,5 +1,28 @@
 # Frigo current state — isolated T09 development
 
+## Current authoritative state — Roadmap reconciliation / gap audit of RC 64c5501, 2026-09-12
+
+**Verdict: T13 REQUIRED** (receipt: `docs/ai/release/INVENTORY_TRUTH_ROADMAP_RECONCILIATION.md`;
+scope definition only: `docs/ai/release/T13_PROPOSED_SCOPE.md`). Repository ID 1364064929
+(now `vn-2g/frigo-dev`); `origin/main` still `d1b0673` (NOT advanced). Audit branch
+`hoplite/delphoi-499ad774` (requested logical name `hoplite/inventory-truth-roadmap-reconciliation`)
+created at exact re-certification docs HEAD `1cae11e`; application tree = certified RC
+`64c5501` (docs-only delta verified). Roadmap mismatch **CONFIRMED**: pre-implementation
+sources `MASTER_CONTEXT.md@43718c2` and `tasks/T08-…@b5577ea` define T11 = "receipt/vision
+truth and inventory UX V2"; implemented T11 = read authority (assigned to T12 by the T09
+packet); T11 continuation handed the scope to T12; T12 never addressed it; no DEC/ADR
+supersedes it. Matrix: Receipt/Vision R1–R12 = DONE 5 / PARTIAL 2 / MISSING 5; UX V2
+U1–U17 = DONE 4 / PARTIAL 9 / MISSING 4; SUPERSEDED/OUT_OF_SCOPE 0. Release safety of
+`64c5501` unchanged: P0/P1/P2 = 0; P3 notes — inferred shelf-life/day-chip expiry written
+as `expiryKind:'KNOWN'` (DEC-003 conflict), Cloudflare provider fabricates defaults,
+`FINAL_WRITER_MAP` scan row overstates changed-payload conflict, pre-existing outbox
+head-of-line block on permanent 409. Actual receipt pipeline = pre-T08 legacy scan
+draft → user confirm → T09 adapter with `sourceType:'SCAN'` (no `RECEIPT` lots, no
+observation integration, price/date dropped, no reconciliation/lot/provenance UX,
+`POST /inventory/adopt` has no product caller). Executed checks (clean worktree @ `64c5501`):
+targeted vitest 55/55 (5 files) + a temporary uncommitted probe (4/4, deleted). Main NOT
+merged; nothing deployed; remote D1 NOT touched; PayOS untouched; no application change.
+
 ## Current authoritative state — Independent final re-certification of RC 64c5501, 2026-09-12
 
 **Verdict: RELEASE CANDIDATE `64c5501ab0110658718b3752bd84e537f0854e12` TECHNICALLY

@@ -1,5 +1,31 @@
 # Frigo AI Handoff — isolated T09 development
 
+## Current authoritative handoff — Roadmap reconciliation / gap audit, 2026-09-12
+
+Program: Inventory Truth Layer — T08–T12 release train, post-certification roadmap audit
+Task: ROADMAP RECONCILIATION / GAP AUDIT (original T11 Receipt/Vision Truth + Inventory UX V2 vs RC 64c5501) — audit only
+Status: AUDIT_COMPLETE — verdict **T13 REQUIRED**; main NOT merged
+Repository: vn-2g/frigo-dev (repository ID 1364064929; earlier owner names redirect)
+Audit branch: hoplite/delphoi-499ad774 (requested logical name hoplite/inventory-truth-roadmap-reconciliation)
+Base: exact 1cae11ee2e5acdc1d6c76266ad72b3ef744d7797 (re-certification docs HEAD) · Application RC: 64c5501ab0110658718b3752bd84e537f0854e12 (unchanged)
+origin/main: d1b06732f8a80db4e77986df31ff28d9f04641fa (NOT advanced)
+ROADMAP_AUDIT_HEAD: recorded in the final operator report (docs-only commit on this branch; verify
+    `git diff 64c5501 <HEAD> -- . ':(exclude)docs'` is empty and `git merge-base --is-ancestor 1cae11e <HEAD>`).
+Primary documents: docs/ai/release/INVENTORY_TRUTH_ROADMAP_RECONCILIATION.md (sources S1–S12, matrix R1–R12 / U1–U17,
+    pipeline trace, materiality) and docs/ai/release/T13_PROPOSED_SCOPE.md (definition only; starting SHA = ROADMAP_AUDIT_HEAD).
+Executed checks (clean detached worktree /tmp/frigo-rc @ 64c5501, status empty): pnpm install --frozen-lockfile (lockfile
+    unchanged); pnpm exec vitest run tests/unit/receipt-scan.test.ts tests/unit/scans.test.ts tests/unit/scan-privacy.test.tsx
+    tests/integration/scan-response-loss.test.ts tests/integration/inventory-adoption.test.ts → 55/55 (5 files, 5.37 s);
+    temporary uncommitted probe tests/__audit_probe__ → 4/4 (receipt lot source_type='SCAN', purchased_at/money NULL,
+    expiry_kind='KNOWN' from shelf-life default, observations 0, OCR raw overwritten on correction, altered re-confirm →
+    200 idempotentReplay, cross-tenant 404/404), then deleted. Full 3,092 suite NOT rerun (no application change).
+Failures: none. Release-safety findings: P0/P1/P2 none; P3 — inferred expiry as KNOWN (R6/U6), CF provider fabricated
+    defaults (R5), FINAL_WRITER_MAP scan changed-payload wording (R9), pre-existing outbox permanent-409 block (U15).
+Next action: owner decision — (a) authorize T13 from ROADMAP_AUDIT_HEAD per T13_PROPOSED_SCOPE.md, and/or (b) a separate
+    explicit main-integration review for 64c5501 (technical certification stands; this audit does NOT declare final merge
+    readiness). Do NOT implement T13, merge main, deploy, run remote D1, touch PayOS, rewrite migrations, enable
+    MEAL_PLANNER_ENABLED, or commit the workspace overlay from this packet.
+
 ## Current authoritative handoff — Independent final re-certification, 2026-09-12
 
 Program: Inventory Truth Layer — T08–T12 release train + D3/D1/D2 remediation

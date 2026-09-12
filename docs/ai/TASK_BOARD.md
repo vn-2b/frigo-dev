@@ -1,5 +1,22 @@
 # Frigo task board
 
+## Current authoritative board — Roadmap reconciliation / gap audit, 2026-09-12
+
+- Audit of RC `64c5501` against the original T08–T12 roadmap COMPLETE: mismatch CONFIRMED;
+  **T13 REQUIRED**. Receipt: `docs/ai/release/INVENTORY_TRUTH_ROADMAP_RECONCILIATION.md`.
+- T13 defined (not implemented): `docs/ai/release/T13_PROPOSED_SCOPE.md` — Receipt/Vision
+  Truth & Inventory UX V2 (RECEIPT provenance, purchase facts, truthful expiry kind, raw-vs-
+  confirmed evidence, observation integration or DEC, UX endpoints, detail/edit/move/
+  reconciliation UX, adoption path, error-code UX). 14 acceptance criteria. Starting point =
+  this audit's docs HEAD (`ROADMAP_AUDIT_HEAD` in HANDOFF), not main.
+- P3 notes for T13 (no release blocker): inferred expiry persisted as `KNOWN`; CF provider
+  fabricated defaults; `FINAL_WRITER_MAP` scan changed-payload wording; outbox permanent-409
+  head-of-line block (pre-existing).
+- Owner decision pending: merge `64c5501` before T13 (release management) vs run T13 on the
+  train first. This audit does not authorize either.
+- OPEN follow-ups retained: `MEAL_PLANNER_AUTHORITY_CUTOVER`; AuthPage raw error text (P3).
+- Main NOT merged; production/staging NOT deployed; remote D1 NOT touched; PayOS untouched.
+
 ## Current authoritative board — Final re-certification, 2026-09-12
 
 - RC `64c5501` independently re-certified (technical): all gates PASS from a clean

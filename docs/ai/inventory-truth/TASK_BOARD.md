@@ -1,5 +1,11 @@
 # Inventory Truth task board
 
+## Current board — Roadmap reconciliation / gap audit, 2026-09-12
+
+- Original T11 (receipt/vision truth + Inventory UX V2) vs RC `64c5501`: CONFIRMED mismatch; **T13 REQUIRED**.
+- T13 defined only (`docs/ai/release/T13_PROPOSED_SCOPE.md`); start from the audit docs HEAD, not main.
+- Open: MEAL_PLANNER_AUTHORITY_CUTOVER (unchanged); owner decision on merge-before-T13 vs T13-first.
+
 ## Current board — Independent final re-certification, 2026-09-12
 
 - RC `64c5501` TECHNICALLY CERTIFIED; no P0/P1/P2. Next: roadmap reconciliation / gap audit (separate).

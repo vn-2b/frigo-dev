@@ -1,5 +1,16 @@
 # Inventory Truth current state
 
+## Current checkpoint — Roadmap reconciliation / gap audit, 2026-09-12
+
+Original roadmap (this file's parent `MASTER_CONTEXT.md@43718c2`: "T11: receipt/vision
+truth and inventory UX V2") vs implemented T11 (read authority) reconciled:
+**mismatch CONFIRMED, T13 REQUIRED** (`docs/ai/release/INVENTORY_TRUTH_ROADMAP_RECONCILIATION.md`,
+`T13_PROPOSED_SCOPE.md`). RC `64c5501` technical certification stands (P0/P1/P2 = 0);
+receipt/vision at the RC is the pre-T08 legacy scan draft → confirm → T09 adapter
+(`sourceType:'SCAN'`, price/date dropped, inferred expiry as `KNOWN`, no observation
+integration, no lot/provenance/reconciliation UX, no product adoption path). Main NOT
+merged; no application change.
+
 ## Current checkpoint — Independent final re-certification, 2026-09-12
 
 RC `64c5501` technically certified (`docs/ai/release/INVENTORY_TRUTH_RECERTIFICATION.md`):
