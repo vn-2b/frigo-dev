@@ -1,5 +1,24 @@
 # Inventory Truth current state
 
+## Current checkpoint — T13 Receipt/Vision Truth & Inventory UX V2, 2026-09-13
+
+**T13 implemented and verified on `hoplite/lindos-0368e413`; main NOT merged.** Base
+`578f705`; `T13_APPLICATION_FREEZE` = `ad342703fb31a2b97d2798f1161fb83d4d0ed090`. The
+receipt/vision gap identified by the roadmap audit is closed: RECEIPT vs SCAN provenance is
+derived from the server-side `scan_type` only, purchase facts are real or absent (no
+fabricated confidence / merchant / date / price), expiry is KNOWN / ESTIMATED / UNKNOWN in
+distinct columns (a receipt proves purchase, not expiry), raw OCR is retained beside the
+reviewed value, and confirmation records a T10 observation inside the existing atomic batch.
+Inventory UX V2 ships lot detail with provenance, edit/MOVE, a truthful receipt review with
+per-line rejection, and a reconciliation surface.
+
+Authority unchanged: one writer (T09). One new write statement, to `inventory_observations`
+(evidence, not stock). Writer/reader audits UNKNOWN = 0. Migration `0031` additive only;
+0001-0030 untouched. Clean detached worktree at the freeze SHA: full suite 3,177/124 files,
+real D1 81/81, all static and migration gates PASS, status empty.
+
+Details: `docs/ai/inventory-truth/t13/`.
+
 ## Current checkpoint — Roadmap reconciliation / gap audit, 2026-09-12
 
 Original roadmap (this file's parent `MASTER_CONTEXT.md@43718c2`: "T11: receipt/vision

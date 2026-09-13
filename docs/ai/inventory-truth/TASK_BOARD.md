@@ -1,5 +1,15 @@
 # Inventory Truth task board
 
+## Current board — T13 Receipt/Vision Truth & Inventory UX V2, 2026-09-13
+
+- **T13 COMPLETE on branch; main NOT merged.** Freeze `ad342703fb31a2b97d2798f1161fb83d4d0ed090`.
+- All 14 acceptance criteria covered by permanent tests; 3,177 tests / 124 files, real D1 81/81.
+- One writer (T09) preserved; one new evidence-only write statement; audits UNKNOWN = 0.
+- Roadmap-audit P3 notes closed: inferred expiry no longer `KNOWN`; CF provider no longer fabricates.
+- 7 defects found only by browser verification are fixed with regression tests (`t13/CONTINUATION.md`).
+- Open: MEAL_PLANNER_AUTHORITY_CUTOVER (unchanged); visual check at 360/390/430 (emulation
+  unavailable in sandbox); UI click-through of the reconciliation accept path.
+
 ## Current board — Roadmap reconciliation / gap audit, 2026-09-12
 
 - Original T11 (receipt/vision truth + Inventory UX V2) vs RC `64c5501`: CONFIRMED mismatch; **T13 REQUIRED**.

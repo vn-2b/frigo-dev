@@ -1,5 +1,58 @@
 # Frigo AI Handoff — isolated T09 development
 
+## Current authoritative handoff — T13 Receipt/Vision Truth & Inventory UX V2, 2026-09-13
+
+Program: Inventory Truth Layer — T08-T12 release train + T13 (final roadmap task)
+Task: T13 RECEIPT/VISION TRUTH & INVENTORY UX V2 — implementation
+Status: **T13 COMPLETE on branch; main NOT merged, nothing deployed**
+Repository: vn-2i/frigo-dev (repository ID 1364064929 is ground truth; owner names redirect)
+Branch: hoplite/lindos-0368e413
+Base: exact 578f705f12cfde6e5ebe65bdc574154a0670c8df (ROADMAP_AUDIT_HEAD)
+origin/main: d1b06732f8a80db4e77986df31ff28d9f04641fa (NOT advanced)
+T13_APPLICATION_FREEZE: ad342703fb31a2b97d2798f1161fb83d4d0ed090
+Primary documents: docs/ai/inventory-truth/t13/{README,RECEIPT_VISION_TRUTH,UX_V2,AUTHORITY_MAP,TEST_MATRIX,CONTINUATION}.md
+
+Design: **evidence is not authority.** OCR/vision -> user review -> T10 observation ->
+T09 command -> lots. T13 adds exactly ONE new write statement (a guarded INSERT into
+inventory_observations riding the existing atomic batch) and ZERO new writers to
+inventory_lots / inventory_items / inventory_events, and ZERO new inventory_items readers.
+Writer and reader audits: UNKNOWN = 0.
+
+Migration: 0031_scan_evidence_retention.sql, additive only. Adds ocr_raw_name, ocr_quantity,
+ocr_unit, ocr_confidence (nullable: the legacy confidence column is NOT NULL DEFAULT 0.9 and
+cannot represent "unknown") and review_state to scan_items, coupled to is_confirmed by
+insert/update triggers rather than a column CHECK (ALTER TABLE ... ADD COLUMN ... CHECK is
+evaluated against pre-existing rows and would fail on already-confirmed rows). Migrations
+0001-0030 untouched.
+
+Executed checks (clean detached worktree /tmp/t13-freeze @ ad34270, pnpm install
+--frozen-lockfile, status empty): full suite **3,177/3,177 across 124 files** (218.25 s);
+real D1 **81/81** (5 files); lint PASS; typecheck PASS; build PASS; check:migrations PASS
+(migration-smoke=ok); schema:check:local PASS (after `wrangler d1 migrations apply
+frigo-db --local` provisions the gitignored local D1 in a fresh worktree — the gate reads
+existing local state and does not create it); git diff --check PASS; git status --porcelain
+empty. Baseline before T13: 3,092/120 and 70 real-D1.
+
+Browser verification (isolated preview only; no remote D1, no deployment): flows A (receipt
+-> review -> confirm -> RECEIPT provenance + real purchasedAt), C (MOVE), D (stale edit ->
+409 CONFLICT with prior state preserved), D' (expiry UNKNOWN -> ESTIMATED -> UNKNOWN and
+UNKNOWN -> KNOWN) and E (observation -> dismiss -> RECONCILED with stock untouched) all
+verified. **7 defects that the green test suite had not caught were found this way** and are
+fixed with permanent regression tests; the worst was a truncation-induced lot-id collision
+that made every line of one receipt share a single lot id.
+
+Failures: none outstanding.
+Known verification limits: viewport emulation was unavailable in this sandbox (set viewport
+and set device both left innerWidth at 1440), so the 360/390/430 check is a computed
+layout-overflow probe (0 offenders) rather than a visual check; the reconciliation accept
+(CORRECT/MOVE) path was exercised through tests and the API but not through a UI click,
+because the seeded preview data yields STALE_OBSERVATION verdicts with no safe proposal
+(which correctly disables the button). No hosted GitHub CI status exists for this SHA.
+
+Next action: owner review of this branch. Do NOT merge main, deploy, run remote D1, touch
+PayOS, rewrite migrations 0001-0030, add a second inventory writer, or enable
+MEAL_PLANNER_ENABLED / cutover flags.
+
 ## Current authoritative handoff — Roadmap reconciliation / gap audit, 2026-09-12
 
 Program: Inventory Truth Layer — T08–T12 release train, post-certification roadmap audit

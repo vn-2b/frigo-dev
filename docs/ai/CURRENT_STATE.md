@@ -1,5 +1,43 @@
 # Frigo current state — isolated T09 development
 
+## Current authoritative state — T13 Receipt/Vision Truth & Inventory UX V2, 2026-09-13
+
+**Verdict: T13 IMPLEMENTED AND VERIFIED on branch `hoplite/lindos-0368e413`; NOT merged to
+main.** Repository ID 1364064929 (`vn-2i/frigo-dev`); `origin/main` still `d1b0673` (NOT
+advanced). Base commit `578f705` (ROADMAP_AUDIT_HEAD). `T13_APPLICATION_FREEZE` =
+`ad342703fb31a2b97d2798f1161fb83d4d0ed090`.
+
+Scope closed: receipt/vision provenance truth (RECEIPT vs SCAN from server-side `scan_type`
+only), purchase facts (real merchant/date/price or absent), truthful expiry kind
+(KNOWN/ESTIMATED/UNKNOWN in distinct columns), raw-vs-confirmed OCR evidence retention,
+T10 observation integration inside the existing atomic batch, additive read/decision routes,
+and the Inventory UX V2 surfaces (lot detail + provenance, edit/MOVE, receipt review with
+real confidence/price/date and per-line rejection, reconciliation page).
+
+Migration `0031_scan_evidence_retention.sql` is additive only (adds `ocr_raw_name`,
+`ocr_quantity`, `ocr_unit`, `ocr_confidence`, `review_state` to `scan_items` with
+insert/update triggers coupling `review_state` and `is_confirmed`). Migrations 0001-0030
+untouched. Fresh 0001→0031 replay and legacy-upgrade replay both PASS.
+
+Authority unchanged: **exactly one inventory writer (T09)**. T13 adds exactly one new write
+statement — a guarded INSERT into `inventory_observations` that rides the existing atomic
+batch and writes evidence, not stock. Zero new writes to `inventory_lots`, `inventory_items`
+or `inventory_events`; zero new `inventory_items` readers. Writer/reader audits UNKNOWN = 0.
+
+Executed checks (clean detached worktree @ `ad34270`, `pnpm install --frozen-lockfile`):
+full suite **3,177/3,177 across 124 files**; real D1 **81/81**; lint, typecheck, build,
+`check:migrations` (`migration-smoke=ok`), `schema:check:local`, `git diff --check` all PASS;
+`git status --porcelain` empty. Baseline before T13 was 3,092/120 and 70 real-D1.
+
+Browser verification against the isolated preview (`scripts/security-preview.mjs`, in-memory
+SQLite, `AI_MOCK_MODE`, external fetch disabled) found **7 defects that a fully green test
+suite had not caught**, including a lot-id collision that made every line of one receipt
+share a single lot id, and two identifier-bound errors that made every real receipt
+observation permanently undecidable. All seven are fixed with permanent regression tests.
+
+Main NOT merged; nothing deployed; remote D1 NOT touched; PayOS untouched;
+`MEAL_PLANNER_ENABLED` and cutover flags unchanged.
+
 ## Current authoritative state — Roadmap reconciliation / gap audit of RC 64c5501, 2026-09-12
 
 **Verdict: T13 REQUIRED** (receipt: `docs/ai/release/INVENTORY_TRUTH_ROADMAP_RECONCILIATION.md`;

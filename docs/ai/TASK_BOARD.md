@@ -1,5 +1,27 @@
 # Frigo task board
 
+## Current authoritative board — T13 Receipt/Vision Truth & Inventory UX V2, 2026-09-13
+
+- **T13 COMPLETE on branch `hoplite/lindos-0368e413`; NOT merged to main.** Freeze
+  `ad342703fb31a2b97d2798f1161fb83d4d0ed090`; base `578f705`; `origin/main` still `d1b0673`.
+- Docs: `docs/ai/inventory-truth/t13/` (README, RECEIPT_VISION_TRUTH, UX_V2, AUTHORITY_MAP,
+  TEST_MATRIX, CONTINUATION).
+- All 14 acceptance criteria covered by permanent tests. Full suite 3,177/124 files; real D1
+  81/81; lint/typecheck/build/migrations(31)/schema gate/diff-check PASS from a clean
+  detached worktree at the freeze SHA with an empty status.
+- Authority unchanged: one writer (T09). One new write statement, to
+  `inventory_observations` (evidence). Writer/reader audits UNKNOWN = 0.
+- P3 notes from the roadmap audit are now CLOSED: inferred expiry no longer persists as
+  `KNOWN`; the Cloudflare provider no longer fabricates confidence/merchant/date/price.
+- 7 defects found by browser verification (not by the green suite) are fixed with regression
+  tests; see `docs/ai/inventory-truth/t13/CONTINUATION.md`.
+- OPEN follow-ups retained: `MEAL_PLANNER_AUTHORITY_CUTOVER`; AuthPage raw error text (P3).
+- NEW follow-ups: viewport emulation was unavailable in the sandbox, so the 360/390/430
+  check is a computed overflow probe rather than a visual check; the reconciliation
+  accept (CORRECT/MOVE) path was exercised via tests/API but not via a UI click, because
+  seeded preview data yields no actionable verdict.
+- Main NOT merged; nothing deployed; remote D1 NOT touched; PayOS untouched.
+
 ## Current authoritative board — Roadmap reconciliation / gap audit, 2026-09-12
 
 - Audit of RC `64c5501` against the original T08–T12 roadmap COMPLETE: mismatch CONFIRMED;
