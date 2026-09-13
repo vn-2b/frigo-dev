@@ -29,7 +29,8 @@ required_migrations(name) AS (
     ('0027_inventory_fefo_authority.sql'),
     ('0028_inventory_adoption_authority.sql'),
     ('0029_inventory_fefo_backfill_compatibility.sql'),
-    ('0030_inventory_observation_reconciliation.sql')
+    ('0030_inventory_observation_reconciliation.sql'),
+    ('0031_scan_evidence_retention.sql')
 ),
 required_tables(name) AS (
   VALUES
@@ -132,10 +133,20 @@ required_columns(table_name, column_name) AS (
     ,('scans', 'total_amount_vnd')
     ,('scan_items', 'unit_price_vnd')
     ,('scan_items', 'total_price_vnd')
+    -- T13 (0031): raw OCR/vision evidence retained separately from the
+    -- reviewable values, plus the explicit per-line review lifecycle.
+    ,('scan_items', 'ocr_raw_name')
+    ,('scan_items', 'ocr_quantity')
+    ,('scan_items', 'ocr_unit')
+    ,('scan_items', 'ocr_confidence')
+    ,('scan_items', 'review_state')
 ),
 required_triggers(name) AS (
   VALUES
     ('trg_meal_plans_household_immutable'),
+    -- T13 (0031): CONFIRMED review state and is_confirmed must stay one fact.
+    ('trg_scan_items_review_state_insert'),
+    ('trg_scan_items_review_state_update'),
     ('trg_inventory_commands_immutable_update'),
     ('trg_inventory_commands_immutable_insert'),
     ('trg_inventory_commands_immutable_delete'),

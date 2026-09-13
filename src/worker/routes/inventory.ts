@@ -11,9 +11,8 @@ import {
   classifyLotCommandBatchFailure, readLotCommandReceipt, replayLotCommandReceipt, type LotCommandSpec,
 } from '../../../packages/db/src/inventory-lot-commands';
 import { LotCommandError } from '../../../packages/domain/src/inventory-lot-commands';
-import {
-  inventoryAuthorityFailure, lotExpiryFieldsFromLegacy,
-} from '../utils/inventory-authority';
+import { inventoryAuthorityFailure } from '../utils/inventory-authority';
+import { lotExpiryFromEvidence } from '../utils/scan-evidence';
 import {
   areUnitsCompatible,
   computeFreshness,
@@ -177,7 +176,7 @@ function lotFailureResponse(c: any, error: LotCommandError) {
 async function adoptManualInventoryUpdate(c: any, db: any, kv: any, auth: AuthContext, input: {
   id: string; expectedVersion: number; storedVersion: number; rawName: string;
   ingredientId: string | null; quantity: number; unit: string; storage: string;
-  expiryDate: string | null; expirySubmitted: boolean; idempotencyKey: string | null;
+  expiryDate: string | null; expirySubmitted: boolean; expiryEstimated?: boolean; idempotencyKey: string | null;
   category: string; freshness: string; body: Record<string, unknown>;
 }) {
   const scope = { householdId: auth.householdId, actorId: auth.userId };
@@ -212,7 +211,14 @@ async function adoptManualInventoryUpdate(c: any, db: any, kv: any, auth: AuthCo
       ingredientId: input.ingredientId,
     };
     if (input.expirySubmitted) {
-      const expiry = lotExpiryFieldsFromLegacy(input.expiryDate, mapped.lot.expiryKind);
+      // T13 expiry truth: a date the user explicitly submits through the edit
+      // sheet is supplied dated evidence and becomes KNOWN. Carrying the lot's
+      // previous ESTIMATED kind forward would trap a corrected lot as an
+      // estimate forever, so a user correction can always establish a fact;
+      // clearing the date returns it to UNKNOWN.
+      const expiry = input.expiryEstimated === true
+        ? lotExpiryFromEvidence(input.expiryDate, 'inferred')
+        : lotExpiryFromEvidence(input.expiryDate, input.expiryDate ? 'supplied' : 'absent');
       changes.expiryAt = expiry.expiryAt;
       changes.estimatedExpiryAt = expiry.estimatedExpiryAt;
       changes.expiryKind = expiry.expiryKind;
@@ -312,7 +318,7 @@ async function adoptManualInventoryDiscard(c: any, db: any, kv: any, auth: AuthC
 }
 
 async function adoptManualInventoryCreate(c: any, db: any, kv: any, auth: AuthContext,
-  item: { id: string; ingredientId: string | null; name: string; quantity: number; storage: string; expiryDate: string | null },
+  item: { id: string; ingredientId: string | null; name: string; quantity: number; storage: string; expiryDate: string | null; expiryEstimated?: boolean },
   unit: string) {
   const scope = { householdId: auth.householdId, actorId: auth.userId };
   try {
@@ -320,7 +326,11 @@ async function adoptManualInventoryCreate(c: any, db: any, kv: any, auth: AuthCo
     const location = snapshot.locations.find((entry) => entry.isDefault
       && entry.type.toLowerCase() === item.storage);
     if (!location) throw new LotCommandError('DRIFT_DETECTED');
-    const expiry = lotExpiryFieldsFromLegacy(item.expiryDate);
+    // T13 expiry truth for manual add: a day-chip estimate stays ESTIMATED,
+    // an explicitly picked date is KNOWN, and no date is UNKNOWN.
+    const expiry = item.expiryEstimated === true
+      ? lotExpiryFromEvidence(item.expiryDate, 'inferred')
+      : lotExpiryFromEvidence(item.expiryDate, item.expiryDate ? 'supplied' : 'absent');
     const command = {
       type: 'CREATE' as const, lotId: item.id, ingredientId: item.ingredientId, rawName: item.name,
       quantity: item.quantity, unit, storageLocationId: location.id,
@@ -638,7 +648,8 @@ inventoryRoutes.post('/inventory', async (c) => {
     // the same user intent through the lot authority instead of the legacy
     // projection; the native receipt keeps replay idempotent.
     if (await readInventoryAuthorityMode(db, auth.householdId) === 'native') {
-      return adoptManualInventoryCreate(c, db, kv, auth, newItem, unit);
+      return adoptManualInventoryCreate(c, db, kv, auth,
+        { ...newItem, expiryEstimated: body.expiryEstimated === true }, unit);
     }
 
     const batchResults = await runLegacyInventoryBatch(db, auth.householdId, [
@@ -830,6 +841,7 @@ inventoryRoutes.patch('/inventory/:id', async (c) => {
         storage,
         expiryDate,
         expirySubmitted: body.expiryDate !== undefined,
+        expiryEstimated: (body as { expiryEstimated?: boolean }).expiryEstimated === true,
         idempotencyKey,
         category,
         freshness,

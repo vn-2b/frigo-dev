@@ -49,7 +49,9 @@ export class MockAIProvider implements AIProvider {
     return {
       merchant_name: 'WinMart+ Trần Não',
       invoice_number: 'HD-2026-09058',
-      purchase_date: new Date().toLocaleDateString('vi-VN'),
+      // Must match the YYYY-MM-DD contract the real providers emit; a locale
+      // string is an ambiguous date that the receipt truth mapper drops.
+      purchase_date: new Date().toISOString().slice(0, 10),
       total_amount_vnd: 197000,
       items,
     };

@@ -10,6 +10,8 @@ function scope(): [string, string] {
 export const queryKeys = {
   me: () => ['me', ...scope()] as const,
   inventory: () => ['inventory', ...scope()] as const,
+  inventoryLot: (lotId: string) => ['inventory', ...scope(), 'lot', lotId] as const,
+  inventoryObservations: () => ['inventory', ...scope(), 'observations'] as const,
   recommendationLists: () => ['recommendations', ...scope()] as const,
   recommendations: (params: {
     noBuy: boolean;

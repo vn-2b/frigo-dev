@@ -72,7 +72,11 @@ export const InventoryPage: React.FC = () => {
     e.preventDefault();
     if (!name.trim()) return;
     setMutationError(null);
-    const expiryDate = new Date(Date.now() + expiryDays * 86400000).toISOString().split('T')[0];
+    // T13: "Chưa rõ" means no expiry evidence exists. Sending a computed date
+    // here would manufacture a dated fact the user never supplied.
+    const expiryDate = expiryDays > 0
+      ? new Date(Date.now() + expiryDays * 86400000).toISOString().split('T')[0]
+      : null;
     addItem.mutate({
       name: name.trim(),
       quantity: Number(quantity),
@@ -80,6 +84,8 @@ export const InventoryPage: React.FC = () => {
       category,
       storage,
       expiryDate,
+      // Day chips are estimates, never dated facts.
+      expiryEstimated: expiryDate !== null,
     });
   };
 
@@ -125,6 +131,17 @@ export const InventoryPage: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {/* T13: entry point to the reconciliation surface for evidence that
+            needs a human decision. */}
+        <button
+          type="button"
+          onClick={() => navigate('/inventory-reconciliation')}
+          className="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-white border border-slate-200/80 shadow-card text-left tap-target cursor-pointer hover:border-emerald-500/40 transition-all"
+        >
+          <span className="text-xs font-semibold text-slate-700">Đối chiếu tủ lạnh</span>
+          <span className="text-[11px] text-emerald-700 font-bold">Xem bằng chứng →</span>
+        </button>
 
         {/* Search */}
         <div className="relative">
@@ -188,6 +205,8 @@ export const InventoryPage: React.FC = () => {
                 freshness={item.freshness}
                 ingredientId={item.ingredientId}
                 expiryDate={item.expiryDate}
+                expiryKind={item.expiryKind}
+                estimatedExpiryDate={item.estimatedExpiryDate}
                 onClick={() => navigate(`/ingredients/${item.id}`)}
                 onUpdateQuantity={(delta) => handleUpdateQty(item.id, item.quantity, delta, item.version)}
                 onDelete={() => setPendingDelete({ id: item.id, version: item.version })}
@@ -317,6 +336,7 @@ export const InventoryPage: React.FC = () => {
                 </label>
                 <div className="flex gap-2">
                   {[
+                    { days: 0, label: 'Chưa rõ' },
                     { days: 2, label: '2 ngày' },
                     { days: 5, label: '5 ngày' },
                     { days: 10, label: '10 ngày' },

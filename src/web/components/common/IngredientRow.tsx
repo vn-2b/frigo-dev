@@ -3,6 +3,7 @@ import { getIngredientImage } from '../../lib/ingredient-images';
 import { StatusChip } from './StatusChip';
 import { QuantityStepper } from './QuantityStepper';
 import { FreshnessStatus } from '@frigo/domain';
+import { presentExpiry } from '../../lib/inventory-truth';
 import { Trash2 } from 'lucide-react';
 
 interface IngredientRowProps {
@@ -15,6 +16,9 @@ interface IngredientRowProps {
   freshness: FreshnessStatus;
   ingredientId?: string;
   expiryDate?: string;
+  /** Inventory Truth expiry semantics; absent for legacy projection rows. */
+  expiryKind?: string | null;
+  estimatedExpiryDate?: string | null;
   onClick?: () => void;
   onUpdateQuantity?: (delta: number) => void;
   onDelete?: () => void;
@@ -28,11 +32,16 @@ export const IngredientRow: React.FC<IngredientRowProps> = ({
   freshness,
   ingredientId,
   expiryDate,
+  expiryKind,
+  estimatedExpiryDate,
   onClick,
   onUpdateQuantity,
   onDelete,
 }) => {
   const imgSrc = getIngredientImage(ingredientId, name);
+  // T13: an item with no expiry evidence must not be presented as fresh with a
+  // fabricated "Còn N ngày" countdown.
+  const expiry = presentExpiry({ expiryKind, expiryDate, estimatedExpiryDate });
 
   return (
     <div
@@ -54,16 +63,18 @@ export const IngredientRow: React.FC<IngredientRowProps> = ({
             <h4 className="font-heading font-bold text-[15px] text-slate-900 truncate">
               {name}
             </h4>
-            <StatusChip status={freshness} />
+            <StatusChip status={expiry.tone === 'unknown' ? 'unknown'
+              : expiry.tone === 'estimated' ? 'estimated' : freshness} />
           </div>
 
           <p className="text-xs text-slate-500 font-semibold truncate">
             {quantity} {unit}
             {storage === 'freezer' ? ' · Ngăn đông' : ''}
-            {expiryDate && (() => {
-              const diff = new Date(expiryDate).getTime() - new Date().getTime();
-              const days = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-              return ` · Còn ${days} ngày`;
+            {expiry.date === null ? ' · Chưa rõ hạn' : (() => {
+              const diff = new Date(expiry.date).getTime() - new Date().getTime();
+              const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+              const prefix = expiry.estimated ? ' · Ước tính' : ' ·';
+              return days < 0 ? `${prefix} đã quá hạn` : `${prefix} còn ${days} ngày`;
             })()}
           </p>
         </div>

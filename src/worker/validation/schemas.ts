@@ -60,6 +60,9 @@ export const InventoryCreateSchema = z.object({
   category: z.string().trim().max(30).default('other'),
   storage: z.enum(['fridge', 'freezer', 'pantry']).default('fridge'),
   expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Định dạng ngày hết hạn phải là YYYY-MM-DD').nullable().optional(),
+  // T13: a day-chip estimate is ESTIMATED evidence; only an explicitly picked
+  // date becomes a KNOWN dated fact.
+  expiryEstimated: z.boolean().optional(),
   dataSource: z.string().max(20).default('manual'),
 });
 
@@ -74,6 +77,7 @@ export const InventoryUpdateSchema = z
     category: z.string().trim().max(30).optional(),
     storage: z.enum(['fridge', 'freezer', 'pantry']).optional(),
     expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    expiryEstimated: z.boolean().optional(),
   })
   .refine(
     (body) => Object.keys(body).some((key) => key !== 'version'),
@@ -95,7 +99,15 @@ export const ScanConfirmSchema = z.object({
     category: z.string().trim().max(30).optional(),
     storage: z.enum(['fridge', 'freezer', 'pantry']).optional(),
     expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    canonicalId: z.string().trim().max(100).optional(),
+    // T13: the client states how the date was chosen. A day-chip estimate is
+    // ESTIMATED evidence; only an explicitly picked date becomes KNOWN.
+    expiryEstimated: z.boolean().optional(),
+    // T13: explicit per-line rejection, distinct from "not submitted".
+    rejected: z.boolean().optional(),
+    // T13: the review UI round-trips the scan DTO it was given, so a field the
+    // server itself emitted as null (an unmapped ingredient) must be accepted
+    // as "absent" rather than rejected as a validation error.
+    canonicalId: z.string().trim().max(100).nullable().optional(),
   }))
     .min(1, 'Cần ít nhất một nguyên liệu để xác nhận')
     .max(50, 'Tối đa 50 nguyên liệu mỗi lần xác nhận')

@@ -8,8 +8,11 @@ import { useWeekStore } from '../stores/useWeekStore';
 import { getIngredientImage } from '../lib/ingredient-images';
 import { CheckCircle2, ShoppingBag, Trash2, Store, Calendar, CalendarCheck } from 'lucide-react';
 import { StandardUnit } from '@frigo/domain';
+import { clsx } from 'clsx';
 import { capturePrivateSession } from '../lib/private-session';
 import { invalidateInventoryDependents } from '../lib/query-invalidation';
+import { presentConfidence, presentDomainError, presentPrice, presentPurchaseDate } from '../lib/inventory-truth';
+import { ApiError } from '../services/http';
 
 interface ReceiptItemState {
   id: string;
@@ -21,6 +24,12 @@ interface ReceiptItemState {
   totalPriceVnd?: number;
   category?: string;
   storage: 'fridge' | 'freezer' | 'pantry';
+  /** Provider-reported confidence; undefined means the model reported none. */
+  confidence?: number;
+  /** Raw OCR extraction, retained separately from the confirmed value. */
+  rawEvidence?: { rawName?: string; estimatedQuantity?: number; unit?: StandardUnit };
+  /** Explicit reviewer rejection, recorded durably by the server. */
+  rejected?: boolean;
 }
 
 export const ReceiptReviewPage: React.FC = () => {
@@ -83,6 +92,9 @@ const ReceiptReview: React.FC<{ receiptScanId: string | null }> = ({ receiptScan
       setItems(liveReceipt.items);
     }
   }, [liveReceipt.items]);
+  // Rejected lines stay in the request (the server records the rejection)
+  // but they are not part of what will enter the fridge.
+  const acceptedItems = items.filter((it) => !it.rejected);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -99,12 +111,22 @@ const ReceiptReview: React.FC<{ receiptScanId: string | null }> = ({ receiptScan
     );
   };
 
-  const handleRemove = (id: string) => {
-    setItems((prev) => prev.filter((it) => it.id !== id));
+  // T13: rejecting a line is durable review evidence, so it is toggled and
+  // submitted explicitly rather than silently dropped from the request.
+  const handleToggleReject = (id: string) => {
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, rejected: !it.rejected } : it)));
+  };
+
+  const handleRename = (id: string, rawName: string) => {
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, rawName } : it)));
+  };
+
+  const handleStorage = (id: string, storage: 'fridge' | 'freezer' | 'pantry') => {
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, storage } : it)));
   };
 
   const handleImportToFridge = async () => {
-    if (items.length === 0 || !isReady) return;
+    if (acceptedItems.length === 0 || !isReady) return;
     const isCurrent = capturePrivateSession();
     setIsSubmitting(true);
     try {
@@ -115,15 +137,17 @@ const ReceiptReview: React.FC<{ receiptScanId: string | null }> = ({ receiptScan
       setTimeout(() => {
         if (mounted.current && isCurrent()) navigate('/fridge');
       }, 1200);
-    } catch {
+    } catch (err) {
       if (!mounted.current || !isCurrent()) return;
-      setPollError('Chưa nhập được nguyên liệu. Vui lòng thử lại.');
+      // Recoverable domain states get specific guidance, never raw JSON.
+      const code = err instanceof ApiError ? err.code : null;
+      setPollError(presentDomainError(code, 'Chưa nhập được nguyên liệu. Vui lòng thử lại.').message);
       setIsSubmitting(false);
     }
   };
 
   const handleReconcileWeeklyPlan = async () => {
-    if (items.length === 0 || !isReady) return;
+    if (acceptedItems.length === 0 || !isReady) return;
     const isCurrent = capturePrivateSession();
     setIsSubmitting(true);
     try {
@@ -144,7 +168,7 @@ const ReceiptReview: React.FC<{ receiptScanId: string | null }> = ({ receiptScan
     }
   };
 
-  const calculatedTotal = items.reduce((sum, it) => sum + (it.totalPriceVnd || 0), 0);
+  const calculatedTotal = acceptedItems.reduce((sum, it) => sum + (it.totalPriceVnd || 0), 0);
 
   return (
     <div className="min-h-screen bg-[#F8FAF9] pb-32 max-w-md mx-auto">
@@ -178,11 +202,11 @@ const ReceiptReview: React.FC<{ receiptScanId: string | null }> = ({ receiptScan
               </div>
               <div>
                 <h3 className="font-heading font-bold text-sm text-slate-900">
-                  {liveReceipt.merchantName}
+                  {liveReceipt.merchantName || 'Không rõ cửa hàng'}
                 </h3>
                 <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                   <Calendar className="w-3 h-3 text-slate-400" />
-                  <span>{liveReceipt.purchaseDate}</span>
+                  <span>{presentPurchaseDate(liveReceipt.purchaseDate)}</span>
                   {liveReceipt.invoiceNumber && <span>• {liveReceipt.invoiceNumber}</span>}
                 </p>
               </div>
@@ -195,7 +219,7 @@ const ReceiptReview: React.FC<{ receiptScanId: string | null }> = ({ receiptScan
           <div className="flex items-center justify-between pt-2 border-t border-slate-100">
             <span className="text-xs text-slate-500">Tổng thanh toán:</span>
             <span className="font-heading font-bold text-lg text-slate-900">
-              {(calculatedTotal || liveReceipt.totalAmountVnd || 0).toLocaleString('vi-VN')}đ
+              {presentPrice(calculatedTotal || liveReceipt.totalAmountVnd)}
             </span>
           </div>
         </div>
@@ -210,53 +234,99 @@ const ReceiptReview: React.FC<{ receiptScanId: string | null }> = ({ receiptScan
 
         {/* Items List */}
         <div className="space-y-2.5">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-xs flex items-center justify-between gap-3"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-12 h-12 rounded-lg bg-slate-50 border border-slate-100 p-1.5 shrink-0 flex items-center justify-center">
-                  <img
-                    src={getIngredientImage(item.canonicalId || item.rawName)}
-                    alt={item.rawName}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-heading font-semibold text-sm text-slate-900 truncate">
-                    {item.rawName}
-                  </p>
-                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    {item.totalPriceVnd && (
-                      <span className="text-xs font-semibold text-emerald-700">
-                        {item.totalPriceVnd.toLocaleString('vi-VN')}đ
-                      </span>
-                    )}
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
-                      {item.storage === 'fridge' ? 'Tủ mát' : item.storage === 'freezer' ? 'Tủ đông' : 'Tủ khô'}
-                    </span>
+          {items.map((item) => {
+            const confidence = presentConfidence(item.confidence);
+            const corrected = item.rawEvidence
+              && (item.rawEvidence.estimatedQuantity !== undefined
+                && item.rawEvidence.estimatedQuantity !== item.estimatedQuantity);
+            return (
+              <div
+                key={item.id}
+                data-testid="receipt-line"
+                className={clsx('bg-white rounded-xl p-3 border shadow-xs space-y-2',
+                  item.rejected ? 'border-rose-200 bg-rose-50/40 opacity-70' : 'border-slate-200/80')}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-12 h-12 rounded-lg bg-slate-50 border border-slate-100 p-1.5 shrink-0 flex items-center justify-center">
+                      <img
+                        src={getIngredientImage(item.canonicalId || item.rawName)}
+                        alt={item.rawName}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <label className="sr-only" htmlFor={`receipt-name-${item.id}`}>Tên sản phẩm</label>
+                      <input
+                        id={`receipt-name-${item.id}`}
+                        value={item.rawName}
+                        onChange={(event) => handleRename(item.id, event.target.value)}
+                        disabled={item.rejected}
+                        className="w-full font-heading font-semibold text-sm text-slate-900 bg-transparent border-b border-transparent focus:border-emerald-500 focus:outline-none disabled:text-slate-400"
+                      />
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {/* Missing price reads as unknown; never 0đ. */}
+                        <span className="text-xs font-semibold text-emerald-700" data-testid="receipt-price">
+                          {presentPrice(item.totalPriceVnd)}
+                        </span>
+                        <span
+                          data-testid="receipt-confidence"
+                          className={clsx('text-[10px] px-1.5 py-0.5 rounded font-semibold border',
+                            confidence.tone === 'unknown' ? 'bg-slate-100 text-slate-600 border-slate-200'
+                              : confidence.tone === 'low' ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                : confidence.tone === 'medium' ? 'bg-amber-50 text-amber-900 border-amber-200'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200/60')}
+                        >
+                          {confidence.label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <QuantityStepper
+                      quantity={item.estimatedQuantity}
+                      unit={item.unit}
+                      onIncrement={() => handleUpdateQty(item.id, item.unit === 'g' ? 100 : 1)}
+                      onDecrement={() => handleUpdateQty(item.id, item.unit === 'g' ? -100 : -1)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleToggleReject(item.id)}
+                      aria-label={item.rejected ? `Khôi phục ${item.rawName}` : `Bỏ qua ${item.rawName}`}
+                      aria-pressed={Boolean(item.rejected)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors tap-target"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-1.5 shrink-0">
-                <QuantityStepper
-                  quantity={item.estimatedQuantity}
-                  unit={item.unit}
-                  onIncrement={() => handleUpdateQty(item.id, item.unit === 'g' ? 100 : 1)}
-                  onDecrement={() => handleUpdateQty(item.id, item.unit === 'g' ? -100 : -1)}
-                />
-                <button
-                  onClick={() => handleRemove(item.id)}
-                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors tap-target"
-                  title="Xóa"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="sr-only" htmlFor={`receipt-storage-${item.id}`}>Nơi bảo quản</label>
+                  <select
+                    id={`receipt-storage-${item.id}`}
+                    value={item.storage}
+                    disabled={item.rejected}
+                    onChange={(event) => handleStorage(item.id, event.target.value as 'fridge' | 'freezer' | 'pantry')}
+                    className="text-[11px] px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 font-medium"
+                  >
+                    <option value="fridge">Tủ mát</option>
+                    <option value="freezer">Tủ đông</option>
+                    <option value="pantry">Tủ khô</option>
+                  </select>
+                  {corrected && (
+                    <span className="text-[10px] text-slate-500" data-testid="receipt-raw-evidence">
+                      AI đọc: {item.rawEvidence?.estimatedQuantity} {item.rawEvidence?.unit ?? item.unit}
+                    </span>
+                  )}
+                  {item.rejected && (
+                    <span className="text-[10px] font-semibold text-rose-700">Đã bỏ qua khỏi tủ lạnh</span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {items.length === 0 && (
             <div className="text-center py-10 bg-white rounded-xl p-6 border border-slate-200/80">
@@ -271,12 +341,12 @@ const ReceiptReview: React.FC<{ receiptScanId: string | null }> = ({ receiptScan
         <Button
           fullWidth
           size="lg"
-            disabled={items.length === 0 || isSubmitting || !isReady}
+            disabled={acceptedItems.length === 0 || isSubmitting || !isReady}
           onClick={handleImportToFridge}
           className="flex items-center justify-center gap-2"
         >
           <ShoppingBag className="w-4 h-4" />
-          <span>Nhập {items.length} món vào Tủ lạnh</span>
+          <span>Nhập {acceptedItems.length} món vào Tủ lạnh</span>
         </Button>
 
         {currentPlan && (
@@ -284,7 +354,7 @@ const ReceiptReview: React.FC<{ receiptScanId: string | null }> = ({ receiptScan
             fullWidth
             variant="outline"
             size="md"
-          disabled={items.length === 0 || isSubmitting || !isReady}
+          disabled={acceptedItems.length === 0 || isSubmitting || !isReady}
             onClick={handleReconcileWeeklyPlan}
             className="flex items-center justify-center gap-2 text-slate-800"
           >

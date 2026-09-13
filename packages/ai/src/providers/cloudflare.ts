@@ -61,6 +61,30 @@ function standardizeUnit(rawUnit?: string): 'g' | 'kg' | 'ml' | 'l' | 'piece' | 
   return 'piece';
 }
 
+// T13 no-fabrication helpers. An OCR field the model did not report is absent,
+// never a plausible-looking default: `Number(x) || 0` previously turned an
+// unread price into a factual 0₫, and `|| new Date()` turned an unread receipt
+// date into "bought today". Absence must survive normalization.
+function optionalAmount(input: unknown): number | undefined {
+  if (input === null || input === undefined || input === '') return undefined;
+  const amount = typeof input === 'number' ? input : Number(String(input).replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(amount) && amount >= 0 ? amount : undefined;
+}
+
+function optionalText(input: unknown): string | undefined {
+  if (typeof input !== 'string') return undefined;
+  const trimmed = input.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function optionalConfidence(input: unknown): number | undefined {
+  if (input === null || input === undefined || input === '') return undefined;
+  const value = Number(input);
+  // The model's own uncertainty is preserved exactly; it is never floored
+  // upward into looking more certain than it reported.
+  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : undefined;
+}
+
 export class CloudflareAIProvider implements AIProvider {
   name = 'cloudflare';
   private ai: CloudflareAIBinding;
@@ -186,20 +210,27 @@ Chỉ trả về một đối tượng JSON hợp lệ duy nhất theo mẫu sau
         raw_name: String(item.raw_name || 'Sản phẩm'),
         estimated_quantity: Math.max(0.1, Number(item.estimated_quantity) || 1),
         unit: standardizeUnit(item.unit || canonical?.defaultUnit),
-        unit_price_vnd: Number(item.unit_price_vnd) || 0,
-        total_price_vnd: Number(item.total_price_vnd) || 0,
+        // T13: an unread price is unknown, not 0₫ — `|| 0` turned every
+        // failed extraction into a factual "this cost nothing" claim.
+        unit_price_vnd: optionalAmount(item.unit_price_vnd),
+        total_price_vnd: optionalAmount(item.total_price_vnd),
         canonical_id: canonical?.id,
         category: canonical?.category || item.category || 'other',
         storage: item.storage === 'freezer' || item.storage === 'pantry' ? item.storage : 'fridge',
-        confidence: Math.min(1, Math.max(0.5, Number(item.confidence) || 0.9)),
+        // T13: uncertainty is preserved. Clamping to >= 0.5 and defaulting to
+        // 0.9 manufactured confidence the model never reported.
+        confidence: optionalConfidence(item.confidence),
       };
     });
 
     return {
-      merchant_name: parsed.merchant_name || 'Siêu thị',
-      invoice_number: parsed.invoice_number,
-      purchase_date: parsed.purchase_date || new Date().toISOString().split('T')[0],
-      total_amount_vnd: Number(parsed.total_amount_vnd) || 0,
+      // T13: merchant, purchase date and total are receipt facts. When OCR did
+      // not read them they stay absent instead of becoming "Siêu thị", today's
+      // date and 0₫.
+      merchant_name: optionalText(parsed.merchant_name),
+      invoice_number: optionalText(parsed.invoice_number),
+      purchase_date: optionalText(parsed.purchase_date),
+      total_amount_vnd: optionalAmount(parsed.total_amount_vnd),
       items,
     };
   }

@@ -4,6 +4,7 @@ import { flush, pendingCount, getPendingOps } from '../lib/sync';
 import { capturePrivateSession, privateSessionBlocked } from '../lib/private-session';
 import { authApi } from './auth';
 import { inventoryApi } from './inventory';
+import { inventoryTruthApi } from './inventory-truth';
 import { scansApi } from './scans';
 import { recipesApi } from './recipes';
 import { shoppingApi } from './shopping';
@@ -17,6 +18,7 @@ export type { ApiErrorKind } from './http';
 export const api = {
   ...authApi,
   ...inventoryApi,
+  ...inventoryTruthApi,
   ...scansApi,
   ...recipesApi,
   ...shoppingApi,

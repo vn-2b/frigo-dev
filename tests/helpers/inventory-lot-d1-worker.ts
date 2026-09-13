@@ -1,4 +1,7 @@
 import type { D1DatabaseBinding, D1PreparedStatement } from '../../packages/db/src';
+import { Hono } from 'hono';
+import { scanRoutes } from '../../src/worker/routes/scans';
+import { inventoryTruthRoutes } from '../../src/worker/routes/inventory-truth';
 import { composeInventoryLotCommands, executeInventoryFefoCommand, executeInventoryLotCommand, readLotCommandReceipt,
   type InventoryLotCommandScope, type LotCommandSpec } from '../../packages/db/src/inventory-lot-commands';
 import { runLegacyInventoryBatch } from '../../packages/db/src/inventory-writer-fence';
@@ -215,6 +218,47 @@ export default {
       if (new URL(request.url).pathname === '/read-race') {
         const body = await request.json() as { writer: CommandRequest; query?: InventoryReadQuery };
         return Response.json(await controlledReadRace(env.DB, body.writer, body.query ?? {}));
+      }
+      if (new URL(request.url).pathname === '/scan-confirm') {
+        // T13: exercises the REAL scan-confirm Hono route (provenance, purchase
+        // facts, expiry truth, observation integration, idempotency) against
+        // real workerd/D1 rather than a reimplementation of it.
+        const body = await request.json() as {
+          scope: InventoryLotCommandScope; scanId: string; items: unknown[];
+        };
+        const app = new Hono<{ Bindings: any; Variables: { auth: any } }>();
+        app.use('*', async (c, next) => {
+          c.set('auth', { userId: body.scope.actorId, householdId: body.scope.householdId, isGuest: false } as any);
+          await next();
+        });
+        app.route('/api/v1', scanRoutes);
+        const response = await app.fetch(new Request(
+          `http://d1.test/api/v1/scans/${encodeURIComponent(body.scanId)}/confirm`,
+          { method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ items: body.items }) },
+        ), { DB: env.DB, CACHE: undefined });
+        return Response.json({ status: response.status, body: await response.json() });
+      }
+      if (new URL(request.url).pathname === '/observations-route') {
+        // T13: the additive UX read/decision routes, through real handlers.
+        const body = await request.json() as {
+          scope: InventoryLotCommandScope; path: string; method?: string; payload?: unknown;
+        };
+        const app = new Hono<{ Bindings: any; Variables: { auth: any } }>();
+        app.use('*', async (c, next) => {
+          c.set('auth', { userId: body.scope.actorId, householdId: body.scope.householdId, isGuest: false } as any);
+          await next();
+        });
+        app.route('/api/v1', inventoryTruthRoutes);
+        const method = body.method ?? 'GET';
+        const response = await app.fetch(new Request(`http://d1.test/api/v1${body.path}`, {
+          method,
+          ...(method === 'GET' ? {} : {
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(body.payload ?? {}),
+          }),
+        }), { DB: env.DB, CACHE: undefined });
+        return Response.json({ status: response.status, body: await response.json() });
       }
       if (new URL(request.url).pathname === '/adopt') {
         const body = await request.json() as { scope: InventoryLotCommandScope; now: string };

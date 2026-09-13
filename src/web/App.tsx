@@ -24,6 +24,9 @@ const InventoryPage = lazy(() =>
 const IngredientDetailPage = lazy(() =>
   import('./pages/IngredientDetailPage').then((m) => ({ default: m.IngredientDetailPage })),
 );
+const ReconciliationPage = lazy(() =>
+  import('./pages/ReconciliationPage').then((m) => ({ default: m.ReconciliationPage })),
+);
 const ScanPage = lazy(() => import('./pages/ScanPage').then((m) => ({ default: m.ScanPage })));
 const ScanResultPage = lazy(() =>
   import('./pages/ScanResultPage').then((m) => ({ default: m.ScanResultPage })),
@@ -138,6 +141,7 @@ export const App: React.FC = () => {
                   <Route path="/inventory" element={<Navigate to="/fridge" replace />} />
                   <Route path="/ingredients/:id" element={<IngredientDetailPage />} />
                   <Route path="/inventory/:id" element={<IngredientDetailPage />} />
+                  <Route path="/inventory-reconciliation" element={<ReconciliationPage />} />
 
                   {/* AI Scan & Review */}
                   <Route path="/scan" element={<ScanPage />} />

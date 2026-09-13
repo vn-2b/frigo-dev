@@ -71,6 +71,18 @@ VALUES ('migration_smoke_req_only', 'migration_smoke_plan', 'GINGER', 'Gừng', 
 .read migrations/0029_inventory_fefo_backfill_compatibility.sql
 .read migrations/0030_inventory_observation_reconciliation.sql
 
+-- T13: seed pre-0031 scan lines so the legacy upgrade is exercised, not just a
+-- fresh replay. One unreviewed line (raw evidence still intact) and one already
+-- confirmed line (its extraction is genuinely lost and must stay NULL).
+INSERT INTO scans (id, user_id, household_id, status, scan_type, purchase_date)
+VALUES ('migration_smoke_receipt', 'demo_user_01', 'demo_household_01', 'ready', 'receipt', '2026-09-10');
+INSERT INTO scan_items (id, scan_id, raw_name, estimated_quantity, unit, confidence, is_confirmed)
+VALUES ('migration_smoke_line_open', 'migration_smoke_receipt', 'Thit heo', 2.0, 'kg', 0.55, 0);
+INSERT INTO scan_items (id, scan_id, raw_name, estimated_quantity, unit, confidence, is_confirmed)
+VALUES ('migration_smoke_line_done', 'migration_smoke_receipt', 'Trung ga', 6, 'piece', 0.9, 1);
+
+.read migrations/0031_scan_evidence_retention.sql
+
 CREATE TEMP TABLE assert_zero (value INTEGER NOT NULL CHECK (value = 0));
 INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_foreign_key_check;
 INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_integrity_check WHERE integrity_check <> 'ok';
@@ -196,6 +208,29 @@ INSERT INTO assert_one SELECT COUNT(*) FROM inventory_reconciliation_decisions
 INSERT INTO assert_one SELECT COUNT(*) FROM inventory_observations
   WHERE id = 'migration_smoke_observation' AND status = 'OPEN' AND version = 1
     AND quantity_milli = 2000000 AND canonical_unit = 'g';
+
+-- T13 / 0031: raw OCR evidence is retained separately from the reviewable
+-- values, the confirmed-before-T13 line keeps NULL raw evidence instead of a
+-- fabricated one, and the explicit review lifecycle exists.
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('scan_items') WHERE name = 'ocr_raw_name';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('scan_items') WHERE name = 'ocr_quantity';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('scan_items') WHERE name = 'ocr_unit';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('scan_items') WHERE name = 'ocr_confidence';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('scan_items') WHERE name = 'review_state';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master
+  WHERE type = 'trigger' AND name = 'trg_scan_items_review_state_insert';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master
+  WHERE type = 'trigger' AND name = 'trg_scan_items_review_state_update';
+INSERT INTO assert_one SELECT COUNT(*) FROM scan_items
+  WHERE id = 'migration_smoke_line_open' AND review_state = 'PENDING'
+    AND ocr_raw_name = 'Thit heo' AND ocr_quantity = 2.0 AND ocr_unit = 'kg';
+INSERT INTO assert_one SELECT COUNT(*) FROM scan_items
+  WHERE id = 'migration_smoke_line_done' AND review_state = 'CONFIRMED'
+    AND ocr_raw_name IS NULL AND ocr_quantity IS NULL AND ocr_unit IS NULL;
+-- Explicit rejection is representable and distinct from "never reviewed".
+UPDATE scan_items SET review_state = 'REJECTED' WHERE id = 'migration_smoke_line_open';
+INSERT INTO assert_one SELECT COUNT(*) FROM scan_items
+  WHERE id = 'migration_smoke_line_open' AND review_state = 'REJECTED' AND is_confirmed = 0;
 
 SELECT 'migration-smoke=ok';
 SQL

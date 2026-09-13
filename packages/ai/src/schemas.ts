@@ -34,11 +34,15 @@ export const ReceiptItemSchema = z.object({
   canonical_id: z.string().optional(),
   category: z.string().optional(),
   storage: z.enum(['fridge', 'freezer', 'pantry']).optional().default('fridge'),
-  confidence: z.number().min(0).max(1).default(0.9),
+  // T13: a missing confidence is unknown, not high. Defaulting to 0.9 claimed
+  // certainty the model never expressed, so absence must stay absent.
+  confidence: z.number().min(0).max(1).optional(),
 });
 
 export const ReceiptScanResultSchema = z.object({
-  merchant_name: z.string().default('Siêu thị'),
+  // T13: no fabricated merchant. An unread merchant name stays absent rather
+  // than becoming a plausible-looking "Siêu thị".
+  merchant_name: z.string().optional(),
   invoice_number: z.string().optional(),
   purchase_date: z.string().optional(),
   total_amount_vnd: z.number().nonnegative().optional(),

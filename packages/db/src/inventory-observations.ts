@@ -94,6 +94,80 @@ export function observationInsertStatement(db: D1DatabaseBinding, observation: I
     );
 }
 
+// T13: the same evidence insert, admitted only while the caller's own
+// precondition still holds. A guarded observation rides an existing atomic
+// batch (for example a scan confirmation): if the guard no longer matches the
+// insert writes nothing, exactly like the sibling draft writes, so a lost race
+// or a replay can never leave evidence behind for a confirmation that did not
+// commit. Still evidence-only: this writes inventory_observations and nothing
+// else.
+export function guardedObservationInsertStatement(db: D1DatabaseBinding,
+  observation: InventoryObservation, guardSql: string, guardBindings: readonly unknown[]): D1PreparedStatement {
+  return db.prepare(`INSERT INTO inventory_observations (id, household_id, source_type, source_ref,
+    fingerprint, observed_at, recorded_at, ingredient_id, raw_name, lot_id, legacy_item_id,
+    quantity, unit, quantity_milli, canonical_unit, storage, expiry_date, expiry_kind, opened_at,
+    evidence, note, authoritative_inventory_version, status, version, created_at, updated_at)
+    SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    WHERE ${guardSql}`)
+    .bind(
+      observation.observationId, observation.householdId, observation.sourceType, observation.sourceRef,
+      observation.fingerprint, observation.observedAt, observation.recordedAt, observation.ingredientId,
+      observation.rawName, observation.lotId, observation.legacyItemId, observation.claim.quantity,
+      observation.claim.unit, observation.claim.quantityMilli, observation.claim.canonicalUnit,
+      observation.claim.storage, observation.claim.expiryDate, observation.claim.expiryKind,
+      observation.claim.openedAt, observation.evidence, observation.note,
+      observation.authoritativeInventoryVersion, observation.status, observation.version,
+      observation.createdAt, observation.updatedAt,
+      ...guardBindings,
+    );
+}
+
+/**
+ * T13: build (never persist) one canonical observation. Same validation,
+ * normalization and identity rules as `recordInventoryObservation`; the caller
+ * supplies the authoritative inventory version it already read inside its own
+ * coherent snapshot and owns when the statement commits.
+ */
+export function buildInventoryObservation(inputScope: InventoryObservationScope,
+  input: InventoryObservationInput, authoritativeInventoryVersion: number,
+  now: string): InventoryObservation {
+  const scope = Scope.parse(inputScope);
+  const parsed = InventoryObservationInputSchema.safeParse(input);
+  if (!parsed.success) throw new ObservationError('INVALID_OBSERVATION', parsed.error.message);
+  const data = parsed.data;
+  let claim = { ...data.claim };
+  if (claim.quantity !== null && claim.unit !== null) {
+    let normalized: ReturnType<typeof toLotQuantity>;
+    try {
+      normalized = toLotQuantity(claim.quantity, claim.unit);
+    } catch {
+      throw new ObservationError('UNREPRESENTABLE_QUANTITY');
+    }
+    claim = { ...claim, quantityMilli: normalized.quantityMilli, canonicalUnit: normalized.canonicalUnit };
+  }
+  return InventoryObservationSchema.parse({
+    observationId: observationIdentity(scope.householdId, data.sourceType, data.sourceRef),
+    householdId: scope.householdId,
+    sourceType: data.sourceType,
+    sourceRef: data.sourceRef,
+    fingerprint: observationFingerprint({ ...data, claim }),
+    observedAt: data.observedAt,
+    recordedAt: now,
+    ingredientId: data.ingredientId,
+    rawName: data.rawName,
+    lotId: data.lotId,
+    legacyItemId: data.legacyItemId,
+    evidence: data.evidence,
+    note: data.note,
+    authoritativeInventoryVersion,
+    status: 'OPEN',
+    version: 1,
+    createdAt: now,
+    updatedAt: now,
+    claim,
+  });
+}
+
 export async function recordInventoryObservation(db: D1DatabaseBinding, inputScope: InventoryObservationScope,
   input: InventoryObservationInput, now: string): Promise<ObservationRecordExecution> {
   const scope = Scope.parse(inputScope);
